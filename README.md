@@ -1,6 +1,6 @@
-# zxcc
+# zxcc - ZX Calculus Components
 
-Framework-agnostic web component for rendering ZX-calculus diagrams.
+Framework-agnostic web component for rendering [ZX-calculus](https://zxcalculus.com) diagrams.
 Ships as a `<zx-diagram>` custom element built with [Lit](https://lit.dev) and [D3](https://d3js.org) v5.
 
 The rendering code is a TypeScript port of pyzx's diagram-construction plus a small BFS auto-layout, wrapping pyzx's `zx_viewer.inline.js` (vendored, lightly modified) for the actual SVG draw + drag interaction.
