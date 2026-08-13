@@ -1,5 +1,23 @@
-import * as d3 from 'd3'
+import { brush } from 'd3-brush'
+import { drag } from 'd3-drag'
+import * as d3Selection from 'd3-selection'
+import { symbol } from 'd3-shape'
 import { css, html, LitElement, nothing } from 'lit'
+
+// zxViewer.js expects a `d3` global with the handful of APIs it actually uses.
+// `d3.event` is a live binding in d3-selection v1 (mutated during dispatch), so
+// we expose it via a getter rather than destructuring — destructuring would
+// freeze it at its initial `null`.
+const d3 = {
+  select: d3Selection.select,
+  symbol,
+  drag,
+  brush,
+  get event() {
+    return d3Selection.event
+  },
+}
+
 import { customElement, property } from 'lit/decorators.js'
 import { ref } from 'lit/directives/ref.js'
 import {
