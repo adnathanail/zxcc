@@ -12,6 +12,7 @@
       "package.json",
       "tsconfig.json",
       "biome.json",
+      "vitest.config.ts",
       "!src/zxViewer.js",
       "!dist",
       "!build",
