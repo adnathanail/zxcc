@@ -64,6 +64,39 @@
   <zx-diagram id="d7"></zx-diagram>
 </section>
 
+<h2 style="margin-top:2rem">Algebraic layout (pre-positioned + boxes)</h2>
+<p>
+  Setting <code>col</code>/<code>qubit</code> on any node skips the BFS
+  auto-layout — every node is expected to carry both. The <code>boxes</code>
+  field draws translucent rectangles behind subtrees: orange dashed for
+  <code>stack</code>, blue solid for <code>compose</code>. These demos
+  mirror what LeanSpider's <code>ZX n m</code> algebraic term walker emits.
+</p>
+
+<section>
+  <h2>8. <code>spider Z 2 2 (π/2)</code></h2>
+  <p>A single 2-in-2-out Z spider, centred at <code>q = 0.5</code>. No boxes — leaves emit none.</p>
+  <zx-diagram id="d8"></zx-diagram>
+</section>
+
+<section>
+  <h2>9. <code>stack (spider Z 1 1 α) (spider X 1 1 β)</code></h2>
+  <p>Two spiders stacked vertically. One orange dashed <code>stack</code> box covers both body nodes.</p>
+  <zx-diagram id="d9"></zx-diagram>
+</section>
+
+<section>
+  <h2>10. <code>compose (spider Z 1 2 0) (spider Z 2 1 0)</code></h2>
+  <p>Spider-fusion candidate: two Z spiders composed by two parallel edges, wrapped in one blue <code>compose</code> box.</p>
+  <zx-diagram id="d10"></zx-diagram>
+</section>
+
+<section>
+  <h2>11. Nested: <code>compose (stack (Z 1 1) (Z 1 1)) (X 2 1 π/2)</code></h2>
+  <p>Inner <code>stack</code> box (orange) sits inside the outer <code>compose</code> box (blue). Boxes are sorted largest-first so outer paints behind inner.</p>
+  <zx-diagram id="d11"></zx-diagram>
+</section>
+
 <script type="module">
   import '/dist/index.bundle.js'
 
@@ -153,6 +186,91 @@
     // Missing `nodes` -> renderDiagram throws inside the element's
     // try/catch and the error UI is shown.
     d7: { edges: [] },
+
+    // spider Z 2 2 (π/2)
+    // Body: one spider at (col 0, q 0.5). Boundaries fan out to
+    // integer qubit slots on both sides.
+    d8: {
+      nodes: [
+        { id: 0, type: 'spider', color: 'Z', phase: 'π/2', col: 0, qubit: 0.5 },
+        { id: 1, type: 'input',  ioId: 0, col: -1, qubit: 0 },
+        { id: 2, type: 'input',  ioId: 1, col: -1, qubit: 1 },
+        { id: 3, type: 'output', ioId: 0, col:  1, qubit: 0 },
+        { id: 4, type: 'output', ioId: 1, col:  1, qubit: 1 },
+      ],
+      edges: [
+        { src: 1, tgt: 0 },
+        { src: 2, tgt: 0 },
+        { src: 0, tgt: 3 },
+        { src: 0, tgt: 4 },
+      ],
+    },
+
+    // stack (spider Z 1 1 α) (spider X 1 1 β)
+    // Two independent 1→1 spiders; b's qubit is shifted by a.height=1.
+    // The stack box wraps both body nodes.
+    d9: {
+      nodes: [
+        { id: 0, type: 'spider', color: 'Z', phase: '0', col: 0, qubit: 0 },
+        { id: 1, type: 'spider', color: 'X', phase: 'π', col: 0, qubit: 1 },
+        { id: 2, type: 'input',  ioId: 0, col: -1, qubit: 0 },
+        { id: 3, type: 'input',  ioId: 1, col: -1, qubit: 1 },
+        { id: 4, type: 'output', ioId: 0, col:  1, qubit: 0 },
+        { id: 5, type: 'output', ioId: 1, col:  1, qubit: 1 },
+      ],
+      edges: [
+        { src: 2, tgt: 0 },
+        { src: 0, tgt: 4 },
+        { src: 3, tgt: 1 },
+        { src: 1, tgt: 5 },
+      ],
+      labels: [[0, 'α'], [1, 'β']],
+      boxes: [{ kind: 'stack', nodeIds: [0, 1] }],
+    },
+
+    // compose (spider Z 1 2 0) (spider Z 2 1 0) — spider fusion target
+    // Both spiders centred at q=0.5; two parallel edges between them.
+    // Composite input/output on the centred half-row.
+    d10: {
+      nodes: [
+        { id: 0, type: 'spider', color: 'Z', phase: '0', col: 0, qubit: 0.5 },
+        { id: 1, type: 'spider', color: 'Z', phase: '0', col: 1, qubit: 0.5 },
+        { id: 2, type: 'input',  ioId: 0, col: -1, qubit: 0.5 },
+        { id: 3, type: 'output', ioId: 0, col:  2, qubit: 0.5 },
+      ],
+      edges: [
+        { src: 2, tgt: 0 },
+        { src: 0, tgt: 1 },
+        { src: 0, tgt: 1 },
+        { src: 1, tgt: 3 },
+      ],
+      boxes: [{ kind: 'compose', nodeIds: [0, 1] }],
+    },
+
+    // compose (stack (Z 1 1) (Z 1 1)) (X 2 1 π/2)
+    // Inner stack (orange, ids [0,1]) sits inside outer compose
+    // (blue, ids [0,1,2]). The X spider is centred on q=0.5.
+    d11: {
+      nodes: [
+        { id: 0, type: 'spider', color: 'Z', phase: '0',   col: 0, qubit: 0   },
+        { id: 1, type: 'spider', color: 'Z', phase: '0',   col: 0, qubit: 1   },
+        { id: 2, type: 'spider', color: 'X', phase: 'π/2', col: 1, qubit: 0.5 },
+        { id: 3, type: 'input',  ioId: 0, col: -1, qubit: 0   },
+        { id: 4, type: 'input',  ioId: 1, col: -1, qubit: 1   },
+        { id: 5, type: 'output', ioId: 0, col:  2, qubit: 0.5 },
+      ],
+      edges: [
+        { src: 3, tgt: 0 },
+        { src: 4, tgt: 1 },
+        { src: 0, tgt: 2 },
+        { src: 1, tgt: 2 },
+        { src: 2, tgt: 5 },
+      ],
+      boxes: [
+        { kind: 'compose', nodeIds: [0, 1, 2] },
+        { kind: 'stack',   nodeIds: [0, 1] },
+      ],
+    },
   }
 
   for (const [id, diagram] of Object.entries(diagrams)) {
