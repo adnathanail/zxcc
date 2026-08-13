@@ -16,7 +16,9 @@ diagrams. Built with Lit + D3 v5. See README.md for user-facing usage.
   `d3` and `_settings_colors` injected into its scope (see `getShowGraph`
   in zxDiagram.ts). Do not import it as a normal ES module.
 - `src/index.ts` — package entry, re-exports the element class and types.
-- `demo/index.html` — hand-written demo page, served by `npm run demo`.
+- `src/stories/*.stories.ts` — Storybook (CSF3) stories used by
+  `npm run storybook`. `.storybook/preview.ts` imports `src/zxDiagram`
+  so the custom element registers before any story renders.
 
 ## Build
 

@@ -59,16 +59,12 @@ Otherwise a BFS from the inputs assigns rows and qubits.
 
 ## Demo
 
-Seven example diagrams (identity, Z spider with phase, Bell-state prep, spider fusion, parallel edges, symbolic label, error path) are in `demo/index.html`.
+Storybook hosts the example gallery: auto-layout diagrams (identity, Z spider with phase, Bell-state prep, spider fusion, parallel edges, symbolic label, error path), pre-positioned algebraic diagrams (spider, stack, compose, nested), and an interactive Playground story with controls.
 
 ```sh
 npm install
-npm run build
-npm run demo
+npm run storybook
 ```
-
-Then open <http://127.0.0.1:8000/demo/>.
-A static server is required because ES-module imports don't work over `file://`.
 
 ## Development
 
