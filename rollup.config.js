@@ -5,6 +5,7 @@ import commonjs from '@rollup/plugin-commonjs'
 import resolve from '@rollup/plugin-node-resolve'
 import replace from '@rollup/plugin-replace'
 import terser from '@rollup/plugin-terser'
+import { visualizer } from 'rollup-plugin-visualizer'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
@@ -34,6 +35,7 @@ const rawAssets = {
 }
 
 const production = process.env.NODE_ENV === 'production'
+const analyze = process.env.ANALYZE === 'true'
 
 export default {
   input: 'dist/index.js',
@@ -55,5 +57,12 @@ export default {
     }),
     commonjs(),
     production && terser(),
+    analyze &&
+      visualizer({
+        filename: 'dist/stats.html',
+        gzipSize: true,
+        brotliSize: true,
+        open: true,
+      }),
   ],
 }

@@ -85,3 +85,9 @@ npm test            # vitest (jsdom + plain DOM)
 ```
 
 The bundle is self-contained: d3 and lit are baked in, no runtime deps.
+
+### Analyzing bundle composition
+
+```sh
+npm run analyze
+```

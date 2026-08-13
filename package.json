@@ -20,6 +20,7 @@
   ],
   "scripts": {
     "build": "tsc && rollup -c --environment NODE_ENV:production",
+    "analyze": "tsc && rollup -c --environment NODE_ENV:production,ANALYZE:true",
     "build-dev": "tsc && rollup -c --environment NODE_ENV:development",
     "watch": "rollup -c --environment NODE_ENV:development --watch",
     "storybook": "storybook dev -p 6006",
@@ -45,6 +46,7 @@
     "chromatic": "^18.2.0",
     "jsdom": "^28.1.0",
     "rollup": "^4.17.2",
+    "rollup-plugin-visualizer": "^7.0.1",
     "storybook": "^10.5.8",
     "typescript": "^5.0.3",
     "vite": "^7.3.6",
