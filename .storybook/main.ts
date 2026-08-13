@@ -41,6 +41,8 @@ const config: StorybookConfig = {
     viteConfig.plugins = [...(viteConfig.plugins ?? []), rawSrcJsPlugin]
     return viteConfig
   },
+
+  addons: ['@storybook/addon-vitest']
 }
 
 export default config
