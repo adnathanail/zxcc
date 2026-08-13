@@ -31,14 +31,18 @@ const rawSrcJsPlugin: Plugin = {
 
 const config: StorybookConfig = {
   stories: ['../src/**/*.stories.ts'],
+
   framework: {
     name: '@storybook/web-components-vite',
     options: {},
   },
+
   async viteFinal(viteConfig) {
     viteConfig.plugins = [...(viteConfig.plugins ?? []), rawSrcJsPlugin]
     return viteConfig
   },
+
+  addons: ['@storybook/addon-vitest']
 }
 
 export default config
