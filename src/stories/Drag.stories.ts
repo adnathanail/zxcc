@@ -121,17 +121,21 @@ export const DragSingleSpider: Story = {
       ],
     },
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, step }) => {
     const root = await shadowRootOf(canvasElement)
-    const spider = await waitForNode(root, 'circle', Z_FILL)
+    let spider!: SVGGElement
+    await step('wait for Z spider to mount', async () => {
+      spider = await waitForNode(root, 'circle', Z_FILL)
+    })
     const [x0, y0] = translateOf(spider)
 
-    performDrag(spider, 40, 30)
-
-    await waitFor(() => {
-      const [x1, y1] = translateOf(spider)
-      expect(x1 - x0).toBeCloseTo(40, 1)
-      expect(y1 - y0).toBeCloseTo(30, 1)
+    await step('drag Z spider by (40, 30)', async () => {
+      performDrag(spider, 40, 30)
+      await waitFor(() => {
+        const [x1, y1] = translateOf(spider)
+        expect(x1 - x0).toBeCloseTo(40, 1)
+        expect(y1 - y0).toBeCloseTo(30, 1)
+      })
     })
   },
 }
@@ -164,36 +168,42 @@ export const ShiftClickMultiDrag: Story = {
       ],
     },
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, step }) => {
     const root = await shadowRootOf(canvasElement)
     const container = root.querySelector('.container')
     if (!container) throw new Error('.container not found')
 
-    const zSpider = await waitForNode(root, 'circle', Z_FILL)
-    const xSpider = await waitForNode(root, 'circle', X_FILL)
+    let zSpider!: SVGGElement
+    let xSpider!: SVGGElement
+    await step('wait for Z and X spiders to mount', async () => {
+      zSpider = await waitForNode(root, 'circle', Z_FILL)
+      xSpider = await waitForNode(root, 'circle', X_FILL)
+    })
     const [zx0, zy0] = translateOf(zSpider)
     const [xx0, xy0] = translateOf(xSpider)
 
-    // Select Z with a plain click (no drag: mousedown/mouseup at same coord).
-    fireMouse('mousedown', zSpider, 100, 100)
-    fireMouse('mouseup', window, 100, 100)
+    await step('click Z spider to select it', () => {
+      fireMouse('mousedown', zSpider, 100, 100)
+      fireMouse('mouseup', window, 100, 100)
+    })
 
-    // Shift-click X to add it to the selection.
-    fireKey('keydown', container, true)
-    fireMouse('mousedown', xSpider, 200, 100, true)
-    fireMouse('mouseup', window, 200, 100, true)
-    fireKey('keyup', container, false)
+    await step('shift-click X spider to add it to selection', () => {
+      fireKey('keydown', container, true)
+      fireMouse('mousedown', xSpider, 200, 100, true)
+      fireMouse('mouseup', window, 200, 100, true)
+      fireKey('keyup', container, false)
+    })
 
-    // Now drag from Z; both selected nodes should translate by the same delta.
-    performDrag(zSpider, 25, 15)
-
-    await waitFor(() => {
-      const [zx1, zy1] = translateOf(zSpider)
-      const [xx1, xy1] = translateOf(xSpider)
-      expect(zx1 - zx0).toBeCloseTo(25, 1)
-      expect(zy1 - zy0).toBeCloseTo(15, 1)
-      expect(xx1 - xx0).toBeCloseTo(25, 1)
-      expect(xy1 - xy0).toBeCloseTo(15, 1)
+    await step('drag from Z by (25, 15) and assert both nodes move together', async () => {
+      performDrag(zSpider, 25, 15)
+      await waitFor(() => {
+        const [zx1, zy1] = translateOf(zSpider)
+        const [xx1, xy1] = translateOf(xSpider)
+        expect(zx1 - zx0).toBeCloseTo(25, 1)
+        expect(zy1 - zy0).toBeCloseTo(15, 1)
+        expect(xx1 - xx0).toBeCloseTo(25, 1)
+        expect(xy1 - xy0).toBeCloseTo(15, 1)
+      })
     })
   },
 }
@@ -227,25 +237,30 @@ export const HboxConstrainedDrag: Story = {
       ],
     },
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, step }) => {
     const root = await shadowRootOf(canvasElement)
-    const hbox = await waitForNode(root, 'rect', H_FILL)
+    let hbox!: SVGGElement
+    await step('wait for H-box to mount', async () => {
+      hbox = await waitForNode(root, 'rect', H_FILL)
+    })
     const [x0, y0] = translateOf(hbox)
 
-    // Perpendicular drag: should be discarded (H-box locked to horizontal line).
-    performDrag(hbox, 0, 60)
-    await waitFor(() => {
-      const [x1, y1] = translateOf(hbox)
-      expect(x1).toBeCloseTo(x0, 1)
-      expect(y1).toBeCloseTo(y0, 1)
+    await step('perpendicular drag is discarded (locked to line)', async () => {
+      performDrag(hbox, 0, 60)
+      await waitFor(() => {
+        const [x1, y1] = translateOf(hbox)
+        expect(x1).toBeCloseTo(x0, 1)
+        expect(y1).toBeCloseTo(y0, 1)
+      })
     })
 
-    // Along-line drag: x advances, y stays put.
-    performDrag(hbox, 30, 0)
-    await waitFor(() => {
-      const [x2, y2] = translateOf(hbox)
-      expect(x2).toBeGreaterThan(x0)
-      expect(y2).toBeCloseTo(y0, 1)
+    await step('along-line drag advances x, keeps y fixed', async () => {
+      performDrag(hbox, 30, 0)
+      await waitFor(() => {
+        const [x2, y2] = translateOf(hbox)
+        expect(x2).toBeGreaterThan(x0)
+        expect(y2).toBeCloseTo(y0, 1)
+      })
     })
   },
 }
@@ -275,39 +290,43 @@ export const BrushSelectThenDrag: Story = {
       ],
     },
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, step }) => {
     const root = await shadowRootOf(canvasElement)
     const svg = root.querySelector<SVGSVGElement>('svg')
     const overlay = root.querySelector<SVGRectElement>('.brush .overlay')
     if (!svg || !overlay) throw new Error('svg/brush overlay not found')
 
-    const zSpider = await waitForNode(root, 'circle', Z_FILL)
-    const xSpider = await waitForNode(root, 'circle', X_FILL)
+    let zSpider!: SVGGElement
+    let xSpider!: SVGGElement
+    await step('wait for Z and X spiders to mount', async () => {
+      zSpider = await waitForNode(root, 'circle', Z_FILL)
+      xSpider = await waitForNode(root, 'circle', X_FILL)
+    })
     const [zx0, zy0] = translateOf(zSpider)
     const [xx0, xy0] = translateOf(xSpider)
 
-    // Pick a brush rect that contains Z and X but excludes input/output.
-    // Both spiders sit at y ≈ zy0; brush ±30 in y around them.
-    const rect = svg.getBoundingClientRect()
-    const brushMinX = Math.min(zx0, xx0) - 10
-    const brushMaxX = Math.max(zx0, xx0) + 10
-    const brushMinY = zy0 - 30
-    const brushMaxY = zy0 + 30
+    await step('brush-select the Z and X spiders', () => {
+      const rect = svg.getBoundingClientRect()
+      const brushMinX = Math.min(zx0, xx0) - 10
+      const brushMaxX = Math.max(zx0, xx0) + 10
+      const brushMinY = zy0 - 30
+      const brushMaxY = zy0 + 30
 
-    fireMouse('mousedown', overlay, rect.left + brushMinX, rect.top + brushMinY)
-    fireMouse('mousemove', window, rect.left + brushMaxX, rect.top + brushMaxY)
-    fireMouse('mouseup', window, rect.left + brushMaxX, rect.top + brushMaxY)
+      fireMouse('mousedown', overlay, rect.left + brushMinX, rect.top + brushMinY)
+      fireMouse('mousemove', window, rect.left + brushMaxX, rect.top + brushMaxY)
+      fireMouse('mouseup', window, rect.left + brushMaxX, rect.top + brushMaxY)
+    })
 
-    // Now drive a drag from Z — the previously-brushed set should follow.
-    performDrag(zSpider, 20, 20)
-
-    await waitFor(() => {
-      const [zx1, zy1] = translateOf(zSpider)
-      const [xx1, xy1] = translateOf(xSpider)
-      expect(zx1 - zx0).toBeCloseTo(20, 1)
-      expect(zy1 - zy0).toBeCloseTo(20, 1)
-      expect(xx1 - xx0).toBeCloseTo(20, 1)
-      expect(xy1 - xy0).toBeCloseTo(20, 1)
+    await step('drag from Z by (20, 20) and assert both nodes move together', async () => {
+      performDrag(zSpider, 20, 20)
+      await waitFor(() => {
+        const [zx1, zy1] = translateOf(zSpider)
+        const [xx1, xy1] = translateOf(xSpider)
+        expect(zx1 - zx0).toBeCloseTo(20, 1)
+        expect(zy1 - zy0).toBeCloseTo(20, 1)
+        expect(xx1 - xx0).toBeCloseTo(20, 1)
+        expect(xy1 - xy0).toBeCloseTo(20, 1)
+      })
     })
   },
 }
