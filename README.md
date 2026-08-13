@@ -1,5 +1,9 @@
 # zxcc - ZX Calculus Components
 
+[![CI](https://github.com/adnathanail/zxcc/actions/workflows/ci.yml/badge.svg)](https://github.com/adnathanail/zxcc/actions/workflows/ci.yml)
+[![prek](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/j178/prek/master/docs/assets/badge-v0.json)](https://github.com/j178/prek)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=fff)](https://www.typescriptlang.org)
+
 Framework-agnostic web component for rendering [ZX-calculus](https://zxcalculus.com) diagrams.
 Ships as a `<zx-diagram>` custom element built with [Lit](https://lit.dev) and [D3](https://d3js.org) v5.
 
@@ -66,7 +70,16 @@ npm run demo
 Then open <http://127.0.0.1:8000/demo/>.
 A static server is required because ES-module imports don't work over `file://`.
 
-## Building from source
+## Development
+
+### Prek
+
+[Install prek](https://github.com/j178/prek) and run
+```
+prek --install
+```
+
+### Building from source
 
 ```sh
 npm install
