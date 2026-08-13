@@ -9,6 +9,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+        with:
+          # Chromatic needs full git history to compare against the baseline.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version-file: package.json
@@ -20,3 +23,8 @@ jobs:
         run: npm run lint
       - name: Build
         run: npm run build
+      - name: Chromatic
+        uses: chromaui/action@latest
+        with:
+          projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+          exitOnceUploaded: true
