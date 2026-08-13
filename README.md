@@ -1,4 +1,4 @@
-## ZX Diagram InfoView widget
+## zxcc - ZX Calculus Component
 
 React widget which renders ZX diagrams
 
