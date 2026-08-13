@@ -1,7 +1,7 @@
 export { ZxDiagramElement } from './zxDiagram'
 export type {
-  DiagramData,
-  DiagramNode,
-  DiagramEdge,
   DiagramBox,
+  DiagramData,
+  DiagramEdge,
+  DiagramNode,
 } from './zxRender'

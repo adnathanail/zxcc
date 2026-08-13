@@ -1,5 +1,5 @@
 import * as d3 from 'd3'
-import { LitElement, css, html, nothing } from 'lit'
+import { css, html, LitElement, nothing } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 import { ref } from 'lit/directives/ref.js'
 import {
