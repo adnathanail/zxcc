@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
 import { expect, waitFor } from 'storybook/test'
-import type { ZxDiagramElement } from '../zxDiagram'
-import { COLORS, type DiagramData } from '../zxRender'
+import type { ZxDiagramElement } from '../src/zxDiagram'
+import { COLORS, type DiagramData } from '../src/zxRender'
 import { singleZSpider, zHzChain, zxSpiders } from './diagrams'
 
 interface Args {

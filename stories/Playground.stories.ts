@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
-import type { DiagramData, DiagramEdge, DiagramNode } from '../zxRender'
+import type { DiagramData, DiagramEdge, DiagramNode } from '../src/zxRender'
 
 interface Args {
   leftColor: 'Z' | 'X'

@@ -8,9 +8,11 @@
   "files": {
     "includes": [
       "src/**/*.ts",
+      "stories/**/*.ts",
       "rollup.config.js",
       "package.json",
       "tsconfig.json",
+      "tsconfig.stories.json",
       "biome.json",
       "vitest.config.ts",
       "!src/zxViewer.js",
