@@ -3,6 +3,7 @@ import { html } from 'lit'
 import { expect, waitFor } from 'storybook/test'
 import type { ZxDiagramElement } from '../zxDiagram'
 import type { DiagramData } from '../zxRender'
+import { singleZSpider, zHzChain, zxSpiders } from './diagrams'
 
 interface Args {
   diagram: DiagramData
@@ -108,19 +109,7 @@ function performDrag(node: SVGGElement, dx: number, dy: number): void {
 
 export const DragSingleSpider: Story = {
   name: '1. Drag a single Z spider',
-  args: {
-    diagram: {
-      nodes: [
-        { id: 0, type: 'input', ioId: 0 },
-        { id: 1, type: 'spider', color: 'Z', phase: 'π/2' },
-        { id: 2, type: 'output', ioId: 0 },
-      ],
-      edges: [
-        { src: 0, tgt: 1 },
-        { src: 1, tgt: 2 },
-      ],
-    },
-  },
+  args: { diagram: singleZSpider },
   play: async ({ canvasElement, step }) => {
     const DX = 40
     const DY = 30
@@ -156,21 +145,7 @@ export const DragSingleSpider: Story = {
 
 export const ShiftClickMultiDrag: Story = {
   name: '2. Shift-click multi-select, then drag',
-  args: {
-    diagram: {
-      nodes: [
-        { id: 0, type: 'input', ioId: 0 },
-        { id: 1, type: 'spider', color: 'Z', phase: '0' },
-        { id: 2, type: 'spider', color: 'X', phase: '0' },
-        { id: 3, type: 'output', ioId: 0 },
-      ],
-      edges: [
-        { src: 0, tgt: 1 },
-        { src: 1, tgt: 2 },
-        { src: 2, tgt: 3 },
-      ],
-    },
-  },
+  args: { diagram: zxSpiders },
   play: async ({ canvasElement, step }) => {
     const DX = 25
     const DY = 15
@@ -226,23 +201,7 @@ export const ShiftClickMultiDrag: Story = {
 
 export const HboxConstrainedDrag: Story = {
   name: '3. H-box stays on its chain line under drag',
-  args: {
-    diagram: {
-      nodes: [
-        { id: 0, type: 'input', ioId: 0 },
-        { id: 1, type: 'spider', color: 'Z', phase: '0' },
-        { id: 2, type: 'hadamard' },
-        { id: 3, type: 'spider', color: 'Z', phase: '0' },
-        { id: 4, type: 'output', ioId: 0 },
-      ],
-      edges: [
-        { src: 0, tgt: 1 },
-        { src: 1, tgt: 2 },
-        { src: 2, tgt: 3 },
-        { src: 3, tgt: 4 },
-      ],
-    },
-  },
+  args: { diagram: zHzChain },
   play: async ({ canvasElement, step }) => {
     const PERPENDICULAR_DX = 0
     const PERPENDICULAR_DY = 60
@@ -292,21 +251,7 @@ export const HboxConstrainedDrag: Story = {
 
 export const BrushSelectThenDrag: Story = {
   name: '4. Brush-select two spiders, then drag',
-  args: {
-    diagram: {
-      nodes: [
-        { id: 0, type: 'input', ioId: 0 },
-        { id: 1, type: 'spider', color: 'Z', phase: '0' },
-        { id: 2, type: 'spider', color: 'X', phase: '0' },
-        { id: 3, type: 'output', ioId: 0 },
-      ],
-      edges: [
-        { src: 0, tgt: 1 },
-        { src: 1, tgt: 2 },
-        { src: 2, tgt: 3 },
-      ],
-    },
-  },
+  args: { diagram: zxSpiders },
   play: async ({ canvasElement, step }) => {
     const BRUSH_PAD_X = 10
     const BRUSH_PAD_Y = 30

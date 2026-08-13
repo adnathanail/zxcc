@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
 import type { DiagramData } from '../zxRender'
+import { singleZSpider } from './diagrams'
 
 interface Args {
   diagram: DiagramData
@@ -39,19 +40,7 @@ export const IdentityWire: Story = {
 
 export const SingleZSpider: Story = {
   name: '2. Single Z spider with a phase',
-  args: {
-    diagram: {
-      nodes: [
-        { id: 0, type: 'input', ioId: 0 },
-        { id: 1, type: 'spider', color: 'Z', phase: 'π/2' },
-        { id: 2, type: 'output', ioId: 0 },
-      ],
-      edges: [
-        { src: 0, tgt: 1 },
-        { src: 1, tgt: 2 },
-      ],
-    },
-  },
+  args: { diagram: singleZSpider },
 }
 
 export const BellStatePrep: Story = {
