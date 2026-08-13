@@ -92,7 +92,7 @@ const VertexType = { BOUNDARY: 0, Z: 1, X: 2, H_BOX: 3, WIRE: 4 } as const
 const EdgeType = { SIMPLE: 1 } as const
 
 // pyzx.utils.original_colors
-const COLORS: Record<string, string> = {
+export const COLORS: Record<string, string> = {
   edge: '#000000',
   Hedge: '#0088ff',
   Xedge: '#999999',

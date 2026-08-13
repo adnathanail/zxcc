@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
 import { expect, waitFor } from 'storybook/test'
 import type { ZxDiagramElement } from '../zxDiagram'
-import type { DiagramData } from '../zxRender'
+import { COLORS, type DiagramData } from '../zxRender'
 import { singleZSpider, zHzChain, zxSpiders } from './diagrams'
 
 interface Args {
@@ -27,10 +27,9 @@ export default meta
 
 type Story = StoryObj<Args>
 
-// pyzx original_colors — matches COLORS in zxRender.ts.
-const Z_FILL = '#ccffcc'
-const X_FILL = '#ff8888'
-const H_FILL = '#ffff66'
+const Z_FILL = COLORS.Z
+const X_FILL = COLORS.X
+const H_FILL = COLORS.H
 
 function parseTranslate(transform: string): [number, number] {
   const m = transform.match(/translate\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)/)
