@@ -308,7 +308,9 @@ export function showGraph(tag: HTMLElement, graphIn: GraphData, opts: ShowGraphO
   const brushLayer = svgEl('g', { class: 'brush' })
   svg.appendChild(brushLayer)
   // Invisible full-canvas rect so brush drags start anywhere on the SVG.
+  // Class matches d3-brush's overlay rect so interaction tests can locate it.
   const brushHit = svgEl('rect', {
+    class: 'overlay',
     x: 0,
     y: 0,
     width,
