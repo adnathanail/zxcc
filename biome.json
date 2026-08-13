@@ -9,7 +9,6 @@
     "includes": [
       "src/**/*.ts",
       "rollup.config.js",
-      "vitest.config.ts",
       "package.json",
       "tsconfig.json",
       "biome.json",
