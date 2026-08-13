@@ -122,6 +122,9 @@ export const DragSingleSpider: Story = {
     },
   },
   play: async ({ canvasElement, step }) => {
+    const DX = 40
+    const DY = 30
+
     const root = await shadowRootOf(canvasElement)
     let spider!: SVGGElement
     await step('wait for Z spider to mount', async () => {
@@ -129,12 +132,12 @@ export const DragSingleSpider: Story = {
     })
     const [x0, y0] = translateOf(spider)
 
-    await step('drag Z spider by (40, 30)', async () => {
-      performDrag(spider, 40, 30)
+    await step(`drag Z spider by (${DX}, ${DY})`, async () => {
+      performDrag(spider, DX, DY)
       await waitFor(() => {
         const [x1, y1] = translateOf(spider)
-        expect(x1 - x0).toBeCloseTo(40, 1)
-        expect(y1 - y0).toBeCloseTo(30, 1)
+        expect(x1 - x0).toBeCloseTo(DX, 1)
+        expect(y1 - y0).toBeCloseTo(DY, 1)
       })
     })
   },
@@ -169,6 +172,9 @@ export const ShiftClickMultiDrag: Story = {
     },
   },
   play: async ({ canvasElement, step }) => {
+    const DX = 25
+    const DY = 15
+
     const root = await shadowRootOf(canvasElement)
     const container = root.querySelector('.container')
     if (!container) throw new Error('.container not found')
@@ -194,15 +200,15 @@ export const ShiftClickMultiDrag: Story = {
       fireKey('keyup', container, false)
     })
 
-    await step('drag from Z by (25, 15) and assert both nodes move together', async () => {
-      performDrag(zSpider, 25, 15)
+    await step(`drag from Z by (${DX}, ${DY}) and assert both nodes move together`, async () => {
+      performDrag(zSpider, DX, DY)
       await waitFor(() => {
         const [zx1, zy1] = translateOf(zSpider)
         const [xx1, xy1] = translateOf(xSpider)
-        expect(zx1 - zx0).toBeCloseTo(25, 1)
-        expect(zy1 - zy0).toBeCloseTo(15, 1)
-        expect(xx1 - xx0).toBeCloseTo(25, 1)
-        expect(xy1 - xy0).toBeCloseTo(15, 1)
+        expect(zx1 - zx0).toBeCloseTo(DX, 1)
+        expect(zy1 - zy0).toBeCloseTo(DY, 1)
+        expect(xx1 - xx0).toBeCloseTo(DX, 1)
+        expect(xy1 - xy0).toBeCloseTo(DY, 1)
       })
     })
   },
@@ -238,6 +244,11 @@ export const HboxConstrainedDrag: Story = {
     },
   },
   play: async ({ canvasElement, step }) => {
+    const PERPENDICULAR_DX = 0
+    const PERPENDICULAR_DY = 60
+    const ALONG_LINE_DX = 30
+    const ALONG_LINE_DY = 0
+
     const root = await shadowRootOf(canvasElement)
     let hbox!: SVGGElement
     await step('wait for H-box to mount', async () => {
@@ -245,23 +256,29 @@ export const HboxConstrainedDrag: Story = {
     })
     const [x0, y0] = translateOf(hbox)
 
-    await step('perpendicular drag is discarded (locked to line)', async () => {
-      performDrag(hbox, 0, 60)
-      await waitFor(() => {
-        const [x1, y1] = translateOf(hbox)
-        expect(x1).toBeCloseTo(x0, 1)
-        expect(y1).toBeCloseTo(y0, 1)
-      })
-    })
+    await step(
+      `perpendicular drag by (${PERPENDICULAR_DX}, ${PERPENDICULAR_DY}) is discarded`,
+      async () => {
+        performDrag(hbox, PERPENDICULAR_DX, PERPENDICULAR_DY)
+        await waitFor(() => {
+          const [x1, y1] = translateOf(hbox)
+          expect(x1).toBeCloseTo(x0, 1)
+          expect(y1).toBeCloseTo(y0, 1)
+        })
+      },
+    )
 
-    await step('along-line drag advances x, keeps y fixed', async () => {
-      performDrag(hbox, 30, 0)
-      await waitFor(() => {
-        const [x2, y2] = translateOf(hbox)
-        expect(x2).toBeGreaterThan(x0)
-        expect(y2).toBeCloseTo(y0, 1)
-      })
-    })
+    await step(
+      `along-line drag by (${ALONG_LINE_DX}, ${ALONG_LINE_DY}) advances x, keeps y fixed`,
+      async () => {
+        performDrag(hbox, ALONG_LINE_DX, ALONG_LINE_DY)
+        await waitFor(() => {
+          const [x2, y2] = translateOf(hbox)
+          expect(x2).toBeGreaterThan(x0)
+          expect(y2).toBeCloseTo(y0, 1)
+        })
+      },
+    )
   },
 }
 
@@ -291,6 +308,11 @@ export const BrushSelectThenDrag: Story = {
     },
   },
   play: async ({ canvasElement, step }) => {
+    const BRUSH_PAD_X = 10
+    const BRUSH_PAD_Y = 30
+    const DX = 20
+    const DY = 20
+
     const root = await shadowRootOf(canvasElement)
     const svg = root.querySelector<SVGSVGElement>('svg')
     const overlay = root.querySelector<SVGRectElement>('.brush .overlay')
@@ -305,27 +327,30 @@ export const BrushSelectThenDrag: Story = {
     const [zx0, zy0] = translateOf(zSpider)
     const [xx0, xy0] = translateOf(xSpider)
 
-    await step('brush-select the Z and X spiders', () => {
-      const rect = svg.getBoundingClientRect()
-      const brushMinX = Math.min(zx0, xx0) - 10
-      const brushMaxX = Math.max(zx0, xx0) + 10
-      const brushMinY = zy0 - 30
-      const brushMaxY = zy0 + 30
+    await step(
+      `brush-select the Z and X spiders (pad ±${BRUSH_PAD_X} x, ±${BRUSH_PAD_Y} y)`,
+      () => {
+        const rect = svg.getBoundingClientRect()
+        const brushMinX = Math.min(zx0, xx0) - BRUSH_PAD_X
+        const brushMaxX = Math.max(zx0, xx0) + BRUSH_PAD_X
+        const brushMinY = zy0 - BRUSH_PAD_Y
+        const brushMaxY = zy0 + BRUSH_PAD_Y
 
-      fireMouse('mousedown', overlay, rect.left + brushMinX, rect.top + brushMinY)
-      fireMouse('mousemove', window, rect.left + brushMaxX, rect.top + brushMaxY)
-      fireMouse('mouseup', window, rect.left + brushMaxX, rect.top + brushMaxY)
-    })
+        fireMouse('mousedown', overlay, rect.left + brushMinX, rect.top + brushMinY)
+        fireMouse('mousemove', window, rect.left + brushMaxX, rect.top + brushMaxY)
+        fireMouse('mouseup', window, rect.left + brushMaxX, rect.top + brushMaxY)
+      },
+    )
 
-    await step('drag from Z by (20, 20) and assert both nodes move together', async () => {
-      performDrag(zSpider, 20, 20)
+    await step(`drag from Z by (${DX}, ${DY}) and assert both nodes move together`, async () => {
+      performDrag(zSpider, DX, DY)
       await waitFor(() => {
         const [zx1, zy1] = translateOf(zSpider)
         const [xx1, xy1] = translateOf(xSpider)
-        expect(zx1 - zx0).toBeCloseTo(20, 1)
-        expect(zy1 - zy0).toBeCloseTo(20, 1)
-        expect(xx1 - xx0).toBeCloseTo(20, 1)
-        expect(xy1 - xy0).toBeCloseTo(20, 1)
+        expect(zx1 - zx0).toBeCloseTo(DX, 1)
+        expect(zy1 - zy0).toBeCloseTo(DY, 1)
+        expect(xx1 - xx0).toBeCloseTo(DX, 1)
+        expect(xy1 - xy0).toBeCloseTo(DY, 1)
       })
     })
   },
