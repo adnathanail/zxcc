@@ -1,62 +1,8 @@
-import { brush } from 'd3-brush'
-import { drag } from 'd3-drag'
-import * as d3Selection from 'd3-selection'
-import { symbol } from 'd3-shape'
 import { css, html, LitElement, nothing } from 'lit'
-
-// zxViewer.js expects a `d3` global with the handful of APIs it actually uses.
-// `d3.event` is a live binding in d3-selection v1 (mutated during dispatch), so
-// we expose it via a getter rather than destructuring — destructuring would
-// freeze it at its initial `null`.
-const d3 = {
-  select: d3Selection.select,
-  symbol,
-  drag,
-  brush,
-  get event() {
-    return d3Selection.event
-  },
-}
-
 import { customElement, property } from 'lit/decorators.js'
 import { ref } from 'lit/directives/ref.js'
-import {
-  type DiagramData,
-  type RenderBox,
-  type RenderData,
-  render as renderDiagram,
-} from './zxRender'
-import zxViewerJs from './zxViewer.js'
-
-let showGraphFn:
-  | ((
-      tag: HTMLElement,
-      graph: unknown,
-      width: number,
-      height: number,
-      scale: number,
-      node_size: number,
-      auto_hbox: boolean,
-      show_labels: boolean,
-      scalar_str: string,
-      boxes: RenderBox[],
-      labels: Map<number, string>,
-    ) => void)
-  | null = null
-
-function getShowGraph(colors: Record<string, string>) {
-  if (showGraphFn) return showGraphFn
-  const mod: Record<string, unknown> = {}
-  const fn = new Function(
-    'exports',
-    '_settings_colors',
-    'd3',
-    `${zxViewerJs}\nexports.showGraph = showGraph;`,
-  )
-  fn(mod, colors, d3)
-  showGraphFn = mod.showGraph as NonNullable<typeof showGraphFn>
-  return showGraphFn
-}
+import { type DiagramData, type RenderData, render as renderDiagram } from './zxRender'
+import { showGraph } from './zxViewer'
 
 @customElement('zx-diagram')
 export class ZxDiagramElement extends LitElement {
@@ -74,20 +20,18 @@ export class ZxDiagramElement extends LitElement {
     if (!el) return
     const container = el as HTMLElement
     container.innerHTML = ''
-    const show = getShowGraph(renderData.colors)
-    show(
-      container,
-      renderData.graph,
-      renderData.width,
-      renderData.height,
-      renderData.scale,
-      renderData.node_size,
-      renderData.auto_hbox,
-      true,
-      '',
-      renderData.boxes,
-      renderData.labels,
-    )
+    showGraph(container, renderData.graph, {
+      width: renderData.width,
+      height: renderData.height,
+      scale: renderData.scale,
+      node_size: renderData.node_size,
+      auto_hbox: renderData.auto_hbox,
+      show_labels: true,
+      scalar_str: '',
+      boxes: renderData.boxes,
+      labels: renderData.labels,
+      colors: renderData.colors,
+    })
   }
 
   render() {
