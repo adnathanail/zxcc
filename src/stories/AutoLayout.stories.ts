@@ -7,7 +7,7 @@ interface Args {
 }
 
 const meta: Meta<Args> = {
-  title: 'Basic layout (adj. list)',
+  title: 'Basic layout (adj list)',
   render: ({ diagram }) =>
     html`<zx-diagram .diagram=${diagram} style="min-height: 120px"></zx-diagram>`,
   parameters: {
