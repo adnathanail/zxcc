@@ -30,7 +30,7 @@ const rawSrcJsPlugin: Plugin = {
 }
 
 const config: StorybookConfig = {
-  stories: ['../src/**/*.stories.ts'],
+  stories: ['../stories/**/*.stories.ts'],
 
   framework: {
     name: '@storybook/web-components-vite',
