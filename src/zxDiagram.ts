@@ -8,6 +8,8 @@ import { showGraph } from './zxViewer'
 export class ZxDiagramElement extends LitElement {
   @property({ attribute: false }) diagram: DiagramData | null = null
 
+  // Container background is Bootstrap .bg-light-subtle
+  // Attribution background is Bootstrap .bg-secondary-subtle w/ 50% transparency
   static styles = css`
     :host { display: block; }
     .container { position: relative; overflow: auto; background-color: white; }
@@ -44,8 +46,7 @@ export class ZxDiagramElement extends LitElement {
     })
     const attr = document.createElement('div')
     attr.className = 'attribution'
-    attr.innerHTML =
-      '❤️ <a href="https://github.com/adnathanail/zxcc" target="_blank" rel="noopener noreferrer">zxcc</a>'
+    attr.innerHTML = `❤️ <a href="https://github.com/adnathanail/zxcc/releases/tag/v${__ZXCC_VERSION__}" target="_blank" rel="noopener noreferrer">zxcc</a>`
     // Anchor to the SVG's bottom-right in the container's scroll coordinates,
     // so it hugs the diagram rather than the visible viewport.
     attr.style.left = `${renderData.width - 48}px`

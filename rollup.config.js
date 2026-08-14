@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import commonjs from '@rollup/plugin-commonjs'
 import resolve from '@rollup/plugin-node-resolve'
 import replace from '@rollup/plugin-replace'
@@ -6,6 +7,7 @@ import { visualizer } from 'rollup-plugin-visualizer'
 
 const production = process.env.NODE_ENV === 'production'
 const analyze = process.env.ANALYZE === 'true'
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'))
 
 export default {
   input: 'dist/index.js',
@@ -23,6 +25,7 @@ export default {
       preventAssignment: true,
       'typeof window': JSON.stringify('object'),
       'process.env.NODE_ENV': JSON.stringify(production ? 'production' : 'development'),
+      __ZXCC_VERSION__: JSON.stringify(pkg.version),
     }),
     commonjs(),
     production && terser(),

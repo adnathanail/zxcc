@@ -6,6 +6,9 @@ import type { Plugin } from 'vite'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 const SRC = path.resolve(__dirname, '..', 'src')
+const pkg = JSON.parse(readFileSync(path.resolve(__dirname, '..', 'package.json'), 'utf8')) as {
+  version: string
+}
 
 // Mirrors the `rawAssets` plugin in rollup.config.js: turns relative .js
 // imports from src/ into raw-string default exports so zxViewer.js can be
@@ -39,6 +42,10 @@ const config: StorybookConfig = {
 
   async viteFinal(viteConfig) {
     viteConfig.plugins = [...(viteConfig.plugins ?? []), rawSrcJsPlugin]
+    viteConfig.define = {
+      ...(viteConfig.define ?? {}),
+      __ZXCC_VERSION__: JSON.stringify(pkg.version),
+    }
     return viteConfig
   },
 
