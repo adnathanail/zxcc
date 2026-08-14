@@ -8,13 +8,16 @@
 
 Framework-agnostic web component for rendering [ZX-calculus](https://zxcalculus.com) diagrams.
 
+<img src="img/basic_layout_demo.png" alt="Basic layout demo" width="30%" />
+<img src="img/algebraic_layout_demo.png" alt="Algebraic layout demo" width="30%" />
+
+[Checkout the demo](https://main--6a7e12985acc92e6ec37bdaa.chromatic.com)
+
+## Usage
+
 ```sh
 npm install @adnathanail/zxcc
 ```
-
-The rendering code is a TypeScript port of pyzx's diagram-construction plus a small BFS auto-layout, wrapping pyzx's `zx_viewer.inline.js` (vendored, lightly modified) for the actual SVG draw + drag interaction.
-
-## Usage
 
 ```html
 <script type="module" src="./node_modules/@adnathanail/zxcc/dist/index.bundle.js"></script>
