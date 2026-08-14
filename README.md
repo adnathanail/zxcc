@@ -7,12 +7,16 @@
 Framework-agnostic web component for rendering [ZX-calculus](https://zxcalculus.com) diagrams.
 Ships as a `<zx-diagram>` custom element built with [Lit](https://lit.dev) and [D3](https://d3js.org) v5.
 
+```sh
+npm install @adnathanail/zxcc
+```
+
 The rendering code is a TypeScript port of pyzx's diagram-construction plus a small BFS auto-layout, wrapping pyzx's `zx_viewer.inline.js` (vendored, lightly modified) for the actual SVG draw + drag interaction.
 
 ## Usage
 
 ```html
-<script type="module" src="./node_modules/zxcc/dist/index.bundle.js"></script>
+<script type="module" src="./node_modules/@adnathanail/zxcc/dist/index.bundle.js"></script>
 
 <zx-diagram id="d"></zx-diagram>
 
