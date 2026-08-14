@@ -10,10 +10,20 @@ export class ZxDiagramElement extends LitElement {
 
   static styles = css`
     :host { display: block; }
-    .container { overflow: auto; background-color: white; }
+    .container { position: relative; overflow: auto; background-color: white; }
+    .container svg { background-color: rgb(252, 252, 253); }
     .error { font-family: monospace; }
     .error pre { color: red; white-space: pre-wrap; word-break: break-word; margin: 0; }
     .error button { cursor: pointer; }
+    .attribution {
+      position: absolute;
+      font: 11px/1 system-ui, sans-serif;
+      color: #333;
+      background: rgba(226, 227, 229, 0.5);
+      padding: 3px 3px 4px 2px;
+    }
+    .attribution a { color: #0366d6; text-decoration: none; }
+    .attribution a:hover { text-decoration: underline; }
   `
 
   private mount(el: Element | undefined, renderData: RenderData) {
@@ -32,6 +42,15 @@ export class ZxDiagramElement extends LitElement {
       labels: renderData.labels,
       colors: renderData.colors,
     })
+    const attr = document.createElement('div')
+    attr.className = 'attribution'
+    attr.innerHTML =
+      '❤️ <a href="https://github.com/adnathanail/zxcc" target="_blank" rel="noopener noreferrer">zxcc</a>'
+    // Anchor to the SVG's bottom-right in the container's scroll coordinates,
+    // so it hugs the diagram rather than the visible viewport.
+    attr.style.left = `${renderData.width - 48}px`
+    attr.style.top = `${renderData.height - 18}px`
+    container.appendChild(attr)
   }
 
   render() {
