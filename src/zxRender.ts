@@ -23,6 +23,15 @@ export interface DiagramEdge {
   hadamard?: boolean
 }
 
+/** A colored strand overlaid on the diagram, following pyzx's Pauli-web
+ *  visualisation. Rendered as a thick coloured line from `src` to the
+ *  midpoint of the (`src`, `tgt`) edge. */
+export interface PauliWebLink {
+  src: number
+  tgt: number
+  kind: 'X' | 'Y' | 'Z' | 'I'
+}
+
 /** The set of node ids inside a `stack` or `compose` subtree, emitted by
  *  the Lean walker. The viewer computes pixel bounds from each node's live
  *  position so boxes follow drags and don't extend into spliced-wire space. */
@@ -39,6 +48,7 @@ export interface DiagramData {
    *  display symbolic phases (variable names, `α + 1/2`, etc.) on
    *  parameterized diagrams in place of the placeholder `phase` field. */
   labels?: [number, string][]
+  pauliWeb?: PauliWebLink[]
 }
 
 export interface GraphNode {
@@ -59,10 +69,16 @@ export interface GraphLink {
   num_parallel: number
 }
 
+export interface PauliWebEntry {
+  source: string
+  target: string
+  t: 'X' | 'Y' | 'Z' | 'I'
+}
+
 export interface GraphData {
   nodes: GraphNode[]
   links: GraphLink[]
-  pauli_web: never[]
+  pauli_web: PauliWebEntry[]
 }
 
 /** A box passed through to `zxViewer.js` unchanged; pixel bounds are
@@ -365,8 +381,14 @@ export function render(diagram: DiagramData): RenderData {
     labels.set(entry[0], entry[1])
   }
 
+  const pauli_web: PauliWebEntry[] = (diagram.pauliWeb ?? []).map(w => ({
+    source: String(w.src),
+    target: String(w.tgt),
+    t: w.kind,
+  }))
+
   return {
-    graph: { nodes: outNodes, links, pauli_web: [] },
+    graph: { nodes: outNodes, links, pauli_web },
     width,
     height,
     scale,

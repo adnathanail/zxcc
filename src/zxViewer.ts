@@ -172,6 +172,12 @@ export function showGraph(tag: HTMLElement, graphIn: GraphData, opts: ShowGraphO
     graph.links.push({ ...l, source: s, target: t })
   }
 
+  for (const w of graphIn.pauli_web) {
+    const s = ntab[w.source]
+    const t = ntab[w.target]
+    if (s && t) graph.pauli_web.push({ source: s, target: t, t: w.t })
+  }
+
   const boxes: LiveBox[] = boxesIn.map(b => ({ ...b }))
 
   const groundOffset = 2.5 * node_size
