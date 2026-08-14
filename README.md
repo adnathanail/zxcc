@@ -5,7 +5,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=fff)](https://www.typescriptlang.org)
 
 Framework-agnostic web component for rendering [ZX-calculus](https://zxcalculus.com) diagrams.
-Ships as a `<zx-diagram>` custom element built with [Lit](https://lit.dev) and [D3](https://d3js.org) v5.
+Ships as a `<zx-diagram>` custom element built with [Lit](https://lit.dev).
 
 ```sh
 npm install @adnathanail/zxcc
