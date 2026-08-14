@@ -1,11 +1,12 @@
 # zxcc - ZX Calculus Components
 
 [![CI](https://github.com/adnathanail/zxcc/actions/workflows/ci.yml/badge.svg)](https://github.com/adnathanail/zxcc/actions/workflows/ci.yml)
-[![prek](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/j178/prek/master/docs/assets/badge-v0.json)](https://github.com/j178/prek)
+[![Lit](https://img.shields.io/badge/lit-%23324FFF.svg?style=flat&logo=lit&logoColor=white)](https://lit.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=fff)](https://www.typescriptlang.org)
+[![prek](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/j178/prek/master/docs/assets/badge-v0.json)](https://github.com/j178/prek)
+[![Storybook](https://img.shields.io/badge/Storybook-%23FF4785.svg?style=flat&logo=storybook&logoColor=white)](https://storybook.js.org)
 
 Framework-agnostic web component for rendering [ZX-calculus](https://zxcalculus.com) diagrams.
-Ships as a `<zx-diagram>` custom element built with [Lit](https://lit.dev).
 
 ```sh
 npm install @adnathanail/zxcc
@@ -63,7 +64,7 @@ Otherwise a BFS from the inputs assigns rows and qubits.
 
 ## Demo
 
-Storybook hosts the example gallery: auto-layout diagrams (identity, Z spider with phase, Bell-state prep, spider fusion, parallel edges, symbolic label, error path), pre-positioned algebraic diagrams (spider, stack, compose, nested), and an interactive Playground story with controls.
+To view the Storybook example usages, and an interactive Playground story with controls:
 
 ```sh
 npm install
@@ -75,6 +76,7 @@ npm run storybook
 ### Prek
 
 [Install prek](https://github.com/j178/prek) and run
+
 ```
 prek --install
 ```
