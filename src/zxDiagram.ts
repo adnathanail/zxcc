@@ -46,7 +46,7 @@ export class ZxDiagramElement extends LitElement {
     })
     const attr = document.createElement('div')
     attr.className = 'attribution'
-    attr.innerHTML = `❤️ <a href="https://github.com/adnathanail/zxcc/releases/tag/v${__ZXCC_VERSION__}" target="_blank" rel="noopener noreferrer">zxcc</a>`
+    attr.innerHTML = `❤️ <a href="https://github.com/adnathanail/zxcc/releases/tag/v${__ZXCC_VERSION__}" target="_blank" rel="noopener noreferrer" title="zxcc v${__ZXCC_VERSION__}">zxcc</a>`
     // Anchor to the SVG's bottom-right in the container's scroll coordinates,
     // so it hugs the diagram rather than the visible viewport.
     attr.style.left = `${renderData.width - 48}px`
