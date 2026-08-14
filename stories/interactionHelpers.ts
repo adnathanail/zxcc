@@ -103,8 +103,9 @@ export function fireKey(type: 'keydown' | 'keyup', target: EventTarget, shiftKey
   )
 }
 
-// Drag a single already-selected node. mousedown on the node then
-// mousemove/mouseup on window matches d3-drag v1's listener topology.
+// Drag a single already-selected node. mousedown lands on the node, but the
+// viewer tracks the rest of the gesture on window (`#track`), so the move and
+// up events have to be dispatched there rather than at the node.
 export function performDrag(node: SVGGElement, dx: number, dy: number): void {
   const startX = 100
   const startY = 100

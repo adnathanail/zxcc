@@ -155,7 +155,8 @@ export class ZxViewerElement extends LitElement {
     }
     this.requestUpdate()
 
-    // The gesture starts even on an additive click, matching d3.drag.
+    // The drag starts even on an additive click, so shift-clicking a node and
+    // moving in the same gesture drags the selection it just extended.
     let lastX = e.clientX
     let lastY = e.clientY
     this.#track(move => {
