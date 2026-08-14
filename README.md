@@ -62,7 +62,21 @@ interface DiagramNode {
 If any node carries `col`, auto-layout is skipped and every node is expected to carry both `col` and `qubit`.
 Otherwise a BFS from the inputs assigns rows and qubits.
 
-## Demo
+## Development
+
+Install npm dependencies:
+
+```sh
+npm install
+```
+
+Set up pre-commit hooks ([install prek](https://github.com/j178/prek) first):
+
+```
+prek --install
+```
+
+### Demo
 
 To view the Storybook example usages, and an interactive Playground story with controls:
 
@@ -71,26 +85,31 @@ npm install
 npm run storybook
 ```
 
-## Development
+### Testing
 
-### Prek
+You can run tests from inside the Storybook web interface.
+If you want to run them via the terminal:
 
-[Install prek](https://github.com/j178/prek) and run
-
+```sh
+npm run test
 ```
-prek --install
+
+And to run with coverage:
+
+```sh
+npm run coverage
 ```
+
+Then open `coverage/index.html` in a browser.
 
 ### Building from source
 
 ```sh
-npm install
 npm run build       # tsc → dist/, then rollup bundles to dist/index.bundle.js
 npm run watch       # rollup --watch (rerun tsc manually on .ts changes)
-npm test            # vitest (jsdom + plain DOM)
 ```
 
-The bundle is self-contained: d3 and lit are baked in, no runtime deps.
+The bundle is self-contained with no runtime dependencies.
 
 ### Analyzing bundle composition
 
