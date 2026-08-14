@@ -34,7 +34,7 @@ const meta: Meta<Args> = {
     docs: {
       description: {
         component:
-          'Interaction tests guarding the D3 drag/selection behaviour: single-node drag, shift-click multi-select drag, H-box parametric constraint, and brush-select-then-drag. Each play function dispatches native MouseEvents/KeyboardEvents and asserts on `<g>` translate deltas.',
+          'Interaction tests guarding the drag/selection behaviour: single-node drag, shift-click multi-select drag, H-box parametric constraint, and brush-select-then-drag. Each play function dispatches native MouseEvents/KeyboardEvents and asserts on `<g>` translate deltas.',
       },
     },
   },
@@ -138,7 +138,7 @@ export const ShiftClickMultiDrag: Story = {
 // 3. H-box drag is constrained to the line between its two chain endpoints.
 //
 // With a horizontal chain (both spiders on qubit 0), the endpoint vector is
-// (ex, 0). d3-drag delivers (dx, dy); the H-box code computes
+// (ex, 0). The drag delivers (dx, dy); `lineParamDelta` computes
 //   dParam = (dx*ex + dy*ey) / (ex² + ey²)
 // so a purely vertical drag (dy≠0, dx=0) yields dParam=0 → no movement.
 // A horizontal drag (dx≠0, dy=0) moves the H-box along the line only.
@@ -189,9 +189,10 @@ export const HboxConstrainedDrag: Story = {
 // —————————————————————————————————————————————————————————————————————————
 // 4. Brush-select over multiple nodes, then drag one → the whole set moves.
 //
-// d3-brush's mousedown lives on the overlay <rect>. Its coordinate math
-// goes through getScreenCTM, so we compute clientX/Y from the <svg>'s
-// bounding rect (svg unit == css px here — no viewBox scaling).
+// The brush's mousedown is delegated from `g.brush`, so the gesture has to
+// start on the full-size overlay <rect>. The viewer maps client coordinates
+// through the <svg>'s bounding rect, so the test computes clientX/Y the same
+// way (svg unit == css px here — no viewBox scaling).
 // —————————————————————————————————————————————————————————————————————————
 
 export const BrushSelectThenDrag: Story = {

@@ -311,8 +311,8 @@ export function boxBounds(box: SceneBox, pos: Map<number, Point>, pad: number): 
 }
 
 /** The pyzx ground symbol: a vertical stem, then three horizontal strokes of
- *  decreasing width. `s = size / 2` matches d3.symbol()'s handoff to
- *  symbolGround.draw(). */
+ *  decreasing width. `size` is the symbol's full extent, so the stem and the
+ *  widest stroke each reach `size / 2` from the node's centre. */
 export function groundSymbolPath(size: number): string {
   const s = size / 2
   const t = (s * 2) / 3
