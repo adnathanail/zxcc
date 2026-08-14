@@ -1,7 +1,26 @@
 {
-  "name": "zxcc",
-  "version": "0.1.0",
+  "name": "@adnathanail/zxcc",
+  "version": "0.2.0",
   "description": "Framework-agnostic web component for rendering ZX-calculus diagrams",
+  "keywords": [
+    "zx-calculus",
+    "quantum",
+    "quantum-computing",
+    "web-component",
+    "custom-element",
+    "lit",
+    "pyzx"
+  ],
+  "author": "Alex Nathanail",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adnathanail/zxcc.git"
+  },
+  "homepage": "https://github.com/adnathanail/zxcc#readme",
+  "bugs": {
+    "url": "https://github.com/adnathanail/zxcc/issues"
+  },
   "engines": {
     "node": ">=20"
   },
