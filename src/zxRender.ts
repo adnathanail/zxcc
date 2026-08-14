@@ -3,7 +3,7 @@
 
 export interface DiagramNode {
   id: number
-  type: 'spider' | 'input' | 'output' | 'hadamard' | 'wire'
+  type: 'spider' | 'input' | 'output' | 'hadamard' | 'wire' | 'w-input' | 'w-output' | 'z-box'
   color?: 'Z' | 'X'
   phase?: string
   ioId?: number
@@ -17,6 +17,10 @@ export interface DiagramNode {
 export interface DiagramEdge {
   src: number
   tgt: number
+  /** When true, render as a pyzx-style Hadamard edge (blue). Semantically
+   *  equivalent to inserting a `hadamard` node on the wire, but drawn as
+   *  a coloured edge with no extra vertex. */
+  hadamard?: boolean
 }
 
 /** The set of node ids inside a `stack` or `compose` subtree, emitted by
@@ -88,8 +92,19 @@ export interface RenderData {
   labels: Map<number, string>
 }
 
-const VertexType = { BOUNDARY: 0, Z: 1, X: 2, H_BOX: 3, WIRE: 4 } as const
-const EdgeType = { SIMPLE: 1 } as const
+const VertexType = {
+  BOUNDARY: 0,
+  Z: 1,
+  X: 2,
+  H_BOX: 3,
+  W_INPUT: 4,
+  W_OUTPUT: 5,
+  Z_BOX: 6,
+} as const
+// `wire` predates the W-input concept and shares its rendering (small
+// black circle); keep it as an alias for backward compatibility.
+const WIRE = VertexType.W_INPUT
+const EdgeType = { SIMPLE: 1, HADAMARD: 2 } as const
 
 // pyzx.utils.original_colors
 export const COLORS: Record<string, string> = {
@@ -156,10 +171,19 @@ function buildNodes(diagram: DiagramData): Map<number, InternalNode> {
       const raw = n.phase ?? 'π'
       // Default H-box phase (π) renders no text — matches pyzx convention.
       phaseStr = raw === 'π' ? '' : raw
-    } else if (n.type === 'wire') {
-      t = VertexType.WIRE
+    } else if (n.type === 'wire' || n.type === 'w-input') {
+      t = WIRE
       if (n.col !== undefined) row = n.col
       if (n.qubit !== undefined) qubit = n.qubit
+    } else if (n.type === 'w-output') {
+      t = VertexType.W_OUTPUT
+      if (n.col !== undefined) row = n.col
+      if (n.qubit !== undefined) qubit = n.qubit
+    } else if (n.type === 'z-box') {
+      t = VertexType.Z_BOX
+      if (n.col !== undefined) row = n.col
+      if (n.qubit !== undefined) qubit = n.qubit
+      phaseStr = n.phase ?? ''
     } else {
       t = VertexType.BOUNDARY
     }
@@ -318,7 +342,7 @@ export function render(diagram: DiagramData): RenderData {
     return {
       source: String(e.src),
       target: String(e.tgt),
-      t: EdgeType.SIMPLE,
+      t: e.hadamard ? EdgeType.HADAMARD : EdgeType.SIMPLE,
       index: i,
       num_parallel: 0,
     }
