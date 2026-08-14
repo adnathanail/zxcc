@@ -4,7 +4,7 @@ export default {
   parameters: {
     options: {
       storySort: {
-        order: ['Basic layout (adj list)', 'Algebraic layout', 'Playground', 'Interactions'],
+        order: ['Basic layout (adj list)', 'Algebraic layout', 'Advanced features', 'Playground', 'Interactions'],
       },
     },
   },

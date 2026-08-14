@@ -7,14 +7,14 @@ interface Args {
 }
 
 const meta: Meta<Args> = {
-  title: 'Features',
+  title: 'Advanced features',
   render: ({ diagram }) =>
     html`<zx-diagram .diagram=${diagram} style="min-height: 160px"></zx-diagram>`,
   parameters: {
     docs: {
       description: {
         component:
-          'Shapes beyond plain Z/X spiders: W-input/W-output pairs, the Z-box, and Hadamard edges (as blue line rather than yellow H-box).',
+          'Shapes and annotations beyond plain Z/X spiders: W-input/W-output pairs, the Z-box, Hadamard edges (as blue line rather than yellow H-box), and Pauli-web strands overlaid on edges.',
       },
     },
   },
@@ -81,6 +81,37 @@ export const HadamardEdge: Story = {
         { src: 0, tgt: 1 },
         { src: 1, tgt: 2, hadamard: true },
         { src: 2, tgt: 3 },
+      ],
+    },
+  },
+}
+
+// Pauli web: coloured strands overlaid on edges to visualise error
+// propagation. X = pink, Y = light blue, Z = dark green, I = grey.
+export const PauliWeb: Story = {
+  name: 'Pauli-web overlay',
+  args: {
+    diagram: {
+      nodes: [
+        { id: 0, type: 'input', ioId: 0 },
+        { id: 1, type: 'spider', color: 'Z', phase: '0' },
+        { id: 2, type: 'spider', color: 'X', phase: '0' },
+        { id: 3, type: 'spider', color: 'Z', phase: '0' },
+        { id: 4, type: 'output', ioId: 0 },
+      ],
+      edges: [
+        { src: 0, tgt: 1 },
+        { src: 1, tgt: 2 },
+        { src: 2, tgt: 3 },
+        { src: 3, tgt: 4 },
+      ],
+      pauliWeb: [
+        { src: 0, tgt: 1, kind: 'X' },
+        { src: 1, tgt: 0, kind: 'X' },
+        { src: 2, tgt: 1, kind: 'X' },
+        { src: 1, tgt: 2, kind: 'Z' },
+        { src: 2, tgt: 3, kind: 'Y' },
+        { src: 3, tgt: 4, kind: 'I' },
       ],
     },
   },
