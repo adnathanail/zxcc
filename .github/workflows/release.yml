@@ -15,30 +15,21 @@ on:
 
 permissions:
   contents: write
-  id-token: write
+  pull-requests: write
 
 jobs:
-  release:
+  open-release-pr:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v6
         with:
-          fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN }}
       - uses: actions/setup-node@v4
         with:
           node-version-file: package.json
           cache: npm
           cache-dependency-path: package-lock.json
-          registry-url: https://registry.npmjs.org
-      - name: Upgrade npm
-        run: npm install -g npm@latest
-      - name: Install dependencies
-        run: npm ci
-      - name: Lint
-        run: npm run lint
-      - name: Build
-        run: npm run build
       - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
@@ -46,13 +37,21 @@ jobs:
       - name: Bump version
         id: bump
         run: |
-          new_version=$(npm version ${{ inputs.bump }} -m "Release %s")
+          new_version=$(npm version ${{ inputs.bump }} --no-git-tag-version)
           echo "version=${new_version}" >> "$GITHUB_OUTPUT"
-      - name: Push commit and tag
-        run: git push --follow-tags
-      - name: Publish to npm
-        run: npm publish --access public
-      - name: Create GitHub Release
+          echo "branch=release/${new_version}" >> "$GITHUB_OUTPUT"
+      - name: Commit and push branch
+        run: |
+          git checkout -b "${{ steps.bump.outputs.branch }}"
+          git add package.json package-lock.json
+          git commit -m "Release ${{ steps.bump.outputs.version }}"
+          git push -u origin "${{ steps.bump.outputs.branch }}"
+      - name: Open PR
         env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ steps.bump.outputs.version }}" --generate-notes --title "${{ steps.bump.outputs.version }}"
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          gh pr create \
+            --title "Release ${{ steps.bump.outputs.version }}" \
+            --body "Automated release PR. Merging will publish ${{ steps.bump.outputs.version }} to npm and create a GitHub release." \
+            --base main \
+            --head "${{ steps.bump.outputs.branch }}"
