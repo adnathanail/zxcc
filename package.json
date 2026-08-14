@@ -44,6 +44,8 @@
     "watch": "rollup -c --environment NODE_ENV:development --watch",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
     "typecheck-stories": "tsc -p tsconfig.stories.json",
     "lint": "biome check && npm run typecheck-stories",
     "format": "biome format --write",
