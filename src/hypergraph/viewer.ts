@@ -37,41 +37,97 @@ export class ZxHypergraphViewerElement extends LitElement {
   /** Extra SVG painted on top, in the scene's coordinate space. */
   @property({ attribute: false }) overlay: SVGTemplateResult | null = null
 
-  /** Ids of the blobs under the last click. A plain field paired with an
-   *  explicit `requestUpdate()`, as in `<zx-viewer>`. */
+  /** Ids of the blobs under the last click, and where the dots have been
+   *  dragged to. Plain fields paired with an explicit `requestUpdate()`, as in
+   *  `<zx-viewer>`: they are mutated in place during a gesture rather than
+   *  reallocated on every mousemove just to trip Lit's identity check. */
   #selected = new Set<string>()
+  #positions = new Map<string, Point>()
+  /** Tears down the in-flight drag, if any. */
+  #endGesture: (() => void) | null = null
 
   protected createRenderRoot() {
     return this
   }
 
   protected willUpdate(changed: PropertyValues<this>) {
-    // A fresh scene is a fresh drawing: the old ids may not even exist in it.
-    if (changed.has('scene')) this.#selected = new Set()
+    // A fresh scene is a fresh drawing: dragged dots go back to where the
+    // layout put them, and the old ids may not even exist any more.
+    if (changed.has('scene')) this.#adoptScene()
   }
 
-  #positions(): Map<string, Point> {
-    return new Map(this.scene?.dots.map(d => [d.id, { x: d.x, y: d.y }]) ?? [])
+  disconnectedCallback() {
+    this.#endGesture?.()
+    super.disconnectedCallback()
+  }
+
+  #adoptScene() {
+    this.#endGesture?.()
+    this.#selected = new Set()
+    this.#positions = new Map(this.scene?.dots.map(d => [d.id, { x: d.x, y: d.y }]) ?? [])
+  }
+
+  /** Run `onMove` for the rest of this gesture. Window-level listeners keep the
+   *  drag alive when the pointer leaves the SVG. */
+  #track(onMove: (e: MouseEvent) => void) {
+    this.#endGesture?.()
+    const up = () => this.#endGesture?.()
+    this.#endGesture = () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', up)
+      this.#endGesture = null
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', up)
   }
 
   /**
-   * Select every blob the pointer is inside, not just the topmost one — the
-   * blobs overlap by construction, since a wire between two spiders is a dot
-   * both of them enclose, and seeing which ones share a spot is the point.
-   * A click on bare canvas selects nothing.
+   * A press on a dot drags it; a press anywhere else selects blobs.
+   *
+   * Dragging is what makes the view explorable: the blobs are derived from the
+   * dot positions on every render, so pulling a dot about reshapes every blob
+   * that holds it, live. Nothing is re-laid-out — the node a blob reaches from
+   * stays where the diagram put it — so this shows the drawing under strain
+   * rather than a different drawing.
    */
   #onDown = (e: MouseEvent) => {
     const scene = this.scene
     if (!scene || e.button !== 0) return
+
+    const dragged = (e.target as Element).closest('[data-wire]')?.getAttribute('data-wire')
+    if (dragged) {
+      this.#dragDot(dragged, e)
+      return
+    }
+
+    // Every blob the pointer is inside, not just the topmost one — the blobs
+    // overlap by construction, since a wire between two spiders is a dot both
+    // of them hold, and seeing which ones share a spot is the point. A press
+    // on bare canvas selects nothing.
     const box = (e.currentTarget as SVGSVGElement).getBoundingClientRect()
     const point = { x: e.clientX - box.left, y: e.clientY - box.top }
-    const pos = this.#positions()
+    const pos = this.#positions
     this.#selected = new Set(
       scene.blobs
         .filter(blob => blobContains(blob, pos, scene.blobRadius, point))
         .map(blob => blob.id),
     )
     this.requestUpdate()
+  }
+
+  /** Drag one dot, leaving the selection alone so a highlighted blob can be
+   *  watched as it is pulled about. */
+  #dragDot(id: string, start: MouseEvent) {
+    let lastX = start.clientX
+    let lastY = start.clientY
+    this.#track(move => {
+      const p = this.#positions.get(id)
+      if (!p) return
+      this.#positions.set(id, { x: p.x + move.clientX - lastX, y: p.y + move.clientY - lastY })
+      lastX = move.clientX
+      lastY = move.clientY
+      this.requestUpdate()
+    })
   }
 
   #renderBlob(scene: HypergraphScene, blob: HypergraphBlob, pos: Map<string, Point>) {
@@ -95,7 +151,7 @@ export class ZxHypergraphViewerElement extends LitElement {
   render() {
     const scene = this.scene
     if (!scene) return nothing
-    const pos = this.#positions()
+    const pos = this.#positions
     // Selected blobs paint last so their outline isn't buried under a
     // neighbour's fill — with this much overlap that is the difference
     // between seeing the highlighted shape and guessing at it.
@@ -111,7 +167,9 @@ export class ZxHypergraphViewerElement extends LitElement {
         <g class="dot">
           ${scene.dots.map(
             dot => svg`
-              <g data-wire=${dot.id} transform="translate(${dot.x},${dot.y})">
+              <g data-wire=${dot.id} transform="translate(${pos.get(dot.id)?.x ?? dot.x},${
+                pos.get(dot.id)?.y ?? dot.y
+              })">
                 <circle r=${scene.dotSize} fill=${edgeColor(dot.kind, this.colors)} />
                 ${
                   this.showLabels

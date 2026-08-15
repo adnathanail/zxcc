@@ -78,11 +78,15 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   shape, so a W, Z-box or `wire` node throws with a message naming the node,
   rather than being painted as something it isn't.
 - `viewer.ts` — `<zx-hypergraph-viewer>`, the second painter. Internal and
-  light DOM. Its only interaction state is the selection: a click selects
-  *every* blob whose outline contains the point, tested against the geometry
-  (`blobContains`) rather than by asking the DOM what was hit, since the
-  blobs overlap and SVG reports only the topmost. Selected blobs paint last
-  and take the same blue stroke `<zx-viewer>` uses. It takes the same `colors`
+  light DOM. Two pieces of interaction state, both plain fields paired with an
+  explicit `requestUpdate()`: the selection, and the dragged dot positions.
+  A press on a dot drags it — every blob is derived from the dot positions on
+  each render, so the blobs holding that wire reshape live, which is how the
+  drawing is checked under strain. A press anywhere else selects *every* blob
+  whose outline contains the point, tested against the geometry
+  (`blobContains`) rather than by asking the DOM what was hit, since the blobs
+  overlap and SVG reports only the topmost. Selected blobs paint last and take
+  the same blue stroke `<zx-viewer>` uses. It takes the same `colors`
   palette
   `<zx-viewer>` does: a blob is filled with its node's own colour at 40%
   opacity and outlined in black, so overlapping blobs read as both colours,
