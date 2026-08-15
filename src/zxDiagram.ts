@@ -80,11 +80,15 @@ export class ZxDiagramElement extends LitElement {
   }
 
   protected async updated() {
-    if (!this.placementPending || !this.scene) return
+    const scene = this.scene
+    if (!this.placementPending || !scene) return
     this.placementPending = false
     await this.renderRoot.querySelector('zx-viewer')?.updateComplete
+    // A relayout during that await leaves us holding a scene that is no longer
+    // painted; whichever update cycle installed the new one places its badge.
+    if (this.scene !== scene) return
     const group = this.renderRoot.querySelector<SVGGElement>('g.attribution')
-    if (group) placeAttribution(group, this.scene.width, this.scene.height)
+    if (group) placeAttribution(group, scene.width, scene.height)
   }
 
   private relayout() {
