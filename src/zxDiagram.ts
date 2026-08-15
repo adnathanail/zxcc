@@ -63,8 +63,11 @@ export class ZxDiagramElement extends LitElement {
   `
 
   /** The attribution chip can only be sized once the text has been laid out,
-   *  so placement waits for `updated()` — but only when the diagram box moved,
-   *  since `getBBox()` forces a reflow and drags update every frame. */
+   *  so placement waits for `updated()` — and only when the diagram box moved,
+   *  since `getBBox()` forces a reflow. It stays pending until a measurement
+   *  succeeds: the text measures zero-wide while the element is inside a
+   *  hidden ancestor, and a later render is the only chance to catch it once
+   *  it is on screen. */
   private placementPending = false
 
   protected willUpdate(changed: PropertyValues<this>) {
@@ -82,13 +85,14 @@ export class ZxDiagramElement extends LitElement {
   protected async updated() {
     const scene = this.scene
     if (!this.placementPending || !scene) return
-    this.placementPending = false
     await this.renderRoot.querySelector('zx-viewer')?.updateComplete
     // A relayout during that await leaves us holding a scene that is no longer
     // painted; whichever update cycle installed the new one places its badge.
     if (this.scene !== scene) return
     const group = this.renderRoot.querySelector<SVGGElement>('g.attribution')
-    if (group) placeAttribution(group, scene.width, scene.height)
+    if (group && placeAttribution(group, scene.width, scene.height)) {
+      this.placementPending = false
+    }
   }
 
   private relayout() {
