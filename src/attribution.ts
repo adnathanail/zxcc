@@ -30,19 +30,22 @@ export function attributionTemplate(width: number, height: number): SVGTemplateR
  * `getBBox` needs a rendered element: it throws in jsdom and reports zeros
  * while the SVG is detached or hidden, in which case the chip stays unsized
  * (invisible) and the text alone is shown at its unadjusted position.
+ *
+ * @returns whether the badge was placed. False means the text could not be
+ * measured yet and the caller should try again on a later render.
  */
-export function placeAttribution(group: SVGGElement, width: number, height: number): void {
+export function placeAttribution(group: SVGGElement, width: number, height: number): boolean {
   const text = group.querySelector('text')
   const chip = group.querySelector('rect')
-  if (!text || !chip) return
+  if (!text || !chip) return false
 
   let box: DOMRect
   try {
     box = text.getBBox()
   } catch {
-    return
+    return false
   }
-  if (box.width === 0) return
+  if (box.width === 0) return false
 
   const left = box.x - PAD
   const top = box.y - PAD
@@ -56,4 +59,5 @@ export function placeAttribution(group: SVGGElement, width: number, height: numb
     'transform',
     `translate(${width - (left + boxWidth)},${height - (top + boxHeight)})`,
   )
+  return true
 }
