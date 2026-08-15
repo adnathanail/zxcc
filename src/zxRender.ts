@@ -59,6 +59,9 @@ export interface DiagramData {
    *  parameterized diagrams in place of the placeholder `phase` field. */
   labels?: [number, string][]
   pauliWeb?: PauliWebLink[]
+  /** Global scalar, pre-formatted (pyzx's `g.scalar.to_unicode()`). Only
+   *  painted when the element opts in via `show-scalar`. */
+  scalar?: string
 }
 
 export interface GraphNode {
@@ -116,6 +119,8 @@ export interface RenderData {
   /** Phase-label overrides keyed by node id. The viewer renders these
    *  strings in place of the spider's parsed phase when present. */
   labels: Map<number, string>
+  /** Pre-formatted global scalar, or `''` when the diagram carries none. */
+  scalar_str: string
 }
 
 const VertexType = {
@@ -418,5 +423,6 @@ export function render(diagram: DiagramData): RenderData {
     auto_hbox: !positioned,
     boxes,
     labels,
+    scalar_str: diagram.scalar ?? '',
   }
 }

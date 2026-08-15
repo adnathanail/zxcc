@@ -5,4 +5,5 @@ export type {
   DiagramEdge,
   DiagramEdgeKind,
   DiagramNode,
+  PauliWebLink,
 } from './zxRender'

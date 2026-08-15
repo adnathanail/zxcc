@@ -49,6 +49,8 @@ interface DiagramData {
   edges: DiagramEdge[]
   boxes?: { kind: 'stack' | 'compose'; nodeIds: number[] }[]
   labels?: [number, string][]  // node-id → phase-label override
+  pauliWeb?: { src: number; tgt: number; kind: 'X' | 'Y' | 'Z' | 'I' }[]
+  scalar?: string        // global scalar; shown only with `show-scalar`
 }
 
 interface DiagramNode {
@@ -73,6 +75,15 @@ interface DiagramEdge {
 
 If any node carries `col`, auto-layout is skipped and every node is expected to carry both `col` and `qubit`.
 Otherwise a BFS from the inputs assigns rows and qubits.
+
+## Element attributes
+
+These mirror the keyword arguments of pyzx's `draw_d3()` and control presentation
+only — graph structure always lives in `diagram`.
+
+| Attribute | Property | Default | Meaning |
+| --- | --- | --- | --- |
+| `show-scalar` | `showScalar` | `false` | Paint `diagram.scalar` in the top-left corner. |
 
 ## Development
 
