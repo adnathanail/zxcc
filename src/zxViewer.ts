@@ -500,34 +500,60 @@ export function showGraph(tag: HTMLElement, graphIn: GraphData, opts: ShowGraphO
     return { x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) }
   }
 
+  // Gap between H-boxes that would otherwise share a spot. Only each other is
+  // dodged: a diagram is free to pack its nodes arbitrarily close, and a box
+  // that fled every spider would end up somewhere less predictable.
+  const hboxClearance = 2 * hboxRadius
+
   function updateHboxes(): void {
     if (!auto_hbox) return
-    const occupied: Record<string, true> = {}
+    const place = (d: LiveNode): void => {
+      d._group?.setAttribute('transform', `translate(${d.x},${d.y})`)
+    }
+
+    // An H-box with a chain sits at a definite point on its line. The rest
+    // park at the barycentre of their non-H-box neighbours, nudged north-east.
+    const parked = new Map<string, LiveNode[]>()
     for (const d of graph.nodes) {
       if (d.t !== 3 || !d._group) continue
       const pos = computeHboxPosition(d)
       if (pos) {
         d.x = pos.x
         d.y = pos.y
-      } else {
-        const nhd = nonHboxNeighbours(d)
-        const offset = 0.25 * scale
-        if (nhd.length > 0) {
-          let x = 0
-          let y = 0
-          for (const n of nhd) {
-            x += n.x
-            y += n.y
-          }
-          x = x / nhd.length + offset
-          y = y / nhd.length - offset
-          while (occupied[`${x},${y}`]) x += offset
-          d.x = x
-          d.y = y
-          occupied[`${x},${y}`] = true
-        }
+        place(d)
+        continue
       }
-      d._group.setAttribute('transform', `translate(${d.x},${d.y})`)
+      const nhd = nonHboxNeighbours(d)
+      if (nhd.length === 0) {
+        place(d)
+        continue
+      }
+      let x = 0
+      let y = 0
+      for (const n of nhd) {
+        x += n.x
+        y += n.y
+      }
+      d.x = x / nhd.length + 0.25 * scale
+      d.y = y / nhd.length - 0.25 * scale
+      const key = `${d.x},${d.y}`
+      const group = parked.get(key)
+      if (group) group.push(d)
+      else parked.set(key, [d])
+    }
+
+    // H-boxes over the same neighbours want the same point, so spread each
+    // such group along x, centred on the point they share. Solving the whole
+    // group at once keeps this a pure function of the node positions: nudging
+    // boxes one at a time until they stop colliding lands exactly on the
+    // clearance, where rounding decides whether another nudge is due, and the
+    // box visibly flicks between two spots as the diagram is dragged.
+    for (const group of parked.values()) {
+      const first = -((group.length - 1) / 2) * hboxClearance
+      for (let i = 0; i < group.length; i++) {
+        group[i].x += first + i * hboxClearance
+        place(group[i])
+      }
     }
   }
 
