@@ -67,6 +67,26 @@ export const zHzChain: DiagramData = {
   ],
 }
 
+// input → Z(0) → H → H → Z(0) → output. Two chained H-boxes, so dragging one
+// clamps against the other rather than against a chain endpoint.
+export const zHHzChain: DiagramData = {
+  nodes: [
+    { id: 0, type: 'input', ioId: 0 },
+    { id: 1, type: 'spider', color: 'Z', phase: '0' },
+    { id: 2, type: 'hadamard' },
+    { id: 3, type: 'hadamard' },
+    { id: 4, type: 'spider', color: 'Z', phase: '0' },
+    { id: 5, type: 'output', ioId: 0 },
+  ],
+  edges: [
+    { src: 0, tgt: 1 },
+    { src: 1, tgt: 2 },
+    { src: 2, tgt: 3 },
+    { src: 3, tgt: 4 },
+    { src: 4, tgt: 5 },
+  ],
+}
+
 // An H-box of degree 3. getHboxChainInfo() only resolves a chain for degree-2
 // H-boxes, so this one falls back to the barycentre-plus-north-east-nudge
 // placement instead.
