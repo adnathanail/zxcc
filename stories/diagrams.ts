@@ -67,6 +67,53 @@ export const zHzChain: DiagramData = {
   ],
 }
 
+// An H-box of degree 3. getHboxChainInfo() only resolves a chain for degree-2
+// H-boxes, so this one falls back to the barycentre-plus-north-east-nudge
+// placement instead.
+export const hboxFanout: DiagramData = {
+  nodes: [
+    { id: 0, type: 'input', ioId: 0 },
+    { id: 1, type: 'spider', color: 'Z', phase: '0' },
+    { id: 2, type: 'spider', color: 'Z', phase: '0' },
+    { id: 3, type: 'spider', color: 'Z', phase: '0' },
+    { id: 4, type: 'hadamard' },
+    { id: 5, type: 'output', ioId: 0 },
+  ],
+  edges: [
+    { src: 0, tgt: 1 },
+    { src: 1, tgt: 4 },
+    { src: 2, tgt: 4 },
+    { src: 3, tgt: 4 },
+    { src: 3, tgt: 5 },
+  ],
+}
+
+// Pauli-web strands overlaid on a Z–X–Z chain. Shared by the render story and
+// the drag test that asserts strands follow their endpoints.
+export const pauliWebChain: DiagramData = {
+  nodes: [
+    { id: 0, type: 'input', ioId: 0 },
+    { id: 1, type: 'spider', color: 'Z', phase: '0' },
+    { id: 2, type: 'spider', color: 'X', phase: '0' },
+    { id: 3, type: 'spider', color: 'Z', phase: '0' },
+    { id: 4, type: 'output', ioId: 0 },
+  ],
+  edges: [
+    { src: 0, tgt: 1 },
+    { src: 1, tgt: 2 },
+    { src: 2, tgt: 3 },
+    { src: 3, tgt: 4 },
+  ],
+  pauliWeb: [
+    { src: 0, tgt: 1, kind: 'X' },
+    { src: 1, tgt: 0, kind: 'X' },
+    { src: 2, tgt: 1, kind: 'X' },
+    { src: 1, tgt: 2, kind: 'Z' },
+    { src: 2, tgt: 3, kind: 'Y' },
+    { src: 3, tgt: 4, kind: 'I' },
+  ],
+}
+
 // One diagram touching every palette key the viewer can paint: Z and X
 // spiders, an H-box (H), a Z-box (Zalt), a W-input/W-output pair (W/Walt
 // joined by a gray W_IO connector, Xedge), a Hadamard edge (Hedge), plain

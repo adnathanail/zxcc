@@ -9,7 +9,7 @@ import {
   ORIGINAL_COLORS,
   RGB_COLORS,
 } from '../src/zxRender'
-import { paletteShowcase, selfLoopSpiders } from './diagrams'
+import { paletteShowcase, pauliWebChain, selfLoopSpiders } from './diagrams'
 import { nodeFillsIn, pathDataIn, shadowRootOf, strokesIn, translateOf } from './interactionHelpers'
 
 interface Args {
@@ -265,31 +265,7 @@ export const SelfLoops: Story = {
 // propagation. X = pink, Y = light blue, Z = dark green, I = grey.
 export const PauliWeb: Story = {
   name: 'Pauli-web overlay',
-  args: {
-    diagram: {
-      nodes: [
-        { id: 0, type: 'input', ioId: 0 },
-        { id: 1, type: 'spider', color: 'Z', phase: '0' },
-        { id: 2, type: 'spider', color: 'X', phase: '0' },
-        { id: 3, type: 'spider', color: 'Z', phase: '0' },
-        { id: 4, type: 'output', ioId: 0 },
-      ],
-      edges: [
-        { src: 0, tgt: 1 },
-        { src: 1, tgt: 2 },
-        { src: 2, tgt: 3 },
-        { src: 3, tgt: 4 },
-      ],
-      pauliWeb: [
-        { src: 0, tgt: 1, kind: 'X' },
-        { src: 1, tgt: 0, kind: 'X' },
-        { src: 2, tgt: 1, kind: 'X' },
-        { src: 1, tgt: 2, kind: 'Z' },
-        { src: 2, tgt: 3, kind: 'Y' },
-        { src: 3, tgt: 4, kind: 'I' },
-      ],
-    },
-  },
+  args: { diagram: pauliWebChain },
 }
 
 // show-labels defaults to true, so "off" has to be spelled out as
