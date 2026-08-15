@@ -88,15 +88,30 @@ function placeAttribution({ g, text, chip, width, height }: Attribution): void {
   )
 }
 
+// A plain `{type: Boolean}` attribute can't express "off" for a property that
+// defaults to true — absence and `="false"` would both have to mean false.
+// This treats an explicit "false" as off and presence/""/"true" as on.
+const defaultTrueBoolean = {
+  fromAttribute: (value: string | null) => value !== null && value !== 'false',
+}
+
 @customElement('zx-diagram')
 export class ZxDiagramElement extends LitElement {
   @property({ attribute: false }) diagram: DiagramData | null = null
+
+  /** Draw each node's id above it (pyzx's `draw_d3(labels=...)`). Defaults on,
+   *  unlike pyzx — turning it off is a visual change for existing consumers. */
+  @property({ attribute: 'show-labels', converter: defaultTrueBoolean })
+  showLabels = true
 
   /** Named pyzx palette. Ignored when `colors` is set. */
   @property({ attribute: 'color-scheme' }) colorScheme: ColorSchemeName = 'original'
 
   /** Full palette override, keyed as in `pyzx.utils.original_colors`. */
   @property({ attribute: false }) colors: Record<string, string> | null = null
+
+  /** Pixels per row/qubit. Null derives it from the diagram's extent. */
+  @property({ type: Number }) scale: number | null = null
 
   // Container background is Bootstrap .bg-light-subtle
   // Attribution background is Bootstrap .bg-secondary-subtle w/ 50% transparency
@@ -131,7 +146,7 @@ export class ZxDiagramElement extends LitElement {
       scale: renderData.scale,
       node_size: renderData.node_size,
       auto_hbox: renderData.auto_hbox,
-      show_labels: true,
+      show_labels: this.showLabels,
       scalar_str: renderData.scalar_str,
       scalar_y: renderData.scalar_y,
       boxes: renderData.boxes,
@@ -157,6 +172,7 @@ export class ZxDiagramElement extends LitElement {
     try {
       renderData = renderDiagram(this.diagram, {
         colors: this.colors ?? COLOR_SCHEMES[this.colorScheme] ?? COLOR_SCHEMES.original,
+        scale: this.scale ?? undefined,
       })
     } catch (e) {
       error = e instanceof Error ? e.message : String(e)

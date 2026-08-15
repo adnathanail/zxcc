@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
+import { ifDefined } from 'lit/directives/if-defined.js'
 import { expect } from 'storybook/test'
 import type { ColorSchemeName, DiagramData, DiagramEdge, DiagramNode } from '../src/zxRender'
 import { shadowRootOf } from './interactionHelpers'
@@ -12,7 +13,10 @@ interface Args {
   hadamardOnEdge: boolean
   parallelEdges: number
   box: 'none' | 'stack' | 'compose'
+  showLabels: boolean
   colorScheme: ColorSchemeName
+  /** Left unset so the element derives it; the range control overrides. */
+  scale?: number
 }
 
 function buildDiagram(args: Args): DiagramData {
@@ -42,12 +46,15 @@ function buildDiagram(args: Args): DiagramData {
 
 const meta: Meta<Args> = {
   title: 'Playground',
-  // color-scheme is bound as a real attribute, not a property, so this also
-  // exercises the attribute path.
+  // show-labels, color-scheme and scale are bound as real attributes, not
+  // properties, so this also exercises the attribute converters. scale is
+  // omitted entirely when unset, so the element keeps deriving it.
   render: args =>
     html`<zx-diagram
       .diagram=${buildDiagram(args)}
+      show-labels=${args.showLabels ? '' : 'false'}
       color-scheme=${args.colorScheme}
+      scale=${ifDefined(args.scale)}
       style="min-height: 160px"
     ></zx-diagram>`,
   argTypes: {
@@ -58,13 +65,15 @@ const meta: Meta<Args> = {
     hadamardOnEdge: { control: 'boolean' },
     parallelEdges: { control: { type: 'range', min: 1, max: 4, step: 1 } },
     box: { control: 'inline-radio', options: ['none', 'stack', 'compose'] },
+    showLabels: { control: 'boolean' },
     colorScheme: { control: 'inline-radio', options: ['original', 'rgb', 'grayscale'] },
+    scale: { control: { type: 'range', min: 10, max: 100, step: 5 } },
   },
   parameters: {
     docs: {
       description: {
         component:
-          'Two spiders wired input → left → right → output. Use the controls to change colours, phases, insert a Hadamard, add parallel edges, or wrap the pair in a stack/compose box.',
+          'Two spiders wired input → left → right → output. Use the controls to change colours, phases, insert a Hadamard, add parallel edges, wrap the pair in a stack/compose box, toggle node-id labels, switch pyzx colour scheme, or pin the pixels-per-row scale.',
       },
     },
   },
@@ -82,9 +91,16 @@ const baseArgs: Args = {
   hadamardOnEdge: false,
   parallelEdges: 1,
   box: 'none',
+  showLabels: true,
   colorScheme: 'original',
 }
 
 export const Interactive: Story = {
   args: baseArgs,
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    // Node-id labels are the grey texts above each node.
+    const labels = root.querySelectorAll('svg g.node text[fill="#999"]')
+    expect(labels.length).toBeGreaterThan(0)
+  },
 }

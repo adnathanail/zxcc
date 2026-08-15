@@ -131,6 +131,9 @@ export interface RenderData {
 export interface RenderOptions {
   /** Palette to paint with. Defaults to {@link ORIGINAL_COLORS}. */
   colors?: Record<string, string>
+  /** Pixels per row/qubit. When set, the derived scale and its 20–50 clamp
+   *  are skipped entirely. */
+  scale?: number
 }
 
 const VertexType = {
@@ -399,9 +402,13 @@ export function render(diagram: DiagramData, options: RenderOptions = {}): Rende
     maxqub = 0
   }
 
-  let scale = 800 / (maxrow - minrow + 2)
-  if (scale > 50) scale = 50
-  if (scale < 20) scale = 20
+  // An explicit scale is taken verbatim — the 20–50 clamp exists to keep the
+  // derived scale sane, and would silently override a caller's choice.
+  let scale = options.scale ?? 800 / (maxrow - minrow + 2)
+  if (options.scale === undefined) {
+    if (scale > 50) scale = 50
+    if (scale < 20) scale = 20
+  }
 
   // Pad width by 2 rows (why rows??)
   const width = (maxrow - minrow + 2) * scale

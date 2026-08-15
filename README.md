@@ -84,8 +84,14 @@ only — graph structure always lives in `diagram`.
 
 | Attribute | Property | Default | Meaning |
 | --- | --- | --- | --- |
+| `show-labels` | `showLabels` | `true` | Draw each node's id above it. Set `show-labels="false"` to hide — a bare boolean attribute can't express "off" for a true-by-default property. |
 | `color-scheme` | `colorScheme` | `original` | One of `original`, `rgb`, `grayscale` — the palettes from `pyzx.utils`. |
+| `scale` | `scale` | derived | Pixels per row/qubit. When set, the derived 20–50 clamp is bypassed. |
 | — | `colors` | `null` | Full palette override (`Record<string, string>`), keyed as in `pyzx.utils.original_colors`. Wins over `color-scheme`. |
+
+```html
+<zx-diagram show-labels="false" color-scheme="grayscale" scale="40"></zx-diagram>
+```
 
 The palettes are exported too, if you want to build a variant:
 
