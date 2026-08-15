@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
 import { expect } from 'storybook/test'
-import { COLORS, type DiagramData } from '../src/zxRender'
+import { type DiagramData, ORIGINAL_COLORS } from '../src/zxRender'
 import { shadowRootOf, translateOf } from './interactionHelpers'
 
 interface Args {
@@ -50,7 +50,7 @@ export const WInputOutputPair: Story = {
     const root = await shadowRootOf(canvasElement)
     const strokes = [...root.querySelectorAll('svg g.link path')].map(p => p.getAttribute('stroke'))
     // The connector is gray (Xedge); the ordinary wires either side are black.
-    expect(strokes).toEqual([COLORS.edge, COLORS.Xedge, COLORS.edge])
+    expect(strokes).toEqual([ORIGINAL_COLORS.edge, ORIGINAL_COLORS.Xedge, ORIGINAL_COLORS.edge])
   },
 }
 
@@ -95,7 +95,7 @@ export const HadamardEdge: Story = {
   play: async ({ canvasElement }) => {
     const root = await shadowRootOf(canvasElement)
     const strokes = [...root.querySelectorAll('svg g.link path')].map(p => p.getAttribute('stroke'))
-    expect(strokes).toEqual([COLORS.edge, COLORS.Hedge, COLORS.edge])
+    expect(strokes).toEqual([ORIGINAL_COLORS.edge, ORIGINAL_COLORS.Hedge, ORIGINAL_COLORS.edge])
   },
 }
 

@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
-import type { DiagramData, DiagramEdge, DiagramNode } from '../src/zxRender'
+import { expect } from 'storybook/test'
+import type { ColorSchemeName, DiagramData, DiagramEdge, DiagramNode } from '../src/zxRender'
+import { shadowRootOf } from './interactionHelpers'
 
 interface Args {
   leftColor: 'Z' | 'X'
@@ -10,6 +12,7 @@ interface Args {
   hadamardOnEdge: boolean
   parallelEdges: number
   box: 'none' | 'stack' | 'compose'
+  colorScheme: ColorSchemeName
 }
 
 function buildDiagram(args: Args): DiagramData {
@@ -39,9 +42,12 @@ function buildDiagram(args: Args): DiagramData {
 
 const meta: Meta<Args> = {
   title: 'Playground',
+  // color-scheme is bound as a real attribute, not a property, so this also
+  // exercises the attribute path.
   render: args =>
     html`<zx-diagram
       .diagram=${buildDiagram(args)}
+      color-scheme=${args.colorScheme}
       style="min-height: 160px"
     ></zx-diagram>`,
   argTypes: {
@@ -52,6 +58,7 @@ const meta: Meta<Args> = {
     hadamardOnEdge: { control: 'boolean' },
     parallelEdges: { control: { type: 'range', min: 1, max: 4, step: 1 } },
     box: { control: 'inline-radio', options: ['none', 'stack', 'compose'] },
+    colorScheme: { control: 'inline-radio', options: ['original', 'rgb', 'grayscale'] },
   },
   parameters: {
     docs: {
@@ -67,14 +74,17 @@ export default meta
 
 type Story = StoryObj<Args>
 
+const baseArgs: Args = {
+  leftColor: 'Z',
+  leftPhase: 'π/2',
+  rightColor: 'X',
+  rightPhase: '0',
+  hadamardOnEdge: false,
+  parallelEdges: 1,
+  box: 'none',
+  colorScheme: 'original',
+}
+
 export const Interactive: Story = {
-  args: {
-    leftColor: 'Z',
-    leftPhase: 'π/2',
-    rightColor: 'X',
-    rightPhase: '0',
-    hadamardOnEdge: false,
-    parallelEdges: 1,
-    box: 'none',
-  },
+  args: baseArgs,
 }

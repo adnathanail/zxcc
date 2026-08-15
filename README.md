@@ -77,6 +77,22 @@ interface DiagramEdge {
 If any node carries `col`, auto-layout is skipped and every node is expected to carry both `col` and `qubit`.
 Otherwise a BFS from the inputs assigns rows and qubits.
 
+## Element attributes
+
+These mirror the keyword arguments of pyzx's `draw_d3()` and control presentation
+only — graph structure always lives in `diagram`.
+
+| Attribute | Property | Default | Meaning |
+| --- | --- | --- | --- |
+| `color-scheme` | `colorScheme` | `original` | One of `original`, `rgb`, `grayscale` — the palettes from `pyzx.utils`. |
+| — | `colors` | `null` | Full palette override (`Record<string, string>`), keyed as in `pyzx.utils.original_colors`. Wins over `color-scheme`. |
+
+The palettes are exported too, if you want to build a variant:
+
+```js
+import { ORIGINAL_COLORS, RGB_COLORS, GRAYSCALE_COLORS, COLOR_SCHEMES } from '@adnathanail/zxcc'
+```
+
 ## Development
 
 Install npm dependencies:

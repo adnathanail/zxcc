@@ -1,7 +1,13 @@
 import { css, html, LitElement, nothing } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 import { ref } from 'lit/directives/ref.js'
-import { type DiagramData, type RenderData, render as renderDiagram } from './zxRender'
+import {
+  COLOR_SCHEMES,
+  type ColorSchemeName,
+  type DiagramData,
+  type RenderData,
+  render as renderDiagram,
+} from './zxRender'
 import { showGraph } from './zxViewer'
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
@@ -86,6 +92,12 @@ function placeAttribution({ g, text, chip, width, height }: Attribution): void {
 export class ZxDiagramElement extends LitElement {
   @property({ attribute: false }) diagram: DiagramData | null = null
 
+  /** Named pyzx palette. Ignored when `colors` is set. */
+  @property({ attribute: 'color-scheme' }) colorScheme: ColorSchemeName = 'original'
+
+  /** Full palette override, keyed as in `pyzx.utils.original_colors`. */
+  @property({ attribute: false }) colors: Record<string, string> | null = null
+
   // Container background is Bootstrap .bg-light-subtle
   // Attribution background is Bootstrap .bg-secondary-subtle w/ 50% transparency
   static styles = css`
@@ -143,7 +155,9 @@ export class ZxDiagramElement extends LitElement {
     let renderData: RenderData | null = null
     let error: string | null = null
     try {
-      renderData = renderDiagram(this.diagram)
+      renderData = renderDiagram(this.diagram, {
+        colors: this.colors ?? COLOR_SCHEMES[this.colorScheme] ?? COLOR_SCHEMES.original,
+      })
     } catch (e) {
       error = e instanceof Error ? e.message : String(e)
     }

@@ -126,6 +126,13 @@ export interface RenderData {
   scalar_y: number
 }
 
+/** Per-call overrides for the otherwise-derived render settings, mirroring
+ *  the corresponding `pyzx.drawing.draw_d3` keyword arguments. */
+export interface RenderOptions {
+  /** Palette to paint with. Defaults to {@link ORIGINAL_COLORS}. */
+  colors?: Record<string, string>
+}
+
 const VertexType = {
   BOUNDARY: 0,
   Z: 1,
@@ -151,7 +158,7 @@ const EDGE_TYPE_OF: Record<DiagramEdgeKind, number> = {
 }
 
 // pyzx.utils.original_colors
-export const COLORS: Record<string, string> = {
+export const ORIGINAL_COLORS: Record<string, string> = {
   edge: '#000000',
   Hedge: '#0088ff',
   Xedge: '#999999',
@@ -167,6 +174,46 @@ export const COLORS: Record<string, string> = {
   Ydark: '#aabbff',
   Zdark: '#99dd99',
 }
+
+// pyzx.utils.rgb_colors — original with Y/Z and Ydark/Zdark swapped and an
+// orange Hadamard edge.
+export const RGB_COLORS: Record<string, string> = {
+  ...ORIGINAL_COLORS,
+  Hedge: '#ff6600',
+  Y: ORIGINAL_COLORS.Z,
+  Z: ORIGINAL_COLORS.Y,
+  Ydark: ORIGINAL_COLORS.Zdark,
+  Zdark: ORIGINAL_COLORS.Ydark,
+}
+
+// pyzx.utils.grayscale_colors
+export const GRAYSCALE_COLORS: Record<string, string> = {
+  edge: '#000000',
+  Hedge: '#888888',
+  Xedge: '#dddddd',
+  boundary: '#000000',
+  X: '#666666',
+  Y: '#9999dd',
+  Z: '#dddddd',
+  H: '#eeeeee',
+  W: '#000000',
+  Zalt: '#dddddd',
+  Walt: '#000000',
+  Xdark: '#666666',
+  Ydark: '#9999dd',
+  Zdark: '#dddddd',
+}
+
+export type ColorSchemeName = 'original' | 'rgb' | 'grayscale'
+
+export const COLOR_SCHEMES: Record<ColorSchemeName, Record<string, string>> = {
+  original: ORIGINAL_COLORS,
+  rgb: RGB_COLORS,
+  grayscale: GRAYSCALE_COLORS,
+}
+
+/** @deprecated use {@link ORIGINAL_COLORS}. */
+export const COLORS = ORIGINAL_COLORS
 
 // Phase strings now arrive pre-formatted from Lean (see `Phase.format` in
 // LeanSpider/Visualize.lean) — e.g. `"π/2"`, `"-π/4"`, `"π"`, `"0"`. The
@@ -328,7 +375,7 @@ function pairKey(a: number, b: number): string {
   return a < b ? `${a}|${b}` : `${b}|${a}`
 }
 
-export function render(diagram: DiagramData): RenderData {
+export function render(diagram: DiagramData, options: RenderOptions = {}): RenderData {
   const nodes = buildNodes(diagram)
   const positioned = diagram.nodes.some(n => n.col !== undefined)
   if (!positioned) autoLayout(nodes, diagram.edges)
@@ -440,7 +487,7 @@ export function render(diagram: DiagramData): RenderData {
     height,
     scale,
     node_size,
-    colors: COLORS,
+    colors: options.colors ?? ORIGINAL_COLORS,
     auto_hbox: !positioned,
     boxes,
     labels,
