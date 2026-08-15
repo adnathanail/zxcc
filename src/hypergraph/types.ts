@@ -8,7 +8,7 @@
 // combinatorics, with no coordinates. `Hypergraph{Dot,Blob,Scene}` is that
 // laid out in pixel space, and is internal to the package.
 
-import type { DiagramEdgeKind } from '../types'
+import type { DiagramEdgeKind, NodeKind } from '../types'
 
 // —————————————————————————————————————————————————————————————————————————
 // The dual, as combinatorics
@@ -64,12 +64,20 @@ export interface HypergraphDot {
   label: string
 }
 
+/** The ZX nodes that have a blob shape. A diagram carrying any other
+ *  non-boundary node can't be drawn as a hypergraph yet, and `layoutHypergraph`
+ *  says so rather than picking a colour for it. */
+export type HyperedgeKind = Extract<NodeKind, 'z-spider' | 'x-spider' | 'hadamard'>
+
 /** A hyperedge, drawn as a shape enclosing the dots of its wires. */
 export interface HypergraphBlob {
   /** The hyperedge's id, `e<node id>`. */
   id: string
   /** Display label, e.g. `Z(π/2)`. */
   label: string
+  /** Which node it stands for, and so which palette entry it is painted
+   *  with — the same one that node itself would be. */
+  kind: HyperedgeKind
   /** Ids of the dots it encloses. Deduplicated, unlike the hyperedge's wire
    *  list — a self-loop is one dot, drawn once. */
   dots: string[]
