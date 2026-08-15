@@ -108,6 +108,30 @@ export const hboxFanout: DiagramData = {
   ],
 }
 
+// Two degree-3 H-boxes over the *same* three spiders: their barycentres
+// coincide, so the second one has to be nudged clear of the first.
+export const hboxFanoutCollision: DiagramData = {
+  nodes: [
+    { id: 0, type: 'input', ioId: 0 },
+    { id: 1, type: 'spider', color: 'Z', phase: '0' },
+    { id: 2, type: 'spider', color: 'Z', phase: '0' },
+    { id: 3, type: 'spider', color: 'Z', phase: '0' },
+    { id: 4, type: 'hadamard' },
+    { id: 5, type: 'hadamard' },
+    { id: 6, type: 'output', ioId: 0 },
+  ],
+  edges: [
+    { src: 0, tgt: 1 },
+    { src: 1, tgt: 4 },
+    { src: 2, tgt: 4 },
+    { src: 3, tgt: 4 },
+    { src: 1, tgt: 5 },
+    { src: 2, tgt: 5 },
+    { src: 3, tgt: 5 },
+    { src: 3, tgt: 6 },
+  ],
+}
+
 // Pauli-web strands overlaid on a Z–X–Z chain. Shared by the render story and
 // the drag test that asserts strands follow their endpoints.
 export const pauliWebChain: DiagramData = {

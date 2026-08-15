@@ -4,6 +4,7 @@ import { expect, waitFor } from 'storybook/test'
 import { type DiagramData, ORIGINAL_COLORS } from '../src/zxRender'
 import {
   hboxFanout,
+  hboxFanoutCollision,
   pauliWebChain,
   singleZSpider,
   zHHzChain,
@@ -278,6 +279,83 @@ export const HboxBarycentreFallback: Story = {
       // North-east: x nudged positive, y nudged negative (SVG y grows down).
       expect(hx).toBeGreaterThan(meanX)
       expect(hy).toBeLessThan(meanY)
+    })
+  },
+}
+
+// —————————————————————————————————————————————————————————————————————————
+// 6. Two fallback H-boxes over identical neighbours can't stack on top of
+//    each other.
+//
+// Both take the barycentre fallback, so both want the same point. Whatever
+// the placement does to separate them, the test is the painted result: the
+// two squares may not share any pixels.
+//
+// Only each other: a diagram can put its spiders as close together as it
+// likes, so an H-box parked among them is allowed to overlap one.
+// —————————————————————————————————————————————————————————————————————————
+
+// Axis-aligned bounds of the shape a node paints, in SVG coordinates. Read off
+// the rendered geometry rather than recomputed from scale, so this stays a
+// statement about what is on screen. Node <g>s also carry id and phase text,
+// which is allowed to overhang and so is deliberately excluded.
+function shapeBounds(g: SVGGElement): { x0: number; y0: number; x1: number; y1: number } {
+  const [tx, ty] = translateOf(g)
+  const rect = g.querySelector('rect')
+  if (rect) {
+    const x = Number(rect.getAttribute('x'))
+    const y = Number(rect.getAttribute('y'))
+    return {
+      x0: tx + x,
+      y0: ty + y,
+      x1: tx + x + Number(rect.getAttribute('width')),
+      y1: ty + y + Number(rect.getAttribute('height')),
+    }
+  }
+  const circle = g.querySelector('circle')
+  if (!circle) throw new Error('node paints neither a rect nor a circle')
+  const r = Number(circle.getAttribute('r'))
+  return { x0: tx - r, y0: ty - r, x1: tx + r, y1: ty + r }
+}
+
+function overlaps(a: ReturnType<typeof shapeBounds>, b: ReturnType<typeof shapeBounds>): boolean {
+  return a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1
+}
+
+export const HboxBarycentreCollision: Story = {
+  name: '6. Colliding fallback H-boxes are nudged apart',
+  args: { diagram: hboxFanoutCollision },
+  play: async ({ canvasElement, step }) => {
+    const root = await shadowRootOf(canvasElement)
+
+    let hboxes!: SVGGElement[]
+    await step('wait for both H-boxes to mount', async () => {
+      hboxes = await waitForNodes(root, 'rect', H_FILL, 2)
+    })
+
+    await step('the two H-boxes do not paint over each other', () => {
+      const [a, b] = hboxes.map(shapeBounds)
+      expect(overlaps(a, b)).toBe(false)
+    })
+
+    await step('and hold that gap as a neighbour spider is dragged', async () => {
+      const spiders = await waitForNodes(root, 'circle', Z_FILL, 3)
+      const gap = translateOf(hboxes[1])[0] - translateOf(hboxes[0])[0]
+
+      // Uneven steps ending on a barycentre where `(x + clearance) - x` rounds
+      // to just under `clearance`: placement has to be a function of where the
+      // nodes are, not of how they got there. A separation solved by nudging
+      // until clear settles exactly on its own threshold, so at points like
+      // this one rounding calls it a collision and nudges a second time —
+      // which is the box visibly flicking sideways as a spider is dragged.
+      for (const dx of [-40, -50, -67]) {
+        performDrag(spiders[1], dx, 0)
+        await waitFor(() => {
+          const [a, b] = hboxes.map(shapeBounds)
+          expect(overlaps(a, b)).toBe(false)
+          expect(translateOf(hboxes[1])[0] - translateOf(hboxes[0])[0]).toBeCloseTo(gap, 6)
+        })
+      }
     })
   },
 }
