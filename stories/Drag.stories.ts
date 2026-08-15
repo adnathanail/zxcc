@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
 import { expect, waitFor } from 'storybook/test'
-import { COLORS, type DiagramData } from '../src/zxRender'
+import { type DiagramData, ORIGINAL_COLORS } from '../src/zxRender'
 import { singleZSpider, zHzChain, zxSpiders } from './diagrams'
 import {
   fireKey,
@@ -34,9 +34,9 @@ export default meta
 
 type Story = StoryObj<Args>
 
-const Z_FILL = COLORS.Z
-const X_FILL = COLORS.X
-const H_FILL = COLORS.H
+const Z_FILL = ORIGINAL_COLORS.Z
+const X_FILL = ORIGINAL_COLORS.X
+const H_FILL = ORIGINAL_COLORS.H
 
 // —————————————————————————————————————————————————————————————————————————
 // 1. Single-spider drag — baseline that translate deltas propagate at all.
