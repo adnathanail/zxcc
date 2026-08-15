@@ -77,6 +77,7 @@ export interface ShowGraphOptions {
   auto_hbox: boolean
   show_labels: boolean
   scalar_str: string
+  scalar_y: number
   boxes: RenderBox[]
   labels: Map<number, string>
   colors: Record<string, string>
@@ -140,6 +141,7 @@ export function showGraph(tag: HTMLElement, graphIn: GraphData, opts: ShowGraphO
     auto_hbox,
     show_labels,
     scalar_str,
+    scalar_y,
     boxes: boxesIn,
     labels,
     colors,
@@ -452,8 +454,26 @@ export function showGraph(tag: HTMLElement, graphIn: GraphData, opts: ShowGraphO
   }
 
   if (scalar_str !== '') {
-    const text = svgEl('text', { x: 60, y: 40, 'text-anchor': 'middle' })
-    text.textContent = scalar_str
+    // pyzx pins this at a fixed x: 60 / y: 40, which lands off to the left on
+    // any diagram wider than ~120px and sits above the diagram. Centre it and
+    // drop it into the strip zxRender reserves below the diagram, using the
+    // same monospace family as the phase and vdata labels.
+    const text = svgEl('text', {
+      x: width / 2,
+      y: scalar_y,
+      'text-anchor': 'middle',
+      'font-family': 'monospace',
+    })
+    // The scalar multiplies the diagram, so lead with a '×' — greyed like the
+    // node-id labels to keep it subordinate to the value itself.
+    const times = svgEl('tspan', { fill: '#999' })
+    times.textContent = '×'
+    text.appendChild(times)
+    // A dx gap rather than a literal space: SVG collapses whitespace at tspan
+    // boundaries, so a trailing space here would not survive.
+    const value = svgEl('tspan', { dx: '0.4em' })
+    value.textContent = scalar_str
+    text.appendChild(value)
     svg.appendChild(text)
   }
 
