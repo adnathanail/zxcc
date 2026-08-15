@@ -1,4 +1,4 @@
-import '../src/zxDiagram'
+import '../src/index'
 
 export default {
   parameters: {

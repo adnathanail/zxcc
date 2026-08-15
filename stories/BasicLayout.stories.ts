@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
 import { expect } from 'storybook/test'
-import { type DiagramData, ORIGINAL_COLORS } from '../src/zxRender'
+import { type DiagramData, ORIGINAL_COLORS } from '../src/index'
 import { singleZSpider, zHHzChain } from './diagrams'
 import { shadowRootOf, translateOf, waitForNodes } from './interactionHelpers'
 

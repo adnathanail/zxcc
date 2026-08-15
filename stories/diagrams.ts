@@ -1,4 +1,4 @@
-import type { DiagramData } from '../src/zxRender'
+import type { DiagramData } from '../src/index'
 
 // Reusable diagrams for stories. Each is a wire (input→…→output) chain.
 
