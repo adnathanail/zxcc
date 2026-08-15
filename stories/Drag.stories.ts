@@ -2,7 +2,14 @@ import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
 import { expect, waitFor } from 'storybook/test'
 import { type DiagramData, ORIGINAL_COLORS } from '../src/zxRender'
-import { hboxFanout, pauliWebChain, singleZSpider, zHzChain, zxSpiders } from './diagrams'
+import {
+  hboxFanout,
+  pauliWebChain,
+  singleZSpider,
+  zHHzChain,
+  zHzChain,
+  zxSpiders,
+} from './diagrams'
 import {
   fireKey,
   fireMouse,
@@ -19,7 +26,7 @@ interface Args {
 }
 
 const meta: Meta<Args> = {
-  title: 'Interactions/Drag',
+  title: 'Interactions',
   render: ({ diagram }) =>
     html`<zx-diagram .diagram=${diagram} style="min-height: 160px"></zx-diagram>`,
   parameters: {
@@ -276,7 +283,95 @@ export const HboxBarycentreFallback: Story = {
 }
 
 // —————————————————————————————————————————————————————————————————————————
-// 6. Pauli-web strands follow their endpoints during a drag.
+// 7 & 8. In a 2-H-box chain, dragging one H-box clamps against its *neighbour*
+// rather than against the chain endpoint. Clamping against the next H-box and
+// against the previous one are separate branches, so they get a story each —
+// once one H-box has been pinned against the other there is no slack left to
+// test the opposite direction in the same diagram.
+//
+// zHHzChain is Z → H → H → Z on one qubit, so both H-boxes share a line and
+// start evenly spaced at lineParam 1/3 and 2/3. The clamp stops each one a
+// clearance short of its neighbour, where the clearance is a pixel distance
+// derived from the painted shapes rather than a flat fraction of the chain —
+// so the boxes come to rest touching at worst, never overlapping.
+// —————————————————————————————————————————————————————————————————————————
+
+const OVERSHOOT_DX = 400
+
+// Centre-to-centre distance below which two H-boxes would paint over each
+// other. Read off the rendered rect so it tracks node_size, not a literal.
+function boxWidthOf(hbox: SVGGElement): number {
+  return Number(hbox.querySelector('rect')?.getAttribute('width'))
+}
+
+export const HboxChainClampForward: Story = {
+  name: '7. Chained H-box clamps against the next H-box',
+  args: { diagram: zHHzChain },
+  play: async ({ canvasElement, step }) => {
+    const root = await shadowRootOf(canvasElement)
+
+    let hboxes!: SVGGElement[]
+    await step('wait for both H-boxes to mount', async () => {
+      hboxes = await waitForNodes(root, 'rect', H_FILL, 2)
+    })
+
+    // Document order is node-id order, so [0] is the left H-box.
+    const [leftHbox, rightHbox] = hboxes
+    const [leftX0] = translateOf(leftHbox)
+    const [rightX0] = translateOf(rightHbox)
+    expect(leftX0).toBeLessThan(rightX0)
+
+    await step(
+      `drag the left H-box right by ${OVERSHOOT_DX} — far past its neighbour`,
+      async () => {
+        performDrag(leftHbox, OVERSHOOT_DX, 0)
+        await waitFor(() => {
+          const [leftX1] = translateOf(leftHbox)
+          const [rightX1] = translateOf(rightHbox)
+          // It moved...
+          expect(leftX1).toBeGreaterThan(leftX0)
+          // ...but stopped short of the neighbour instead of sailing past it,
+          // and short enough that the two squares don't intersect.
+          expect(rightX1 - leftX1).toBeGreaterThanOrEqual(boxWidthOf(leftHbox))
+        })
+      },
+    )
+  },
+}
+
+export const HboxChainClampBackward: Story = {
+  name: '8. Chained H-box clamps against the previous H-box',
+  args: { diagram: zHHzChain },
+  play: async ({ canvasElement, step }) => {
+    const root = await shadowRootOf(canvasElement)
+
+    let hboxes!: SVGGElement[]
+    await step('wait for both H-boxes to mount', async () => {
+      hboxes = await waitForNodes(root, 'rect', H_FILL, 2)
+    })
+
+    const [leftHbox, rightHbox] = hboxes
+    const [leftX0] = translateOf(leftHbox)
+    const [rightX0] = translateOf(rightHbox)
+
+    await step(
+      `drag the right H-box left by ${OVERSHOOT_DX} — back past its neighbour`,
+      async () => {
+        performDrag(rightHbox, -OVERSHOOT_DX, 0)
+        await waitFor(() => {
+          const [rightX1] = translateOf(rightHbox)
+          // It moved left...
+          expect(rightX1).toBeLessThan(rightX0)
+          // ...but stopped clear of the left H-box, which hasn't budged.
+          expect(rightX1 - leftX0).toBeGreaterThanOrEqual(boxWidthOf(rightHbox))
+        })
+      },
+    )
+  },
+}
+
+// —————————————————————————————————————————————————————————————————————————
+// 9. Pauli-web strands follow their endpoints during a drag.
 //
 // web_curve() runs from source to the (source, target) midpoint, so moving a
 // single endpoint is enough to change the path data of every strand touching
@@ -284,7 +379,7 @@ export const HboxBarycentreFallback: Story = {
 // —————————————————————————————————————————————————————————————————————————
 
 export const PauliWebFollowsDrag: Story = {
-  name: '6. Pauli-web strands redraw on drag',
+  name: '9. Pauli-web strands redraw on drag',
   args: { diagram: pauliWebChain },
   play: async ({ canvasElement, step }) => {
     const DX = 35
