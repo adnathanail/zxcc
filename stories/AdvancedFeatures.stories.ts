@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
+import { ifDefined } from 'lit/directives/if-defined.js'
 import { expect } from 'storybook/test'
 import {
   type ColorSchemeName,
@@ -15,21 +16,27 @@ interface Args {
   diagram: DiagramData
   /** Omitted by most stories, which want the default palette. */
   colorScheme?: ColorSchemeName
+  /** Omitted by most stories, which want the derived scale. */
+  scale?: number
+  /** Omitted by most stories, which want pyzx's node-id labels on. */
+  showLabels?: boolean
 }
 
 const meta: Meta<Args> = {
   title: 'Advanced features',
-  render: ({ diagram, colorScheme }) =>
+  render: ({ diagram, colorScheme, scale, showLabels }) =>
     html`<zx-diagram
       .diagram=${diagram}
       color-scheme=${colorScheme ?? 'original'}
+      scale=${ifDefined(scale)}
+      show-labels=${showLabels === false ? 'false' : ''}
       style="min-height: 160px"
     ></zx-diagram>`,
   parameters: {
     docs: {
       description: {
         component:
-          'Shapes and annotations beyond plain Z/X spiders: W-input/W-output pairs, the Z-box, Hadamard and W-io edges, grounded vertices, vdata annotations, the global scalar, Pauli-web strands overlaid on edges, and the non-default pyzx colour schemes.',
+          'Shapes and annotations beyond plain Z/X spiders: W-input/W-output pairs, the Z-box, Hadamard and W-io edges, grounded vertices, vdata annotations, the global scalar, Pauli-web strands overlaid on edges, an explicit scale, hidden node-id labels, and the non-default pyzx colour schemes.',
       },
     },
   },
@@ -262,6 +269,77 @@ export const PauliWeb: Story = {
         { src: 3, tgt: 4, kind: 'I' },
       ],
     },
+  },
+}
+
+// show-labels defaults to true, so "off" has to be spelled out as
+// show-labels="false" — a bare boolean attribute can't express it. This exists
+// to exercise that converter, and a diagram minus its id labels is not worth a
+// Chromatic snapshot, so it opts out of the visual diff and keeps only the
+// play-function assertions.
+export const LabelsHidden: Story = {
+  name: 'Labels hidden',
+  args: {
+    diagram: {
+      nodes: [
+        { id: 0, type: 'input', ioId: 0 },
+        { id: 1, type: 'spider', color: 'Z', phase: 'π/2' },
+        { id: 2, type: 'spider', color: 'X', phase: '0' },
+        { id: 3, type: 'output', ioId: 0 },
+      ],
+      edges: [
+        { src: 0, tgt: 1 },
+        { src: 1, tgt: 2 },
+        { src: 2, tgt: 3 },
+      ],
+    },
+    showLabels: false,
+  },
+  parameters: { chromatic: { disableSnapshot: true } },
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    expect(root.querySelectorAll('svg g.node text[fill="#999"]').length).toBe(0)
+    // The diagram itself still rendered — only the id labels went away.
+    expect(root.querySelectorAll('svg g.node circle').length).toBeGreaterThan(0)
+  },
+}
+
+// An explicit scale is pixels per row/qubit, taken verbatim. This diagram is
+// four columns wide, so the derived scale would be 800 / 5 = 160 and then get
+// clamped to the 50 ceiling — 80 is reachable only by overriding.
+export const ScaleOverride: Story = {
+  name: 'Scale override',
+  args: {
+    diagram: {
+      nodes: [
+        { id: 0, type: 'input', ioId: 0 },
+        { id: 1, type: 'spider', color: 'Z', phase: '0' },
+        { id: 2, type: 'spider', color: 'X', phase: '0' },
+        { id: 3, type: 'output', ioId: 0 },
+      ],
+      edges: [
+        { src: 0, tgt: 1 },
+        { src: 1, tgt: 2 },
+        { src: 2, tgt: 3 },
+      ],
+    },
+    scale: 80,
+  },
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    const xs = [...root.querySelectorAll<SVGGElement>('svg g.node g')]
+      .map(g => translateOf(g)[0])
+      .sort((a, b) => a - b)
+    expect(xs.length).toBe(4)
+
+    // Adjacent columns sit exactly one scale apart — above the 50 the clamp
+    // would otherwise impose.
+    for (let i = 1; i < xs.length; i++) expect(xs[i] - xs[i - 1]).toBeCloseTo(80, 5)
+
+    // ...and the canvas is padded by one scale either side of the outer nodes.
+    const svg = root.querySelector<SVGSVGElement>('svg')
+    if (!svg) throw new Error('svg not found')
+    expect(Number(svg.getAttribute('width'))).toBeCloseTo(xs[xs.length - 1] + 80, 5)
   },
 }
 
