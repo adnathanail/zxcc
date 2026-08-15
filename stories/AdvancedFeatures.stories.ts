@@ -1,22 +1,35 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
 import { expect } from 'storybook/test'
-import { type DiagramData, ORIGINAL_COLORS } from '../src/zxRender'
-import { shadowRootOf, translateOf } from './interactionHelpers'
+import {
+  type ColorSchemeName,
+  type DiagramData,
+  GRAYSCALE_COLORS,
+  ORIGINAL_COLORS,
+  RGB_COLORS,
+} from '../src/zxRender'
+import { paletteShowcase } from './diagrams'
+import { nodeFillsIn, shadowRootOf, strokesIn, translateOf } from './interactionHelpers'
 
 interface Args {
   diagram: DiagramData
+  /** Omitted by most stories, which want the default palette. */
+  colorScheme?: ColorSchemeName
 }
 
 const meta: Meta<Args> = {
   title: 'Advanced features',
-  render: ({ diagram }) =>
-    html`<zx-diagram .diagram=${diagram} style="min-height: 160px"></zx-diagram>`,
+  render: ({ diagram, colorScheme }) =>
+    html`<zx-diagram
+      .diagram=${diagram}
+      color-scheme=${colorScheme ?? 'original'}
+      style="min-height: 160px"
+    ></zx-diagram>`,
   parameters: {
     docs: {
       description: {
         component:
-          'Shapes and annotations beyond plain Z/X spiders: W-input/W-output pairs, the Z-box, Hadamard and W-io edges, grounded vertices, vdata annotations, the global scalar, and Pauli-web strands overlaid on edges.',
+          'Shapes and annotations beyond plain Z/X spiders: W-input/W-output pairs, the Z-box, Hadamard and W-io edges, grounded vertices, vdata annotations, the global scalar, Pauli-web strands overlaid on edges, and the non-default pyzx colour schemes.',
       },
     },
   },
@@ -48,9 +61,12 @@ export const WInputOutputPair: Story = {
   },
   play: async ({ canvasElement }) => {
     const root = await shadowRootOf(canvasElement)
-    const strokes = [...root.querySelectorAll('svg g.link path')].map(p => p.getAttribute('stroke'))
     // The connector is gray (Xedge); the ordinary wires either side are black.
-    expect(strokes).toEqual([ORIGINAL_COLORS.edge, ORIGINAL_COLORS.Xedge, ORIGINAL_COLORS.edge])
+    expect(strokesIn(root, 'link')).toEqual([
+      ORIGINAL_COLORS.edge,
+      ORIGINAL_COLORS.Xedge,
+      ORIGINAL_COLORS.edge,
+    ])
   },
 }
 
@@ -94,8 +110,11 @@ export const HadamardEdge: Story = {
   },
   play: async ({ canvasElement }) => {
     const root = await shadowRootOf(canvasElement)
-    const strokes = [...root.querySelectorAll('svg g.link path')].map(p => p.getAttribute('stroke'))
-    expect(strokes).toEqual([ORIGINAL_COLORS.edge, ORIGINAL_COLORS.Hedge, ORIGINAL_COLORS.edge])
+    expect(strokesIn(root, 'link')).toEqual([
+      ORIGINAL_COLORS.edge,
+      ORIGINAL_COLORS.Hedge,
+      ORIGINAL_COLORS.edge,
+    ])
   },
 }
 
@@ -243,5 +262,74 @@ export const PauliWeb: Story = {
         { src: 3, tgt: 4, kind: 'I' },
       ],
     },
+  },
+}
+
+// Every palette key at once, in the default scheme — the reference the two
+// stories below are meant to be compared against.
+export const OriginalScheme: Story = {
+  name: 'Colour scheme: original',
+  args: { diagram: paletteShowcase, colorScheme: 'original' },
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    const fills = nodeFillsIn(root)
+    // Pale green Z spiders and a blue Hadamard edge — the two things the
+    // other schemes move away from.
+    expect(fills).toContain(ORIGINAL_COLORS.Z)
+    const strokes = strokesIn(root, 'link')
+    expect(strokes.length).toBe(8)
+    expect(strokes).toContain(ORIGINAL_COLORS.Hedge)
+  },
+}
+
+// pyzx's rgb_colors: Y and Z swap (so Z spiders go light blue while the
+// Z-box keeps Zalt's green), Ydark/Zdark swap under the Pauli web, and the
+// Hadamard edge turns orange. Everything else matches `original`.
+export const RgbScheme: Story = {
+  name: 'Colour scheme: rgb',
+  args: { diagram: paletteShowcase, colorScheme: 'rgb' },
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    const fills = nodeFillsIn(root)
+    // Round Z spiders repaint; X and H don't...
+    expect(nodeFillsIn(root, 'circle')).toContain(RGB_COLORS.Z)
+    expect(nodeFillsIn(root, 'circle')).not.toContain(ORIGINAL_COLORS.Z)
+    expect(fills).toContain(RGB_COLORS.X)
+    expect(fills).toContain(RGB_COLORS.H)
+    // ...and neither does the Z-box, which reads Zalt rather than Z.
+    expect(nodeFillsIn(root, 'rect')).toContain(RGB_COLORS.Zalt)
+
+    // Orange Hadamard edge instead of blue.
+    const strokes = strokesIn(root, 'link')
+    expect(strokes).toContain(RGB_COLORS.Hedge)
+    expect(strokes).not.toContain(ORIGINAL_COLORS.Hedge)
+
+    // Web strands, in `pauliWeb` order: X, Z, Y — with Zdark/Ydark swapped.
+    expect(strokesIn(root, 'web')).toEqual([RGB_COLORS.Xdark, RGB_COLORS.Zdark, RGB_COLORS.Ydark])
+  },
+}
+
+// pyzx's grayscale_colors: every spider, box and edge colour drops to a grey,
+// leaving shape (circle / square / triangle) as the only cue that survives
+// printing in black and white.
+export const GrayscaleScheme: Story = {
+  name: 'Colour scheme: grayscale',
+  args: { diagram: paletteShowcase, colorScheme: 'grayscale' },
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    const fills = nodeFillsIn(root)
+    expect(fills).toContain(GRAYSCALE_COLORS.Z)
+    expect(fills).toContain(GRAYSCALE_COLORS.X)
+    expect(fills).toContain(GRAYSCALE_COLORS.H)
+    // None of the original scheme's tints survive.
+    for (const key of ['Z', 'X', 'H'] as const) {
+      expect(fills).not.toContain(ORIGINAL_COLORS[key])
+    }
+
+    // Grey Hadamard edge, and a lighter grey W_IO connector.
+    const strokes = strokesIn(root, 'link')
+    expect(strokes).toContain(GRAYSCALE_COLORS.Hedge)
+    expect(strokes).toContain(GRAYSCALE_COLORS.Xedge)
+    expect(strokes).not.toContain(ORIGINAL_COLORS.Hedge)
   },
 }

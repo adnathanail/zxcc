@@ -34,6 +34,21 @@ export async function waitForNode(
   })
 }
 
+/** The `stroke` of every path in a layer group, in document order. */
+export function strokesIn(root: ShadowRoot, layer: 'link' | 'web'): string[] {
+  return [...root.querySelectorAll<SVGPathElement>(`svg g.${layer} path`)].map(
+    p => p.getAttribute('stroke') ?? '',
+  )
+}
+
+/** The `fill` of every circular or rectangular node shape — spiders,
+ *  boundaries and W-inputs (circles), H-boxes and Z-boxes (rects). Pass a
+ *  shape to narrow to one of the two. */
+export function nodeFillsIn(root: ShadowRoot, shape?: 'circle' | 'rect'): string[] {
+  const selector = shape ? `svg g.node ${shape}` : 'svg g.node circle, svg g.node rect'
+  return [...root.querySelectorAll<SVGElement>(selector)].map(el => el.getAttribute('fill') ?? '')
+}
+
 export function fireMouse(
   type: 'mousedown' | 'mousemove' | 'mouseup',
   target: EventTarget,
