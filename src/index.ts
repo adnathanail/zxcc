@@ -3,5 +3,6 @@ export type {
   DiagramBox,
   DiagramData,
   DiagramEdge,
+  DiagramEdgeKind,
   DiagramNode,
 } from './zxRender'

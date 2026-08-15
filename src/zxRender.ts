@@ -14,13 +14,17 @@ export interface DiagramNode {
   qubit?: number
 }
 
+/** Edge kinds, mirroring pyzx's `EdgeType`. `w-io` is the connector between
+ *  a `w-input`/`w-output` pair and renders gray. */
+export type DiagramEdgeKind = 'simple' | 'hadamard' | 'w-io'
+
 export interface DiagramEdge {
   src: number
   tgt: number
-  /** When true, render as a pyzx-style Hadamard edge (blue). Semantically
-   *  equivalent to inserting a `hadamard` node on the wire, but drawn as
-   *  a coloured edge with no extra vertex. */
-  hadamard?: boolean
+  /** Render kind. A `hadamard` edge is semantically equivalent to inserting
+   *  a `hadamard` node on the wire, but drawn as a coloured edge with no
+   *  extra vertex. Defaults to `simple`. */
+  kind?: DiagramEdgeKind
 }
 
 /** A colored strand overlaid on the diagram, following pyzx's Pauli-web
@@ -120,7 +124,13 @@ const VertexType = {
 // `wire` predates the W-input concept and shares its rendering (small
 // black circle); keep it as an alias for backward compatibility.
 const WIRE = VertexType.W_INPUT
-const EdgeType = { SIMPLE: 1, HADAMARD: 2 } as const
+const EdgeType = { SIMPLE: 1, HADAMARD: 2, W_IO: 3 } as const
+
+const EDGE_TYPE_OF: Record<DiagramEdgeKind, number> = {
+  simple: EdgeType.SIMPLE,
+  hadamard: EdgeType.HADAMARD,
+  'w-io': EdgeType.W_IO,
+}
 
 // pyzx.utils.original_colors
 export const COLORS: Record<string, string> = {
@@ -358,7 +368,7 @@ export function render(diagram: DiagramData): RenderData {
     return {
       source: String(e.src),
       target: String(e.tgt),
-      t: e.hadamard ? EdgeType.HADAMARD : EdgeType.SIMPLE,
+      t: e.kind ? EDGE_TYPE_OF[e.kind] : EdgeType.SIMPLE,
       index: i,
       num_parallel: 0,
     }

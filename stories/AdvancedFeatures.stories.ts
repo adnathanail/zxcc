@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
-import type { DiagramData } from '../src/zxRender'
+import { expect } from 'storybook/test'
+import { COLORS, type DiagramData } from '../src/zxRender'
+import { shadowRootOf } from './interactionHelpers'
 
 interface Args {
   diagram: DiagramData
@@ -25,8 +27,8 @@ export default meta
 type Story = StoryObj<Args>
 
 // W-input (small black circle) → W-output (black triangle). In pyzx these
-// always come in pairs joined by a single edge; the pair together acts as
-// the W-spider generator.
+// always come in pairs joined by a W_IO edge, which paints gray rather than
+// black to distinguish the internal connector from an ordinary wire.
 export const WInputOutputPair: Story = {
   name: 'W-input / W-output pair',
   args: {
@@ -39,10 +41,16 @@ export const WInputOutputPair: Story = {
       ],
       edges: [
         { src: 0, tgt: 1 },
-        { src: 1, tgt: 2 },
+        { src: 1, tgt: 2, kind: 'w-io' },
         { src: 2, tgt: 3 },
       ],
     },
+  },
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    const strokes = [...root.querySelectorAll('svg g.link path')].map(p => p.getAttribute('stroke'))
+    // The connector is gray (Xedge); the ordinary wires either side are black.
+    expect(strokes).toEqual([COLORS.edge, COLORS.Xedge, COLORS.edge])
   },
 }
 
@@ -79,10 +87,15 @@ export const HadamardEdge: Story = {
       ],
       edges: [
         { src: 0, tgt: 1 },
-        { src: 1, tgt: 2, hadamard: true },
+        { src: 1, tgt: 2, kind: 'hadamard' },
         { src: 2, tgt: 3 },
       ],
     },
+  },
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    const strokes = [...root.querySelectorAll('svg g.link path')].map(p => p.getAttribute('stroke'))
+    expect(strokes).toEqual([COLORS.edge, COLORS.Hedge, COLORS.edge])
   },
 }
 

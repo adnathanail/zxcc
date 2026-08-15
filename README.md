@@ -46,7 +46,7 @@ npm install @adnathanail/zxcc
 ```ts
 interface DiagramData {
   nodes: DiagramNode[]
-  edges: { src: number; tgt: number }[]
+  edges: DiagramEdge[]
   boxes?: { kind: 'stack' | 'compose'; nodeIds: number[] }[]
   labels?: [number, string][]  // node-id → phase-label override
 }
@@ -59,6 +59,12 @@ interface DiagramNode {
   ioId?: number          // input/output index
   col?: number           // optional pre-computed column
   qubit?: number         // optional pre-computed qubit row
+}
+
+interface DiagramEdge {
+  src: number
+  tgt: number
+  kind?: 'simple' | 'hadamard' | 'w-io'   // default 'simple'
 }
 ```
 
