@@ -151,8 +151,46 @@ export const HadamardNode: Story = {
   },
 }
 
+export const StrongComplementarity: Story = {
+  name: '5. Strong complementarity',
+  parameters: {
+    docs: {
+      story: {
+        description:
+          'The characteristic 2 to 2 strong complementarity diagram, testing the hypergraph rendering of more difficult hulls',
+      },
+    },
+  },
+  args: {
+    diagram: {
+      nodes: [
+        { id: 0, qubit: 0, col: 0, type: 'input', ioId: 0 },
+        { id: 1, qubit: 0, col: 1, type: 'spider', color: 'Z' },
+        { id: 2, qubit: 0, col: 2, type: 'spider', color: 'X' },
+        { id: 3, qubit: 0, col: 3, type: 'output', ioId: 1 },
+        { id: 4, qubit: 1, col: 0, type: 'input', ioId: 2 },
+        { id: 5, qubit: 1, col: 1, type: 'spider', color: 'Z' },
+        { id: 6, qubit: 1, col: 2, type: 'spider', color: 'X' },
+        { id: 7, qubit: 1, col: 3, type: 'output', ioId: 3 },
+      ],
+      edges: [
+        { src: 0, tgt: 1 },
+        { src: 1, tgt: 2 },
+        { src: 2, tgt: 3 },
+
+        { src: 4, tgt: 5 },
+        { src: 5, tgt: 6 },
+        { src: 6, tgt: 7 },
+
+        { src: 1, tgt: 6 },
+        { src: 2, tgt: 5 },
+      ],
+    },
+  },
+}
+
 export const UnsupportedNodeType: Story = {
-  name: '5. Node type with no blob',
+  name: '6. Node type with no blob',
   parameters: {
     docs: {
       story: {
