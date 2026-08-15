@@ -54,11 +54,14 @@ interface DiagramData {
 interface DiagramNode {
   id: number
   type: 'spider' | 'input' | 'output' | 'hadamard' | 'wire'
+      | 'w-input' | 'w-output' | 'z-box'
   color?: 'Z' | 'X'      // spider only
   phase?: string         // pre-formatted (e.g. "π/2", "-π/4")
   ioId?: number          // input/output index
   col?: number           // optional pre-computed column
   qubit?: number         // optional pre-computed qubit row
+  ground?: boolean       // draws a ground symbol below the node
+  vdata?: [string, unknown][]  // annotations drawn above the node
 }
 
 interface DiagramEdge {

@@ -99,6 +99,65 @@ export const HadamardEdge: Story = {
   },
 }
 
+// Grounded spider (pyzx's Graph.is_ground): a stem drops from the node to a
+// ground symbol. Used to mark discarded/traced-out wires.
+export const GroundedSpider: Story = {
+  name: 'Grounded spider',
+  args: {
+    diagram: {
+      nodes: [
+        { id: 0, type: 'input', ioId: 0 },
+        { id: 1, type: 'spider', color: 'Z', phase: '0', ground: true },
+        { id: 2, type: 'output', ioId: 0 },
+      ],
+      edges: [
+        { src: 0, tgt: 1 },
+        { src: 1, tgt: 2 },
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    // The stem and the ground symbol are two extra selectable paths on the
+    // node group, on top of the spider's own circle.
+    const stems = root.querySelectorAll('svg g.node path.selectable')
+    expect(stems.length).toBe(2)
+  },
+}
+
+// vdata: arbitrary [key, value] annotations drawn above a node, mirroring
+// pyzx's draw_d3(vdata=[...]).
+export const VertexData: Story = {
+  name: 'Vertex data annotations',
+  args: {
+    diagram: {
+      nodes: [
+        { id: 0, type: 'input', ioId: 0 },
+        {
+          id: 1,
+          type: 'spider',
+          color: 'Z',
+          phase: 'π/2',
+          vdata: [
+            ['depth', 3],
+            ['tag', 'pivot'],
+          ],
+        },
+        { id: 2, type: 'output', ioId: 0 },
+      ],
+      edges: [
+        { src: 0, tgt: 1 },
+        { src: 1, tgt: 2 },
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    const spans = [...root.querySelectorAll('svg g.node tspan')].map(t => t.textContent)
+    expect(spans).toEqual(['depth: 3', 'tag: pivot'])
+  },
+}
+
 // Pauli web: coloured strands overlaid on edges to visualise error
 // propagation. X = pink, Y = light blue, Z = dark green, I = grey.
 export const PauliWeb: Story = {

@@ -12,6 +12,12 @@ export interface DiagramNode {
    *  both `col` and `qubit`. */
   col?: number
   qubit?: number
+  /** Grounded vertex (pyzx `Graph.is_ground`). Draws a stem and ground
+   *  symbol hanging below the node. */
+  ground?: boolean
+  /** Extra `[key, value]` annotations drawn above the node, mirroring
+   *  pyzx's `draw_d3(vdata=[...])`. Values are stringified via `join`. */
+  vdata?: [string, unknown][]
 }
 
 /** Edge kinds, mirroring pyzx's `EdgeType`. `w-io` is the connector between
@@ -163,6 +169,8 @@ interface InternalNode {
   phaseStr: string
   isInput: boolean
   isOutput: boolean
+  ground: boolean
+  vdata: [string, unknown][]
 }
 
 function buildNodes(diagram: DiagramData): Map<number, InternalNode> {
@@ -174,6 +182,9 @@ function buildNodes(diagram: DiagramData): Map<number, InternalNode> {
     let phaseStr = ''
     let isInput = false
     let isOutput = false
+    // Type-independent, so read once rather than in all eight branches.
+    const ground = n.ground ?? false
+    const vdata = n.vdata ?? []
 
     if (n.type === 'input') {
       t = VertexType.BOUNDARY
@@ -213,7 +224,7 @@ function buildNodes(diagram: DiagramData): Map<number, InternalNode> {
     } else {
       t = VertexType.BOUNDARY
     }
-    out.set(n.id, { id: n.id, t, row, qubit, phaseStr, isInput, isOutput })
+    out.set(n.id, { id: n.id, t, row, qubit, phaseStr, isInput, isOutput, ground, vdata })
   }
   return out
 }
@@ -351,8 +362,8 @@ export function render(diagram: DiagramData): RenderData {
       y: (qubit - minqub + 2) * scale,
       t: n.t,
       phase: n.phaseStr,
-      ground: false,
-      vdata: [],
+      ground: n.ground,
+      vdata: n.vdata,
     }
   })
 
