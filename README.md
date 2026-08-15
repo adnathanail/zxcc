@@ -42,6 +42,8 @@ npm install @adnathanail/zxcc
 
 `diagram` is a JS property, not an attribute — set it via a DOM reference so the object round-trips without JSON coercion.
 
+Assign a new object to change the diagram; layout runs when the property's identity changes, so mutating the object already assigned paints nothing new. If you must mutate in place, call `el.refresh()` afterwards. Note that either way the re-layout resets the drawing: dragged nodes return to their laid-out positions and the selection is cleared.
+
 ## Diagram shape
 
 ```ts

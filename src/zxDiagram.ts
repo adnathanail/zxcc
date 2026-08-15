@@ -98,6 +98,20 @@ export class ZxDiagramElement extends LitElement {
     }
   }
 
+  /**
+   * Lay the current `diagram` out again, for consumers that mutate it in place
+   * rather than replacing it.
+   *
+   * This produces a fresh scene, which resets the drawing to it: dragged nodes
+   * return to their laid-out positions and the selection is cleared. That is
+   * why it isn't run on every render — replacing `diagram` is the cheaper and
+   * more predictable way to change the picture.
+   */
+  refresh() {
+    this.relayout()
+    this.requestUpdate()
+  }
+
   private relayout() {
     try {
       this.scene = this.diagram ? layout(this.diagram, { scale: this.scale ?? undefined }) : null
