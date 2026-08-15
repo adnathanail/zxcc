@@ -6,12 +6,17 @@ import { shadowRootOf } from './interactionHelpers'
 
 interface Args {
   diagram: DiagramData
+  showScalar?: boolean
 }
 
 const meta: Meta<Args> = {
   title: 'Advanced features',
-  render: ({ diagram }) =>
-    html`<zx-diagram .diagram=${diagram} style="min-height: 160px"></zx-diagram>`,
+  render: ({ diagram, showScalar }) =>
+    html`<zx-diagram
+      .diagram=${diagram}
+      ?show-scalar=${showScalar ?? false}
+      style="min-height: 160px"
+    ></zx-diagram>`,
   parameters: {
     docs: {
       description: {
@@ -155,6 +160,32 @@ export const VertexData: Story = {
     const root = await shadowRootOf(canvasElement)
     const spans = [...root.querySelectorAll('svg g.node tspan')].map(t => t.textContent)
     expect(spans).toEqual(['depth: 3', 'tag: pivot'])
+  },
+}
+
+// The diagram's global scalar, painted top-left. Only shown when the element
+// opts in via show-scalar (pyzx's draw_d3(show_scalar=True)).
+export const Scalar: Story = {
+  name: 'Global scalar',
+  args: {
+    showScalar: true,
+    diagram: {
+      nodes: [
+        { id: 0, type: 'input', ioId: 0 },
+        { id: 1, type: 'spider', color: 'Z', phase: 'π/2' },
+        { id: 2, type: 'output', ioId: 0 },
+      ],
+      edges: [
+        { src: 0, tgt: 1 },
+        { src: 1, tgt: 2 },
+      ],
+      scalar: '2^(-1/2)·e^(iπ/4)',
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    const texts = [...root.querySelectorAll('svg > text')].map(t => t.textContent)
+    expect(texts).toContain('2^(-1/2)·e^(iπ/4)')
   },
 }
 
