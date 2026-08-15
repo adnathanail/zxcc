@@ -77,6 +77,8 @@ interface DiagramEdge {
 If any node carries `col`, auto-layout is skipped and every node is expected to carry both `col` and `qubit`.
 Otherwise a BFS from the inputs assigns rows and qubits.
 
+An edge with `src === tgt` renders as a self-loop arc.
+
 ## Element attributes
 
 These mirror the keyword arguments of pyzx's `draw_d3()` and control presentation

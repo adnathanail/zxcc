@@ -34,6 +34,13 @@ export async function waitForNode(
   })
 }
 
+/** The `d` of every path in a layer group, in document order. */
+export function pathDataIn(root: ShadowRoot, layer: 'link' | 'web'): string[] {
+  return [...root.querySelectorAll<SVGPathElement>(`svg g.${layer} path`)].map(
+    p => p.getAttribute('d') ?? '',
+  )
+}
+
 /** The `stroke` of every path in a layer group, in document order. */
 export function strokesIn(root: ShadowRoot, layer: 'link' | 'web'): string[] {
   return [...root.querySelectorAll<SVGPathElement>(`svg g.${layer} path`)].map(

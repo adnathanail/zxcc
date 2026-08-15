@@ -30,6 +30,26 @@ export const zxSpiders: DiagramData = {
   ],
 }
 
+// One spider carrying a single self-loop wired to one carrying two. A lone
+// loop uses the fixed ±40 control points; a second loop on the same node is
+// spread by parallel-edge index so the two arcs stay distinct.
+export const selfLoopSpiders: DiagramData = {
+  nodes: [
+    { id: 0, type: 'input', ioId: 0 },
+    { id: 1, type: 'spider', color: 'Z', phase: '0' },
+    { id: 2, type: 'spider', color: 'X', phase: '0' },
+    { id: 3, type: 'output', ioId: 0 },
+  ],
+  edges: [
+    { src: 0, tgt: 1 },
+    { src: 1, tgt: 1 },
+    { src: 1, tgt: 2 },
+    { src: 2, tgt: 2 },
+    { src: 2, tgt: 2 },
+    { src: 2, tgt: 3 },
+  ],
+}
+
 // input → Z(0) → H → Z(0) → output
 export const zHzChain: DiagramData = {
   nodes: [
