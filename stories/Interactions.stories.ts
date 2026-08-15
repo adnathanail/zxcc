@@ -7,6 +7,7 @@ import {
   hboxFanoutCollision,
   pauliWebChain,
   singleZSpider,
+  strongComplementarity,
   zHHzChain,
   zHzChain,
   zxSpiders,
@@ -16,6 +17,7 @@ import {
   fireMouse,
   pathDataIn,
   performDrag,
+  selectedBlobsIn,
   shadowRootOf,
   translateOf,
   waitForNode,
@@ -34,7 +36,7 @@ const meta: Meta<Args> = {
     docs: {
       description: {
         component:
-          'Interaction tests guarding the drag/selection behaviour: single-node drag, shift-click multi-select drag, H-box parametric constraint, and brush-select-then-drag. Each play function dispatches native MouseEvents/KeyboardEvents and asserts on `<g>` translate deltas.',
+          'Interaction tests guarding the drag/selection behaviour: single-node drag, shift-click multi-select drag, H-box parametric constraint, brush-select-then-drag, and hyperedge blob selection in the hypergraph view. Each play function dispatches native MouseEvents/KeyboardEvents and asserts on the rendered SVG.',
       },
     },
   },
@@ -484,5 +486,50 @@ export const PauliWebFollowsDrag: Story = {
         expect(changed.length).toBeGreaterThan(0)
       })
     })
+  },
+}
+
+// Clicking a hyperedge blob selects every blob that contains the point, not
+// just the topmost one — with this diagram all four meet in the middle, and
+// the hit test is geometry (`blobContains`) rather than SVG hit-testing for
+// exactly that reason.
+export const HypergraphBlobSelection: Story = {
+  name: '10. Hypergraph blob selection',
+  render: ({ diagram }) =>
+    html`<zx-diagram
+      .diagram=${diagram}
+      view-as-hypergraph
+      style="min-height: 160px"
+    ></zx-diagram>`,
+  args: { diagram: strongComplementarity },
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    const svg = await waitFor(() => {
+      const el = root.querySelector<SVGSVGElement>('svg')
+      if (!el) throw new Error('hypergraph svg not mounted')
+      return el
+    })
+    // Click points are read off the dots themselves rather than hard-coded,
+    // so the assertions survive a change of scale or zoom.
+    const box = svg.getBoundingClientRect()
+    const clickDot = (wire: string) => {
+      const dot = root.querySelector<SVGGElement>(`g[data-wire="${wire}"]`)
+      if (!dot) throw new Error(`dot ${wire} not mounted`)
+      const [x, y] = translateOf(dot)
+      fireMouse('mousedown', svg, box.left + x, box.top + y)
+    }
+
+    // w0 is the top-left boundary leg, which only the first Z spider holds.
+    clickDot('w0')
+    await waitFor(() => expect(selectedBlobsIn(root)).toEqual(['e1']))
+
+    // Every spider has a leg on one of the two crossing wires, and both of
+    // those dots sit dead centre — so a click there is inside all four blobs.
+    clickDot('w6')
+    await waitFor(() => expect(selectedBlobsIn(root)).toEqual(['e1', 'e2', 'e5', 'e6']))
+
+    // A click on bare canvas drops the selection.
+    fireMouse('mousedown', svg, box.left + 2, box.top + 2)
+    await waitFor(() => expect(selectedBlobsIn(root)).toEqual([]))
   },
 }

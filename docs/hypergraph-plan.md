@@ -111,9 +111,11 @@ Answers to the questions above, as built:
 5. **Labels.** Open. Drawn under `show-labels` — the wire id under each dot,
    the hyperedge label over the top of each blob — and they collide when blobs
    are close.
-6. **Interaction.** Not started. The viewer is static, but it already derives
-   outlines from a dot-position map in `render()`, so dragging is a matter of
-   making that map state and mutating it.
+6. **Interaction.** Selection only. A click selects every blob whose outline
+   contains the point — all of them, not the topmost, since overlapping is the
+   norm and seeing which blobs share a spot is the point of clicking. The hit
+   test is `blobContains`, geometry rather than SVG hit-testing. Dragging is
+   still open, and still a matter of making the dot-position map state.
 
 ## Next
 
@@ -122,7 +124,17 @@ Answers to the questions above, as built:
   wherever the diagram put them — the four-spider square draws blobs that
   cross. A layout computed from the hypergraph itself would fix that at the
   cost of the correspondence.
-- Interactions: dragging dots, and whether selection means anything here.
+- Dragging dots, and whether selection should mean more than "show me this
+  blob" — the graph view's selection drags.
+- **Distinct wires can share a dot.** Two edges that cross have the same
+  midpoint, so their dots land on top of each other: in the strong
+  complementarity story `w6` (1—6) and `w7` (2—5) are both at the centre. The
+  hulls around them are correct, but the picture reads as one dot shared by
+  four blobs rather than two dots held by two each. `layout()` already fans
+  *parallel* edges apart via `index`/`parallel`; this is the same problem for
+  edges between different pairs, and wants the same kind of fix — spread
+  coincident dots as a group, the way `Topology.resolve` spreads
+  barycentre-parked H-boxes.
 - Play functions. The stories currently only render; the ZX ones assert on the
   SVG, and the DOM here (`g.blob > g[data-hyperedge] > path`, `g.dot >
   g[data-wire]`) is a contract in the same way.

@@ -69,16 +69,21 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
 - `convert.ts` — `toHypergraph`, turning a `DiagramData` into wires (one per
   ZX edge) and hyperedges (one per non-boundary ZX node).
 - `geometry.ts` — `wireDot` (where a wire's dot sits), `convexHull`/`blobPath`
-  (the outline enclosing a set of dots), and `blobOutline`/`blobLabelAnchor`
-  over a live dot-position map.
+  (the outline enclosing a set of dots), `blobContains` (the same shape as a
+  hit test), and `blobOutline`/`blobLabelAnchor` over a live dot-position map.
 - `layout.ts` — `layoutHypergraph`, parking each wire's dot at the midpoint of
   its edge so the two views line up, then zooming the positions, since the
   dual has twice the marks at half the spacing. `blobKind` is also where an
   unsupported node type is rejected: only spiders and Hadamards have a blob
   shape, so a W, Z-box or `wire` node throws with a message naming the node,
   rather than being painted as something it isn't.
-- `viewer.ts` — `<zx-hypergraph-viewer>`, the second painter. Internal, light
-  DOM, and static — no interactions yet. It takes the same `colors` palette
+- `viewer.ts` — `<zx-hypergraph-viewer>`, the second painter. Internal and
+  light DOM. Its only interaction state is the selection: a click selects
+  *every* blob whose outline contains the point, tested against the geometry
+  (`blobContains`) rather than by asking the DOM what was hit, since the
+  blobs overlap and SVG reports only the topmost. Selected blobs paint last
+  and take the same blue stroke `<zx-viewer>` uses. It takes the same `colors`
+  palette
   `<zx-viewer>` does: a blob is filled with its node's own colour at 40%
   opacity and outlined in black, so overlapping blobs read as both colours,
   and a dot takes its edge's colour (an H-wire's dot is blue).
@@ -168,8 +173,11 @@ Check whether you are on the `gitbutler/workspace` branch; if so, use the `but` 
   contract: `g.node` wrapping per-node `<g data-node>`, `g.brush >
   rect.overlay`, `path.selectable` for the ground symbol, `text[fill="#999"]`
   for id labels, the scalar as the only direct `<text>` child of the `<svg>`,
-  and `g.attribution` carrying a `rect` chip. Shared query/gesture helpers
-  live in `stories/interactionHelpers.ts`.
+  and `g.attribution` carrying a `rect` chip. The hypergraph view has its own:
+  `g.blob` wrapping per-hyperedge `<g data-hyperedge>`, `g.dot` wrapping
+  per-wire `<g data-wire>`, and a selected blob marked by `#00f` in its path's
+  `style`. Shared query/gesture helpers live in
+  `stories/interactionHelpers.ts`.
 - Stories live outside `src/` so they don't get emitted by the library `tsc`
   build; `tsconfig.stories.json` type-checks them (wired into `npm run lint`).
   `.storybook/preview.ts` imports `src/index` so the element registers before

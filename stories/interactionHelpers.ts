@@ -64,6 +64,15 @@ export function strokesIn(root: ShadowRoot, layer: 'link' | 'web'): string[] {
   )
 }
 
+/** Ids of the hyperedge blobs currently drawn as selected, in document order.
+ *  The viewer marks a selection with the same blue stroke `<zx-viewer>` uses,
+ *  set in the path's `style`. */
+export function selectedBlobsIn(root: ShadowRoot): string[] {
+  return [...root.querySelectorAll<SVGGElement>('svg g.blob g[data-hyperedge]')]
+    .filter(g => (g.querySelector('path')?.getAttribute('style') ?? '').includes('#00f'))
+    .map(g => g.getAttribute('data-hyperedge') ?? '')
+}
+
 /** The `fill` of every circular or rectangular node shape — spiders,
  *  boundaries and W-inputs (circles), H-boxes and Z-boxes (rects). Pass a
  *  shape to narrow to one of the two. */
