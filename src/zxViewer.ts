@@ -1,748 +1,390 @@
-// D3-free reimplementation of pyzx's zx_viewer.inline.js. Renders a ZX
-// diagram into a container element using plain SVG DOM + native events.
-// Behaviour parity with the vendored pyzx code (including the H-box chain
-// fix): single mount per call, no update/exit cycle.
+// `<zx-viewer>` — paints a laid-out `Scene` as SVG and owns the pointer
+// interactions (drag, shift/brush selection).
+//
+// The whole SVG is a Lit template derived from four pieces of interaction
+// state: dragged positions, H-box line parameters, the selection, and the
+// live brush rect. Nothing else is stored — H-box positions, box bounds and
+// edge paths are all recomputed from those in `render()`, which is why
+// there is no imperative "sync the DOM to the model" pass.
+//
+// Internal to the package: it renders into the light DOM so it shares
+// `<zx-diagram>`'s stylesheet and leaves the SVG reachable from the host's
+// shadow root.
 
-import type { GraphData, GraphLink, GraphNode, RenderBox } from './zxRender'
+import { html, LitElement, nothing, type PropertyValues, type SVGTemplateResult, svg } from 'lit'
+import { customElement, property } from 'lit/decorators.js'
+import { ORIGINAL_COLORS, webColor } from './colors'
+import {
+  boxBounds,
+  groundSymbolPath,
+  lineParamDelta,
+  linkPath,
+  type Point,
+  type Rect,
+  Topology,
+  webPath,
+} from './geometry'
+import type { BoxKind, DiagramEdgeKind, NodeKind, Scene, SceneNode } from './types'
 
-const SVG_NS = 'http://www.w3.org/2000/svg'
+const SELECTED_STYLE = 'stroke-width: 2px; stroke: #00f'
+const NODE_STYLE = 'stroke-width: 1.5px'
 
-type Attrs = Record<string, string | number | null | undefined>
-
-function svgEl<K extends keyof SVGElementTagNameMap>(
-  tag: K,
-  attrs?: Attrs,
-): SVGElementTagNameMap[K] {
-  const el = document.createElementNS(SVG_NS, tag)
-  if (attrs) setAttrs(el, attrs)
-  return el
+const BOX_STYLE: Record<BoxKind, { fill: string; stroke: string; dash: string }> = {
+  stack: { fill: 'rgba(255,165,80,0.10)', stroke: 'rgba(220,130,30,0.65)', dash: '4 3' },
+  compose: { fill: 'rgba(100,160,255,0.10)', stroke: 'rgba(50,110,220,0.65)', dash: '0' },
 }
 
-function setAttrs(el: SVGElement, attrs: Attrs): void {
-  for (const k in attrs) {
-    const v = attrs[k]
-    if (v !== null && v !== undefined) el.setAttribute(k, String(v))
-  }
-}
-
-function nodeStyle(selected: boolean): string {
-  return selected ? 'stroke-width: 2px; stroke: #00f' : 'stroke-width: 1.5px'
-}
-
-// H-box chain draws a ground-symbol path in coordinates: a vertical stem,
-// then three horizontal strokes of decreasing width — the pyzx symbol.
-// `s = size / 2` matches d3.symbol()'s handoff to symbolGround.draw().
-function groundSymbolPath(size: number): string {
-  const s = size / 2
-  const t = (s * 2) / 3
-  const u = s / 3
-  return (
-    `M 0 ${-s} L 0 0 ` +
-    `M ${-s} 0 L ${s} 0 ` +
-    `M ${-t} ${u} L ${t} ${u} ` +
-    `M ${-u} ${2 * u} L ${u} ${2 * u}`
-  )
-}
-
-interface LiveNode extends GraphNode {
-  selected: boolean
-  previouslySelected: boolean
-  nhd: LiveNode[]
-  lineParam?: number
-  _group?: SVGGElement
-  _selectables: SVGElement[]
-}
-
-interface LiveLink extends Omit<GraphLink, 'source' | 'target'> {
-  source: LiveNode
-  target: LiveNode
-  _el?: SVGPathElement
-}
-
-interface LiveBox extends RenderBox {
-  _el?: SVGRectElement
-}
-
-interface LiveGraph {
-  nodes: LiveNode[]
-  links: LiveLink[]
-  pauli_web: { source: LiveNode; target: LiveNode; t: string; _el?: SVGPathElement }[]
-}
-
-export interface ShowGraphOptions {
-  width: number
-  height: number
-  scale: number
-  node_size: number
-  auto_hbox: boolean
-  show_labels: boolean
-  scalar_str: string
-  scalar_y: number
-  boxes: RenderBox[]
-  labels: Map<number, string>
-  colors: Record<string, string>
-}
-
-function nodeColor(t: number, colors: Record<string, string>): string {
-  switch (t) {
-    case 0:
-      return colors.boundary
-    case 1:
+function nodeFill(kind: NodeKind, colors: Record<string, string>): string {
+  switch (kind) {
+    case 'z-spider':
       return colors.Z
-    case 2:
+    case 'x-spider':
       return colors.X
-    case 3:
+    case 'hadamard':
       return colors.H
-    case 4:
+    case 'w-input':
       return colors.W
-    case 5:
+    case 'w-output':
       return colors.Walt
-    case 6:
+    case 'z-box':
       return colors.Zalt
     default:
       return colors.boundary
   }
 }
 
-function edgeColor(t: number, colors: Record<string, string>): string {
-  switch (t) {
-    case 1:
-      return colors.edge
-    case 2:
+function edgeStroke(kind: DiagramEdgeKind, colors: Record<string, string>): string {
+  switch (kind) {
+    case 'hadamard':
       return colors.Hedge
-    case 3:
+    case 'w-io':
       return colors.Xedge
     default:
       return colors.edge
   }
 }
 
-function webColor(t: string, colors: Record<string, string>): string {
-  switch (t) {
-    case 'X':
-      return colors.Xdark
-    case 'Y':
-      return colors.Ydark
-    case 'Z':
-      return colors.Zdark
-    case 'I':
-      return '#dddddd'
-    default:
-      return colors.Xdark
+function clamp(v: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, v))
+}
+
+/** Shift or meta extends the selection instead of replacing it. */
+function isAdditive(e: MouseEvent): boolean {
+  return e.shiftKey || e.metaKey
+}
+
+@customElement('zx-viewer')
+export class ZxViewerElement extends LitElement {
+  @property({ attribute: false }) scene: Scene | null = null
+  @property({ attribute: false }) colors: Record<string, string> = ORIGINAL_COLORS
+  /** Draw each node's id above it (pyzx's `draw_d3(labels=...)`). */
+  @property({ attribute: false }) showLabels = true
+  /** Extra SVG painted on top of the diagram, in its coordinate space. The
+   *  host uses it for the attribution badge; the viewer just renders it. */
+  @property({ attribute: false }) overlay: SVGTemplateResult | null = null
+
+  /** Positions the user has dragged nodes to, seeded from the scene. H-boxes
+   *  under auto-placement are overridden by `#lineParams` in `resolve()`. */
+  #base = new Map<number, Point>()
+  #lineParams = new Map<number, number>()
+  #selected = new Set<number>()
+  #brush: Rect | null = null
+  #topology: Topology | null = null
+  /** Tears down the in-flight drag or brush gesture, if any. */
+  #endGesture: (() => void) | null = null
+
+  // These are deliberately not `@state()`: they are mutated in place during a
+  // gesture and paired with an explicit `requestUpdate()`, rather than being
+  // reallocated on every mousemove just to trip Lit's identity check.
+
+  protected createRenderRoot() {
+    return this
+  }
+
+  protected willUpdate(changed: PropertyValues<this>) {
+    if (changed.has('scene')) this.#adoptScene()
+  }
+
+  disconnectedCallback() {
+    this.#endGesture?.()
+    super.disconnectedCallback()
+  }
+
+  /** Reset all interaction state to the freshly laid-out scene. */
+  #adoptScene() {
+    this.#endGesture?.()
+    const scene = this.scene
+    this.#topology = scene ? new Topology(scene) : null
+    this.#base = new Map(scene?.nodes.map(n => [n.id, { x: n.x, y: n.y }]) ?? [])
+    this.#lineParams = this.#topology?.initialLineParams() ?? new Map()
+    this.#selected = new Set()
+    this.#brush = null
+  }
+
+  /** Run `onMove` for the rest of this gesture. Window-level listeners keep
+   *  the drag alive when the pointer leaves the SVG. */
+  #track(onMove: (e: MouseEvent) => void, onEnd?: () => void) {
+    this.#endGesture?.()
+    const up = () => this.#endGesture?.()
+    this.#endGesture = () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', up)
+      this.#endGesture = null
+      onEnd?.()
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', up)
+  }
+
+  #positions(): Map<number, Point> {
+    return this.#topology?.resolve(this.#base, this.#lineParams) ?? new Map()
+  }
+
+  #onNodeDown = (e: MouseEvent) => {
+    if (e.button !== 0) return
+    const group = (e.target as Element).closest('[data-node]')
+    if (!group) return
+    const id = Number(group.getAttribute('data-node'))
+
+    if (isAdditive(e)) {
+      if (this.#selected.has(id)) this.#selected.delete(id)
+      else this.#selected.add(id)
+      e.stopImmediatePropagation()
+    } else if (!this.#selected.has(id)) {
+      this.#selected = new Set([id])
+    }
+    this.requestUpdate()
+
+    // The gesture starts even on an additive click, matching d3.drag.
+    let lastX = e.clientX
+    let lastY = e.clientY
+    this.#track(move => {
+      const dx = move.clientX - lastX
+      const dy = move.clientY - lastY
+      lastX = move.clientX
+      lastY = move.clientY
+      this.#dragSelection(dx, dy)
+    })
+  }
+
+  #dragSelection(dx: number, dy: number) {
+    const scene = this.scene
+    const topology = this.#topology
+    if (!scene || !topology) return
+    const pos = this.#positions()
+
+    for (const id of this.#selected) {
+      // An auto-placed H-box slides along its chain rather than moving
+      // freely; one without a chain just follows its neighbours.
+      if (scene.autoHbox && topology.kindOf(id) === 'hadamard') {
+        const chain = topology.chain(id)
+        const a = chain && pos.get(chain.a)
+        const b = chain && pos.get(chain.b)
+        if (!chain || !a || !b) continue
+        const delta = lineParamDelta(a, b, dx, dy)
+        if (delta === null) continue
+        const moved = (this.#lineParams.get(id) ?? 0.5) + delta
+        this.#lineParams.set(id, topology.clampLineParam(chain, this.#lineParams, moved, pos))
+        continue
+      }
+      const p = this.#base.get(id)
+      if (p) this.#base.set(id, { x: p.x + dx, y: p.y + dy })
+    }
+    this.requestUpdate()
+  }
+
+  #onBrushDown = (e: MouseEvent) => {
+    if (e.button !== 0) return
+    const scene = this.scene
+    const svgEl = (e.currentTarget as SVGElement).ownerSVGElement
+    if (!scene || !svgEl) return
+
+    const origin = svgEl.getBoundingClientRect()
+    const startX = e.clientX - origin.left
+    const startY = e.clientY - origin.top
+    // Nodes selected before the brush started survive it, but a node covered
+    // by the brush toggles — so re-brushing an already-selected node drops it.
+    const kept = isAdditive(e) ? new Set(this.#selected) : new Set<number>()
+    this.#selected = new Set(kept)
+    this.requestUpdate()
+
+    this.#track(
+      move => {
+        const box = svgEl.getBoundingClientRect()
+        const x = clamp(move.clientX - box.left, 0, scene.width)
+        const y = clamp(move.clientY - box.top, 0, scene.height)
+        const rect: Rect = {
+          x: Math.min(startX, x),
+          y: Math.min(startY, y),
+          width: Math.abs(x - startX),
+          height: Math.abs(y - startY),
+        }
+        this.#brush = rect
+        const pos = this.#positions()
+        const next = new Set<number>()
+        for (const n of scene.nodes) {
+          const p = pos.get(n.id)
+          const inside =
+            !!p &&
+            rect.x <= p.x &&
+            p.x < rect.x + rect.width &&
+            rect.y <= p.y &&
+            p.y < rect.y + rect.height
+          if (kept.has(n.id) !== inside) next.add(n.id)
+        }
+        this.#selected = next
+        this.requestUpdate()
+      },
+      () => {
+        this.#brush = null
+        this.requestUpdate()
+      },
+    )
+  }
+
+  /** The node's body: a circle for spiders, boundaries and W-inputs, a square
+   *  for H-boxes and Z-boxes, a triangle for W-outputs. */
+  #renderShape(kind: NodeKind, size: number, style: string) {
+    const fill = nodeFill(kind, this.colors)
+    if (kind === 'hadamard' || kind === 'z-box') {
+      return svg`<rect
+        x=${-0.75 * size} y=${-0.75 * size}
+        width=${1.5 * size} height=${1.5 * size}
+        fill=${fill} stroke="black" class="selectable" style=${style} />`
+    }
+    if (kind === 'w-output') {
+      return svg`<path
+        d=${`M 0 0 L ${size} ${size} L ${-size} ${size} Z`}
+        transform=${`translate(${-size / 2}, 0) rotate(-90)`}
+        fill=${fill} stroke="black" class="selectable" style=${style} />`
+    }
+    const r = kind === 'boundary' ? 0.5 * size : kind === 'w-input' ? 0.2 * size : size
+    return svg`<circle r=${r} fill=${fill} stroke="black" class="selectable" style=${style} />`
+  }
+
+  /** Stem plus pyzx ground symbol, hanging below a grounded vertex. */
+  #renderGround(size: number, style: string) {
+    const offset = 2.5 * size
+    return svg`
+      <path stroke="black" fill="none" class="selectable" style=${style}
+        d=${`M 0 0 L 0 ${offset}`}></path>
+      <path stroke="black" fill="none" class="selectable" style=${style}
+        d=${groundSymbolPath(size * 1.5)} transform=${`translate(0,${offset})`}></path>`
+  }
+
+  #renderNode(node: SceneNode, pos: Map<number, Point>, size: number) {
+    const p = pos.get(node.id)
+    if (!p) return nothing
+    const style = this.#selected.has(node.id) ? SELECTED_STYLE : NODE_STYLE
+
+    return svg`
+      <g data-node=${node.id} transform="translate(${p.x},${p.y})">
+        ${node.ground ? this.#renderGround(size, style) : nothing}
+        ${this.#renderShape(node.kind, size, style)}
+        ${
+          node.text
+            ? svg`<text y=${0.7 * size + 14} text-anchor="middle" font-size="12px"
+                font-family="monospace" fill="#00d"
+                style="pointer-events: none; user-select: none;">${node.text}</text>`
+            : nothing
+        }
+        ${
+          this.showLabels
+            ? svg`<text y=${-0.7 * size - 8} text-anchor="middle" font-size="10px"
+                font-family="monospace" fill="#999"
+                style="pointer-events: none; user-select: none;">${node.id}</text>`
+            : nothing
+        }
+        ${
+          node.vdata.length > 0
+            ? svg`<text y=${-0.7 * size - 14 - 10 * node.vdata.length} text-anchor="middle"
+                font-size="8px" font-family="monospace" fill="#c66"
+                style="pointer-events: none; user-select: none;">${node.vdata.map(
+                  entry => svg`<tspan x="0" dy="1.2em">${entry.join(': ')}</tspan>`,
+                )}</text>`
+            : nothing
+        }
+      </g>`
+  }
+
+  /** pyzx pins the scalar at a fixed x: 60 / y: 40, which lands off to the
+   *  left on any diagram wider than ~120px and sits above the diagram. This
+   *  centres it in the strip `layout()` reserves below, in the same monospace
+   *  family as the phase and vdata labels. */
+  #renderScalar(scene: Scene) {
+    if (scene.scalar === '') return nothing
+    // No whitespace inside <text>: SVG would render it, off-centring the
+    // scalar. The gap after the '×' is the tspan's dx instead.
+    return svg`
+      <text x=${scene.width / 2} y=${scene.scalarY} text-anchor="middle" font-family="monospace"><tspan fill="#999">×</tspan><tspan dx="0.4em">${scene.scalar}</tspan></text>`
+  }
+
+  render() {
+    const scene = this.scene
+    if (!scene || !this.#topology) return nothing
+    const pos = this.#positions()
+    const pad = 0.4 * scene.scale + scene.nodeSize
+
+    return html`
+      <svg width=${scene.width} height=${scene.height} style="max-width: none; max-height: none">
+        <g class="boxes" pointer-events="none">
+          ${scene.boxes.map(box => {
+            const bounds = boxBounds(box, pos, pad)
+            const style = BOX_STYLE[box.kind]
+            return bounds
+              ? svg`<rect
+                  rx="4" ry="4"
+                  x=${bounds.x} y=${bounds.y}
+                  width=${bounds.width} height=${bounds.height}
+                  fill=${style.fill} stroke=${style.stroke}
+                  stroke-width="1" stroke-dasharray=${style.dash} />`
+              : nothing
+          })}
+        </g>
+
+        <g class="web">
+          ${scene.webs.map(
+            web => svg`<path
+              d=${webPath(web, pos)} stroke=${webColor(web.kind, this.colors)}
+              fill="transparent" style="stroke-width: 7px" />`,
+          )}
+        </g>
+
+        <g class="link">
+          ${scene.links.map(
+            link => svg`<path
+              d=${linkPath(link, pos)} stroke=${edgeStroke(link.kind, this.colors)}
+              fill="transparent" style="stroke-width: 1.5px" />`,
+          )}
+        </g>
+
+        <g class="brush" @mousedown=${this.#onBrushDown}>
+          <rect class="overlay" x="0" y="0" width=${scene.width} height=${scene.height}
+            fill="transparent" />
+          ${
+            this.#brush
+              ? svg`<rect
+                  x=${this.#brush.x} y=${this.#brush.y}
+                  width=${this.#brush.width} height=${this.#brush.height}
+                  fill="rgba(100,140,255,0.15)" stroke="rgba(100,140,255,0.6)"
+                  stroke-dasharray="4 3" pointer-events="none" />`
+              : nothing
+          }
+        </g>
+
+        <g class="node" @mousedown=${this.#onNodeDown}>
+          ${scene.nodes.map(node => this.#renderNode(node, pos, scene.nodeSize))}
+        </g>
+
+        ${this.#renderScalar(scene)}
+        ${this.overlay ?? nothing}
+      </svg>
+    `
   }
 }
 
-export function showGraph(tag: HTMLElement, graphIn: GraphData, opts: ShowGraphOptions): void {
-  const {
-    width,
-    height,
-    scale,
-    node_size,
-    auto_hbox,
-    show_labels,
-    scalar_str,
-    scalar_y,
-    boxes: boxesIn,
-    labels,
-    colors,
-  } = opts
-
-  const labelFor = (d: LiveNode): string | undefined => labels.get(parseInt(d.name, 10))
-
-  // Adopt the graph as our live typed structure. Nodes and links point at
-  // one another after resolution below.
-  const graph: LiveGraph = {
-    nodes: graphIn.nodes.map(n => ({
-      ...n,
-      selected: false,
-      previouslySelected: false,
-      nhd: [],
-      _selectables: [],
-    })),
-    links: [] as LiveLink[],
-    pauli_web: [] as LiveGraph['pauli_web'],
+declare global {
+  interface HTMLElementTagNameMap {
+    'zx-viewer': ZxViewerElement
   }
-
-  const ntab: Record<string, LiveNode> = {}
-  for (const n of graph.nodes) ntab[n.name] = n
-
-  for (const l of graphIn.links) {
-    const s = ntab[l.source as unknown as string]
-    const t = ntab[l.target as unknown as string]
-    s.nhd.push(t)
-    t.nhd.push(s)
-    graph.links.push({ ...l, source: s, target: t })
-  }
-
-  for (const w of graphIn.pauli_web) {
-    const s = ntab[w.source]
-    const t = ntab[w.target]
-    if (s && t) graph.pauli_web.push({ source: s, target: t, t: w.t })
-  }
-
-  const boxes: LiveBox[] = boxesIn.map(b => ({ ...b }))
-
-  const groundOffset = 2.5 * node_size
-
-  // Radius of the circle circumscribing an H-box's square, so a clearance
-  // built from it holds whatever angle the chain runs at.
-  const hboxRadius = 0.75 * node_size * Math.SQRT2
-
-  // Radius of the circle enclosing a node as drawn — see the shape branches in
-  // the node-painting loop below. Used to keep a dragged H-box off whatever
-  // sits at the end of its chain, which is not always a full-size spider.
-  function nodeRadius(d: LiveNode): number {
-    if (d.t === 0) return 0.5 * node_size // boundary dot
-    if (d.t === 4) return 0.2 * node_size // W-input dot
-    if (d.t === 3 || d.t === 6) return hboxRadius // H-box / Z-box square
-    return node_size // spiders, W-output triangle
-  }
-
-  // Trace an H-box chain to its non-H-box endpoints. Returns the ordered
-  // list of chain hboxes plus the index of `d` within that list.
-  function getHboxChainInfo(
-    d: LiveNode,
-  ): { endpointA: LiveNode; endpointB: LiveNode; hboxes: LiveNode[]; index: number } | null {
-    if (d.t !== 3 || d.nhd.length !== 2) return null
-    const trace = (
-      start: LiveNode,
-      prev: LiveNode,
-    ): { endpoint: LiveNode | null; chain: LiveNode[] } => {
-      const chain: LiveNode[] = []
-      let current = start
-      let p = prev
-      while (current.t === 3 && current.nhd.length === 2) {
-        chain.push(current)
-        const next = current.nhd[0] === p ? current.nhd[1] : current.nhd[0]
-        p = current
-        current = next
-      }
-      return { endpoint: current.t !== 3 ? current : null, chain }
-    }
-    const left = trace(d.nhd[0], d)
-    const right = trace(d.nhd[1], d)
-    if (!left.endpoint || !right.endpoint) return null
-    const hboxes = left.chain.reverse().concat([d]).concat(right.chain)
-    return { endpointA: left.endpoint, endpointB: right.endpoint, hboxes, index: left.chain.length }
-  }
-
-  // Evenly space chained H-boxes along their line at first paint.
-  const visited: Record<string, true> = {}
-  for (const d of graph.nodes) {
-    if (d.t === 3 && !visited[d.name]) {
-      const info = getHboxChainInfo(d)
-      if (info) {
-        for (let i = 0; i < info.hboxes.length; i++) {
-          info.hboxes[i].lineParam = (i + 1) / (info.hboxes.length + 1)
-          visited[info.hboxes[i].name] = true
-        }
-      } else {
-        d.lineParam = 0.5
-      }
-    }
-  }
-
-  // -- SVG scaffold --
-  const svg = svgEl('svg', {
-    style: 'max-width: none; max-height: none',
-    width,
-    height,
-  })
-  tag.appendChild(svg)
-
-  const box_pad = 0.4 * scale + node_size
-
-  const boxLayer = svgEl('g', { class: 'boxes', 'pointer-events': 'none' })
-  svg.appendChild(boxLayer)
-  for (const b of boxes) {
-    const rect = svgEl('rect', {
-      rx: 4,
-      ry: 4,
-      fill: b.kind === 'stack' ? 'rgba(255,165,80,0.10)' : 'rgba(100,160,255,0.10)',
-      stroke: b.kind === 'stack' ? 'rgba(220,130,30,0.65)' : 'rgba(50,110,220,0.65)',
-      'stroke-width': 1,
-      'stroke-dasharray': b.kind === 'stack' ? '4 3' : '0',
-    })
-    b._el = rect
-    boxLayer.appendChild(rect)
-  }
-
-  function updateBoxes(): void {
-    for (const b of boxes) {
-      if (!b._el) continue
-      let minX = Infinity,
-        minY = Infinity,
-        maxX = -Infinity,
-        maxY = -Infinity
-      let found = false
-      for (const id of b.nodeIds) {
-        const n = ntab[String(id)]
-        if (!n) continue // wire-spliced id, skip
-        found = true
-        if (n.x < minX) minX = n.x
-        if (n.y < minY) minY = n.y
-        if (n.x > maxX) maxX = n.x
-        if (n.y > maxY) maxY = n.y
-      }
-      if (!found) {
-        b._el.setAttribute('display', 'none')
-        continue
-      }
-      setAttrs(b._el, {
-        display: null,
-        x: minX - box_pad,
-        y: minY - box_pad,
-        width: maxX - minX + 2 * box_pad,
-        height: maxY - minY + 2 * box_pad,
-      })
-      // setAttribute doesn't remove; if display was 'none' we need to strip it.
-      if (b._el.getAttribute('display') === 'null') b._el.removeAttribute('display')
-    }
-  }
-
-  const webLayer = svgEl('g', { class: 'web' })
-  svg.appendChild(webLayer)
-  for (const w of graph.pauli_web) {
-    const p = svgEl('path', {
-      stroke: webColor(w.t, colors),
-      fill: 'transparent',
-      style: 'stroke-width: 7px',
-    })
-    w._el = p
-    webLayer.appendChild(p)
-  }
-
-  const linkLayer = svgEl('g', { class: 'link' })
-  svg.appendChild(linkLayer)
-  for (const l of graph.links) {
-    const p = svgEl('path', {
-      stroke: edgeColor(l.t, colors),
-      fill: 'transparent',
-      style: 'stroke-width: 1.5px',
-    })
-    l._el = p
-    linkLayer.appendChild(p)
-  }
-
-  const brushLayer = svgEl('g', { class: 'brush' })
-  svg.appendChild(brushLayer)
-  // Invisible full-canvas rect so brush drags start anywhere on the SVG.
-  // Class matches d3-brush's overlay rect so interaction tests can locate it.
-  const brushHit = svgEl('rect', {
-    class: 'overlay',
-    x: 0,
-    y: 0,
-    width,
-    height,
-    fill: 'transparent',
-  })
-  brushLayer.appendChild(brushHit)
-
-  const nodeLayer = svgEl('g', { class: 'node' })
-  svg.appendChild(nodeLayer)
-  for (const d of graph.nodes) {
-    const g = svgEl('g', { transform: `translate(${d.x},${d.y})` })
-    d._group = g
-    nodeLayer.appendChild(g)
-
-    if (d.ground) {
-      const stem = svgEl('path', {
-        stroke: 'black',
-        style: 'stroke-width: 1.5px',
-        fill: 'none',
-        d: `M 0 0 L 0 ${groundOffset}`,
-        class: 'selectable',
-      })
-      g.appendChild(stem)
-      d._selectables.push(stem)
-      const sym = svgEl('path', {
-        stroke: 'black',
-        style: 'stroke-width: 1.5px',
-        fill: 'none',
-        d: groundSymbolPath(node_size * 1.5),
-        transform: `translate(0,${groundOffset})`,
-        class: 'selectable',
-      })
-      g.appendChild(sym)
-      d._selectables.push(sym)
-    }
-
-    if (d.t !== 3 && d.t !== 5 && d.t !== 6) {
-      const r = d.t === 0 ? 0.5 * node_size : d.t === 4 ? 0.2 * node_size : node_size
-      const circle = svgEl('circle', {
-        r,
-        fill: nodeColor(d.t, colors),
-        stroke: 'black',
-        class: 'selectable',
-      })
-      g.appendChild(circle)
-      d._selectables.push(circle)
-    }
-
-    if (d.t === 3) {
-      const rect = svgEl('rect', {
-        x: -0.75 * node_size,
-        y: -0.75 * node_size,
-        width: node_size * 1.5,
-        height: node_size * 1.5,
-        fill: nodeColor(d.t, colors),
-        stroke: 'black',
-        class: 'selectable',
-      })
-      g.appendChild(rect)
-      d._selectables.push(rect)
-    }
-
-    if (d.t === 5) {
-      const tri = svgEl('path', {
-        d: `M 0 0 L ${node_size} ${node_size} L ${-node_size} ${node_size} Z`,
-        fill: nodeColor(d.t, colors),
-        stroke: 'black',
-        class: 'selectable',
-        transform: `translate(${-node_size / 2}, 0) rotate(-90)`,
-      })
-      g.appendChild(tri)
-      d._selectables.push(tri)
-    }
-
-    if (d.t === 6) {
-      const rect = svgEl('rect', {
-        x: -0.75 * node_size,
-        y: -0.75 * node_size,
-        width: node_size * 1.5,
-        height: node_size * 1.5,
-        fill: nodeColor(d.t, colors),
-        stroke: 'black',
-        class: 'selectable',
-      })
-      g.appendChild(rect)
-      d._selectables.push(rect)
-    }
-
-    const lbl = labelFor(d)
-    if (d.phase !== '' || lbl !== undefined) {
-      const text = svgEl('text', {
-        y: 0.7 * node_size + 14,
-        'text-anchor': 'middle',
-        'font-size': '12px',
-        'font-family': 'monospace',
-        fill: '#00d',
-        style: 'pointer-events: none; user-select: none;',
-      })
-      text.textContent = lbl !== undefined ? lbl : d.phase
-      g.appendChild(text)
-    }
-
-    if (show_labels) {
-      const text = svgEl('text', {
-        y: -0.7 * node_size - 8,
-        'text-anchor': 'middle',
-        'font-size': '10px',
-        'font-family': 'monospace',
-        fill: '#999',
-        style: 'pointer-events: none; user-select: none;',
-      })
-      text.textContent = d.name
-      g.appendChild(text)
-    }
-
-    if (d.vdata.length > 0) {
-      const text = svgEl('text', {
-        y: -0.7 * node_size - 14 - 10 * d.vdata.length,
-        'text-anchor': 'middle',
-        'font-size': '8px',
-        'font-family': 'monospace',
-        fill: '#c66',
-        style: 'pointer-events: none; user-select: none;',
-      })
-      for (const entry of d.vdata) {
-        const tspan = svgEl('tspan', { x: '0', dy: '1.2em' })
-        tspan.textContent = entry.join(': ')
-        text.appendChild(tspan)
-      }
-      g.appendChild(text)
-    }
-  }
-
-  if (scalar_str !== '') {
-    // pyzx pins this at a fixed x: 60 / y: 40, which lands off to the left on
-    // any diagram wider than ~120px and sits above the diagram. Centre it and
-    // drop it into the strip zxRender reserves below the diagram, using the
-    // same monospace family as the phase and vdata labels.
-    const text = svgEl('text', {
-      x: width / 2,
-      y: scalar_y,
-      'text-anchor': 'middle',
-      'font-family': 'monospace',
-    })
-    // The scalar multiplies the diagram, so lead with a '×' — greyed like the
-    // node-id labels to keep it subordinate to the value itself.
-    const times = svgEl('tspan', { fill: '#999' })
-    times.textContent = '×'
-    text.appendChild(times)
-    // A dx gap rather than a literal space: SVG collapses whitespace at tspan
-    // boundaries, so a trailing space here would not survive.
-    const value = svgEl('tspan', { dx: '0.4em' })
-    value.textContent = scalar_str
-    text.appendChild(value)
-    svg.appendChild(text)
-  }
-
-  function nonHboxNeighbours(d: LiveNode): LiveNode[] {
-    return d.nhd.filter(n => n.t !== 3)
-  }
-
-  function computeHboxPosition(d: LiveNode): { x: number; y: number } | null {
-    const info = getHboxChainInfo(d)
-    if (!info) return null
-    const { endpointA: a, endpointB: b } = info
-    const t = d.lineParam ?? 0.5
-    return { x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) }
-  }
-
-  // Gap between H-boxes that would otherwise share a spot. Only each other is
-  // dodged: a diagram is free to pack its nodes arbitrarily close, and a box
-  // that fled every spider would end up somewhere less predictable.
-  const hboxClearance = 2 * hboxRadius
-
-  function updateHboxes(): void {
-    if (!auto_hbox) return
-    const place = (d: LiveNode): void => {
-      d._group?.setAttribute('transform', `translate(${d.x},${d.y})`)
-    }
-
-    // An H-box with a chain sits at a definite point on its line. The rest
-    // park at the barycentre of their non-H-box neighbours, nudged north-east.
-    const parked = new Map<string, LiveNode[]>()
-    for (const d of graph.nodes) {
-      if (d.t !== 3 || !d._group) continue
-      const pos = computeHboxPosition(d)
-      if (pos) {
-        d.x = pos.x
-        d.y = pos.y
-        place(d)
-        continue
-      }
-      const nhd = nonHboxNeighbours(d)
-      if (nhd.length === 0) {
-        place(d)
-        continue
-      }
-      let x = 0
-      let y = 0
-      for (const n of nhd) {
-        x += n.x
-        y += n.y
-      }
-      d.x = x / nhd.length + 0.25 * scale
-      d.y = y / nhd.length - 0.25 * scale
-      const key = `${d.x},${d.y}`
-      const group = parked.get(key)
-      if (group) group.push(d)
-      else parked.set(key, [d])
-    }
-
-    // H-boxes over the same neighbours want the same point, so spread each
-    // such group along x, centred on the point they share. Solving the whole
-    // group at once keeps this a pure function of the node positions: nudging
-    // boxes one at a time until they stop colliding lands exactly on the
-    // clearance, where rounding decides whether another nudge is due, and the
-    // box visibly flicks between two spots as the diagram is dragged.
-    for (const group of parked.values()) {
-      const first = -((group.length - 1) / 2) * hboxClearance
-      for (let i = 0; i < group.length; i++) {
-        group[i].x += first + i * hboxClearance
-        place(group[i])
-      }
-    }
-  }
-
-  updateHboxes()
-  updateBoxes()
-
-  function linkCurve(d: LiveLink): string {
-    const { x: x1, y: y1 } = d.source
-    const { x: x2, y: y2 } = d.target
-    if (x1 === x2 && y1 === y2 && d.num_parallel === 1) {
-      const cx1 = x1 - 40,
-        cy1 = y1 - 40,
-        cx2 = x1 + 40,
-        cy2 = y1 - 40
-      return `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`
-    }
-    if (x1 === x2 && y1 === y2) {
-      const pos = d.index + 1
-      const cx1 = x1 - 20 - pos * 10
-      const cy1 = y1 - 20 - pos * 10
-      const cx2 = x1 + 20 + pos * 10
-      const cy2 = y1 - 20 - pos * 10
-      return `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`
-    }
-    if (d.num_parallel === 1) return `M ${x1} ${y1} L ${x2} ${y2}`
-    const dx = x2 - x1,
-      dy = y2 - y1
-    const midx = 0.5 * (x1 + x2),
-      midy = 0.5 * (y1 + y2)
-    const pos = d.index / (d.num_parallel - 1) - 0.5
-    const cx = midx - pos * dy
-    const cy = midy + pos * dx
-    return `M ${x1} ${y1} Q ${cx} ${cy}, ${x2} ${y2}`
-  }
-
-  function webCurve(d: LiveGraph['pauli_web'][number]): string {
-    const x1 = d.source.x
-    const y1 = d.source.y
-    const x2 = (x1 + d.target.x) / 2
-    const y2 = (y1 + d.target.y) / 2
-    return `M ${x1} ${y1} L ${x2} ${y2}`
-  }
-
-  for (const l of graph.links) l._el?.setAttribute('d', linkCurve(l))
-  for (const w of graph.pauli_web) w._el?.setAttribute('d', webCurve(w))
-
-  function applyStyleToSelectables(n: LiveNode): void {
-    const style = nodeStyle(n.selected)
-    for (const el of n._selectables) el.setAttribute('style', style)
-  }
-
-  // -- Drag: mousedown on a node group, mousemove drags all selected nodes. --
-  for (const d of graph.nodes) {
-    if (!d._group) continue
-    d._group.addEventListener('mousedown', (e: MouseEvent) => {
-      if (e.button !== 0) return
-      const shift = e.shiftKey || e.metaKey
-      if (shift) {
-        d.selected = !d.selected
-        applyStyleToSelectables(d)
-        e.stopImmediatePropagation()
-      } else if (!d.selected) {
-        for (const n of graph.nodes) {
-          n.selected = n === d
-          applyStyleToSelectables(n)
-        }
-      }
-      // Start drag from any mousedown that reaches here (matches d3.drag).
-      let lastX = e.clientX
-      let lastY = e.clientY
-      const onMove = (me: MouseEvent) => {
-        const dx = me.clientX - lastX
-        const dy = me.clientY - lastY
-        lastX = me.clientX
-        lastY = me.clientY
-        dragSelected(dx, dy)
-      }
-      const onUp = () => {
-        window.removeEventListener('mousemove', onMove)
-        window.removeEventListener('mouseup', onUp)
-      }
-      window.addEventListener('mousemove', onMove)
-      window.addEventListener('mouseup', onUp)
-    })
-  }
-
-  function dragSelected(dx: number, dy: number): void {
-    for (const n of graph.nodes) {
-      if (!n.selected || !n._group) continue
-      if (n.t === 3 && auto_hbox) {
-        const info = getHboxChainInfo(n)
-        if (info) {
-          const { endpointA: a, endpointB: b } = info
-          const ex = b.x - a.x,
-            ey = b.y - a.y
-          const lenSq = ex * ex + ey * ey
-          if (lenSq > 0.001) {
-            const dParam = (dx * ex + dy * ey) / lenSq
-            const newParam = (n.lineParam ?? 0.5) + dParam
-            // Clearances are pixel distances — the shapes are a fixed size —
-            // while lineParam is a fraction of the chain, so divide through by
-            // the chain's length to convert. A flat lineParam margin would
-            // shrink to nothing on a long chain and let the shapes intersect.
-            const len = Math.sqrt(lenSq)
-            const clearOf = (other: LiveNode) => (hboxRadius + nodeRadius(other)) / len
-            const idx = info.index
-            const prev = idx > 0 ? info.hboxes[idx - 1] : null
-            const next = idx < info.hboxes.length - 1 ? info.hboxes[idx + 1] : null
-            const minParam = prev ? (prev.lineParam ?? 0) + clearOf(prev) : clearOf(info.endpointA)
-            const maxParam = next
-              ? (next.lineParam ?? 1) - clearOf(next)
-              : 1 - clearOf(info.endpointB)
-            // A chain too short to seat its H-boxes has no gap to clamp into;
-            // splitting the difference keeps the box between its neighbours
-            // rather than snapping it to one side.
-            n.lineParam =
-              minParam > maxParam
-                ? (minParam + maxParam) / 2
-                : Math.max(minParam, Math.min(maxParam, newParam))
-          }
-          const pos = computeHboxPosition(n)
-          if (pos) {
-            n.x = pos.x
-            n.y = pos.y
-          }
-        }
-      } else {
-        n.x += dx
-        n.y += dy
-      }
-      n._group.setAttribute('transform', `translate(${n.x},${n.y})`)
-    }
-    updateHboxes()
-    updateBoxes()
-    for (const l of graph.links) {
-      if (
-        l.source.selected ||
-        l.target.selected ||
-        (auto_hbox && (l.source.t === 3 || l.target.t === 3))
-      ) {
-        l._el?.setAttribute('d', linkCurve(l))
-      }
-    }
-    for (const w of graph.pauli_web) {
-      if (w.source.selected || w.target.selected) w._el?.setAttribute('d', webCurve(w))
-    }
-  }
-
-  // -- Brush: click on empty canvas → drag out a selection rectangle. --
-  brushLayer.addEventListener('mousedown', (e: MouseEvent) => {
-    if (e.button !== 0) return
-    const shift = e.shiftKey || e.metaKey
-    const svgRect = svg.getBoundingClientRect()
-    const startX = e.clientX - svgRect.left
-    const startY = e.clientY - svgRect.top
-    for (const n of graph.nodes) {
-      n.previouslySelected = shift && n.selected
-      n.selected = n.previouslySelected
-      applyStyleToSelectables(n)
-    }
-    const brushRect = svgEl('rect', {
-      fill: 'rgba(100,140,255,0.15)',
-      stroke: 'rgba(100,140,255,0.6)',
-      'stroke-dasharray': '4 3',
-      'pointer-events': 'none',
-    })
-    brushLayer.appendChild(brushRect)
-
-    const onMove = (me: MouseEvent) => {
-      const r = svg.getBoundingClientRect()
-      const cx = Math.max(0, Math.min(width, me.clientX - r.left))
-      const cy = Math.max(0, Math.min(height, me.clientY - r.top))
-      const minX = Math.min(startX, cx),
-        maxX = Math.max(startX, cx)
-      const minY = Math.min(startY, cy),
-        maxY = Math.max(startY, cy)
-      setAttrs(brushRect, { x: minX, y: minY, width: maxX - minX, height: maxY - minY })
-      for (const n of graph.nodes) {
-        const inside = minX <= n.x && n.x < maxX && minY <= n.y && n.y < maxY
-        n.selected = n.previouslySelected !== inside
-        applyStyleToSelectables(n)
-      }
-    }
-    const onUp = () => {
-      window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup', onUp)
-      brushRect.remove()
-    }
-    window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', onUp)
-  })
 }

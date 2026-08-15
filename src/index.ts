@@ -1,17 +1,19 @@
-export { ZxDiagramElement } from './zxDiagram'
+export {
+  COLOR_SCHEMES,
+  type ColorSchemeName,
+  GRAYSCALE_COLORS,
+  ORIGINAL_COLORS,
+  RGB_COLORS,
+} from './colors'
 export type {
-  ColorSchemeName,
+  BoxKind,
   DiagramBox,
   DiagramData,
   DiagramEdge,
   DiagramEdgeKind,
   DiagramNode,
+  DiagramNodeType,
+  PauliKind,
   PauliWebLink,
-  RenderOptions,
-} from './zxRender'
-export {
-  COLOR_SCHEMES,
-  GRAYSCALE_COLORS,
-  ORIGINAL_COLORS,
-  RGB_COLORS,
-} from './zxRender'
+} from './types'
+export { ZxDiagramElement } from './zxDiagram'

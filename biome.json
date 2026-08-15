@@ -15,7 +15,6 @@
       "tsconfig.stories.json",
       "biome.json",
       "vitest.config.ts",
-      "!src/zxViewer.js",
       "!dist",
       "!build",
       "!node_modules"

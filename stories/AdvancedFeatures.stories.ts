@@ -8,7 +8,7 @@ import {
   GRAYSCALE_COLORS,
   ORIGINAL_COLORS,
   RGB_COLORS,
-} from '../src/zxRender'
+} from '../src/index'
 import { paletteShowcase, pauliWebChain, selfLoopSpiders } from './diagrams'
 import { nodeFillsIn, pathDataIn, shadowRootOf, strokesIn, translateOf } from './interactionHelpers'
 

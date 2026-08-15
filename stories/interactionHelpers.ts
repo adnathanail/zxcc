@@ -2,7 +2,7 @@
 // <zx-diagram>'s shadow root, so every query has to go through it.
 
 import { waitFor } from 'storybook/test'
-import type { ZxDiagramElement } from '../src/zxDiagram'
+import type { ZxDiagramElement } from '../src/index'
 
 export function parseTranslate(transform: string): [number, number] {
   const m = transform.match(/translate\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)/)
