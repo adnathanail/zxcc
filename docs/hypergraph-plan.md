@@ -97,24 +97,26 @@ Answers to the questions above, as built:
    arcs at the corners. One dot gives a circle, two a capsule, more a rounded
    convex polygon, so arity 2 is fine. Overlapping blobs are currently told
    apart only by their outlines crossing over a translucent fill.
-4. **Colour and labels.** Not started: every blob is the same green, and
-   `color-scheme` does nothing to the hypergraph. `src/colors.ts` has been
-   moved up to the root of `src/` ready for this — it is the one root module
-   only one of the two folders imports, and colouring blobs is what squares
-   that. Labels are drawn under `show-labels` — the wire id under each dot,
-   the hyperedge label over the top of each blob — and collide when blobs are
-   close.
-5. **Interaction.** Not started. The viewer is static, but it already derives
+4. **Colour.** Done. A blob is filled with the palette entry its own node
+   would be painted with — Z green, X red, H yellow — at 40% opacity with a
+   black outline, so an overlap reads as both colours and the picture matches
+   the diagram it came from. A dot takes its edge's colour, so an H-wire's dot
+   is blue. `color-scheme` now applies to both views. The lookups
+   (`nodeColor`, `edgeColor`) live in `src/colors.ts` so the two painters
+   can't disagree, which is also what makes `colors.ts` a legitimate root
+   module under the folder rules.
+
+   Only spiders and Hadamards have a blob shape. A W, Z-box or `wire` node is not supported.
+
+5. **Labels.** Open. Drawn under `show-labels` — the wire id under each dot,
+   the hyperedge label over the top of each blob — and they collide when blobs
+   are close.
+6. **Interaction.** Not started. The viewer is static, but it already derives
    outlines from a dot-position map in `render()`, so dragging is a matter of
    making that map state and mutating it.
 
 ## Next
 
-- Colour blobs from the spider's palette entry (`src/colors.ts`, already at
-  the root awaiting this), and decide what an H-box, W or Z-box blob looks
-  like. `<zx-hypergraph-viewer>` would take a `colors` property the way
-  `<zx-viewer>` does, and `<zx-diagram>` would pass the resolved palette to
-  whichever painter is on rather than only to the graph one.
 - Label placement: both label kinds pile up on a dense diagram.
 - The ZX-derived layout keeps the views comparable but leaves the blobs
   wherever the diagram put them — the four-spider square draws blobs that

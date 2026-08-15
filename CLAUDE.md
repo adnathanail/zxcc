@@ -20,13 +20,6 @@ a diagram. **Two rules hold, and both are checkable:**
 2. Everything in `src/` is imported by *both* subfolders or by *neither*. A
    module used by only one of them belongs inside that one.
 
-One module is knowingly out of step with rule 2: `colors.ts` sits in `src/`
-but only `graph/` imports it so far. It is there in preparation — the palettes
-are public API surfaced by `<zx-diagram color-scheme>`, and colouring blobs
-from a spider's palette entry is the next thing planned for the hypergraph
-view (`docs/hypergraph-plan.md`, item 4). Every other root module satisfies
-the rule outright.
-
 Rule 2 is what put `layout()` above the split rather than in `graph/`: the
 `Scene` it produces is the shared intermediate both views draw from, so
 `<zx-diagram>` runs it once and hands the result to whichever painter is on.
@@ -52,8 +45,10 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   where the wire between two points runs (straight, fanned arc, or self-loop);
   `linkPath` draws that curve and `wireDot` evaluates it at t = 0.5, so the
   painted wire and the hypergraph's dot on it cannot disagree.
-- `colors.ts` — the pyzx palettes and the scheme lookup. See the note above:
-  the hypergraph view doesn't read them yet.
+- `colors.ts` — the pyzx palettes, the scheme lookup, and which entry each
+  kind of thing is painted with (`nodeColor`, `edgeColor`, `webColor`). Those
+  lookups are here rather than in either painter so a spider and the blob
+  standing for the same spider cannot come out different colours.
 - `attribution.ts` — the "❤️ zxcc" badge drawn into the diagram's SVG.
 - `zxDiagram.ts` — `<zx-diagram>`, the public element, and the only file that
   knows about both views.
@@ -78,9 +73,15 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   over a live dot-position map.
 - `layout.ts` — `layoutHypergraph`, parking each wire's dot at the midpoint of
   its edge so the two views line up, then zooming the positions, since the
-  dual has twice the marks at half the spacing.
+  dual has twice the marks at half the spacing. `blobKind` is also where an
+  unsupported node type is rejected: only spiders and Hadamards have a blob
+  shape, so a W, Z-box or `wire` node throws with a message naming the node,
+  rather than being painted as something it isn't.
 - `viewer.ts` — `<zx-hypergraph-viewer>`, the second painter. Internal, light
-  DOM, and static — no interactions yet.
+  DOM, and static — no interactions yet. It takes the same `colors` palette
+  `<zx-viewer>` does: a blob is filled with its node's own colour at 40%
+  opacity and outlined in black, so overlapping blobs read as both colours,
+  and a dot takes its edge's colour (an H-wire's dot is blue).
 
 ## The elements
 

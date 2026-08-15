@@ -119,6 +119,11 @@ Each dot sits at the midpoint of the edge it came from, so the two views line up
 attribute keeps everything in the same place. A blob's outline is the convex hull of its dots pushed
 outwards and rounded off, so it stays readable at any arity — one dot gives a circle, two a capsule.
 
+Blobs are filled with the same palette entry their spider would be — Z green, X red, H yellow — so
+`color-scheme` and `colors` apply to this view too, and a dot takes its edge's colour. Only spiders
+and Hadamards have a blob shape so far: a diagram containing a W, Z-box or `wire` node throws with a
+message naming the node. Inputs and outputs are always fine — they're wires, not hyperedges.
+
 The conversion is also available standalone:
 
 ```js
