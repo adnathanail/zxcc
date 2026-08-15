@@ -533,3 +533,39 @@ export const HypergraphBlobSelection: Story = {
     await waitFor(() => expect(selectedBlobsIn(root)).toEqual([]))
   },
 }
+
+// Dragging a dot is what makes the view explorable: blobs are derived from the
+// dot positions on every render, so a dot that moves reshapes every blob
+// holding it. Only the blob holding the dragged wire is asserted on — whether
+// the *other* blobs move too depends on the outline algorithm, and this is
+// about the dragging.
+export const HypergraphDotDrag: Story = {
+  name: '12. Hypergraph dot drag',
+  render: ({ diagram }) =>
+    html`<zx-diagram
+      .diagram=${diagram}
+      view-as-hypergraph
+      style="min-height: 160px"
+    ></zx-diagram>`,
+  args: { diagram: strongComplementarity },
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    const dotFor = async (wire: string) =>
+      waitFor(() => {
+        const g = root.querySelector<SVGGElement>(`g[data-wire="${wire}"]`)
+        if (!g) throw new Error(`dot ${wire} not mounted`)
+        return g
+      })
+    const outlineOf = (blob: string) =>
+      root.querySelector<SVGPathElement>(`g[data-hyperedge="${blob}"] path`)?.getAttribute('d')
+
+    const [x, y] = translateOf(await dotFor('w6'))
+    const before = outlineOf('e1')
+
+    performDrag(await dotFor('w6'), 30, -20)
+
+    await waitFor(async () => expect(translateOf(await dotFor('w6'))).toEqual([x + 30, y - 20]))
+    // e1 is the blob for node 1, one of the two spiders w6 joins.
+    expect(outlineOf('e1')).not.toEqual(before)
+  },
+}
