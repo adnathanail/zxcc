@@ -25,7 +25,7 @@ export function wireDot(link: SceneLink, pos: Map<number, Point>): Point | null 
  *  y grows downwards). Duplicate and collinear points are dropped, so the hull
  *  of two or more coincident points is a single point and the hull of a
  *  collinear run is its two ends. */
-export function convexHull(points: Point[]): Point[] {
+function convexHull(points: Point[]): Point[] {
   const unique = [...new Map(points.map(p => [`${p.x},${p.y}`, p])).values()]
   unique.sort((a, b) => a.x - b.x || a.y - b.y)
   if (unique.length <= 2) return unique
@@ -56,6 +56,15 @@ function signedArea(polygon: Point[]): number {
   return sum
 }
 
+/** The hull wound so it runs clockwise as drawn, which is the direction
+ *  `blobPath` offsets outwards from and `blobContains` tests against. A
+ *  two-point hull has zero area and is symmetric, so its winding is moot. */
+function orientedHull(points: Point[]): Point[] {
+  const hull = convexHull(points)
+  if (signedArea(hull) < 0) hull.reverse()
+  return hull
+}
+
 /**
  * A closed outline enclosing every point, standing `radius` off the convex
  * hull of them: straight along each hull edge, a circular arc round each hull
@@ -63,7 +72,7 @@ function signedArea(polygon: Point[]): number {
  * convex polygon — so a hyperedge stays legible at any arity.
  */
 export function blobPath(points: Point[], radius: number): string {
-  const hull = convexHull(points)
+  const hull = orientedHull(points)
   if (hull.length === 0) return ''
   if (hull.length === 1) {
     const { x, y } = hull[0]
@@ -72,10 +81,6 @@ export function blobPath(points: Point[], radius: number): string {
       `A ${radius} ${radius} 0 1 1 ${x - radius} ${y} Z`
     )
   }
-  // Two-point hulls are degenerate (zero area) and symmetric, so either
-  // orientation gives the same capsule.
-  if (signedArea(hull) < 0) hull.reverse()
-
   // Offset each edge along its outward normal; consecutive offset edges are
   // then joined by an arc centred on the hull vertex between them.
   const edges = hull.map((p, i) => {
@@ -124,4 +129,50 @@ export function blobLabelAnchor(
   const x = points.reduce((sum, p) => sum + p.x, 0) / points.length
   const top = Math.min(...points.map(p => p.y))
   return { x, y: top - radius - 5 }
+}
+
+function distanceToSegment(p: Point, a: Point, b: Point): number {
+  const dx = b.x - a.x
+  const dy = b.y - a.y
+  const lengthSq = dx * dx + dy * dy
+  // A zero-length segment is the one-point hull: the distance to the point.
+  const t = lengthSq === 0 ? 0 : ((p.x - a.x) * dx + (p.y - a.y) * dy) / lengthSq
+  const clamped = Math.max(0, Math.min(1, t))
+  return Math.hypot(p.x - (a.x + clamped * dx), p.y - (a.y + clamped * dy))
+}
+
+/**
+ * Whether `point` falls inside the outline `blobOutline` draws — that is,
+ * within `radius` of the hull of the blob's dots.
+ *
+ * Tested against the geometry rather than by asking the DOM what was clicked,
+ * because blobs overlap: SVG hit-testing reports only the topmost path, and
+ * which one that is says nothing about the others under the pointer.
+ */
+export function blobContains(
+  blob: HypergraphBlob,
+  pos: Map<string, Point>,
+  radius: number,
+  point: Point,
+): boolean {
+  const hull = orientedHull(dotPoints(blob, pos))
+  if (hull.length === 0) return false
+
+  // Inside the hull itself, every edge has the point on its right — the hull
+  // is convex and wound clockwise. Degenerate hulls (a point, a segment) have
+  // no interior, so they fall through to the distance test.
+  if (hull.length >= 3) {
+    let inside = true
+    for (let i = 0; i < hull.length && inside; i++) {
+      const a = hull[i]
+      const b = hull[(i + 1) % hull.length]
+      inside = (b.x - a.x) * (point.y - a.y) - (b.y - a.y) * (point.x - a.x) >= 0
+    }
+    if (inside) return true
+  }
+
+  for (let i = 0; i < hull.length; i++) {
+    if (distanceToSegment(point, hull[i], hull[(i + 1) % hull.length]) <= radius) return true
+  }
+  return false
 }
