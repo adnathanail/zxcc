@@ -9,8 +9,8 @@ import {
   ORIGINAL_COLORS,
   RGB_COLORS,
 } from '../src/zxRender'
-import { paletteShowcase } from './diagrams'
-import { nodeFillsIn, shadowRootOf, strokesIn, translateOf } from './interactionHelpers'
+import { paletteShowcase, selfLoopSpiders } from './diagrams'
+import { nodeFillsIn, pathDataIn, shadowRootOf, strokesIn, translateOf } from './interactionHelpers'
 
 interface Args {
   diagram: DiagramData
@@ -36,7 +36,7 @@ const meta: Meta<Args> = {
     docs: {
       description: {
         component:
-          'Shapes and annotations beyond plain Z/X spiders: W-input/W-output pairs, the Z-box, Hadamard and W-io edges, grounded vertices, vdata annotations, the global scalar, Pauli-web strands overlaid on edges, an explicit scale, hidden node-id labels, and the non-default pyzx colour schemes.',
+          'Shapes and annotations beyond plain Z/X spiders: W-input/W-output pairs, the Z-box, Hadamard and W-io edges, grounded vertices, vdata annotations, the global scalar, self-loops, Pauli-web strands overlaid on edges, an explicit scale, hidden node-id labels, and the non-default pyzx colour schemes.',
       },
     },
   },
@@ -238,6 +238,26 @@ export const Scalar: Story = {
     expect(times.textContent).toBe('×')
     expect(times.getAttribute('fill')).toBe('#999')
     expect(value.textContent).toBe('2^(-1/2)·e^(iπ/4)')
+  },
+}
+
+// A self-loop can't be drawn as a straight line, so it arcs out of the node
+// and back. The left spider carries one loop, the right two — a lone loop
+// uses the fixed ±40 control points, while a second loop on the same node is
+// widened by parallel-edge indexing so the arcs stay visually distinct.
+export const SelfLoops: Story = {
+  name: 'Self-loops',
+  args: { diagram: selfLoopSpiders },
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    const ds = pathDataIn(root, 'link')
+    expect(ds.length).toBe(6)
+    // Three links are cubic arcs — one loop left, two right; the other three
+    // are straight wires.
+    const curves = ds.filter(d => d.includes('C'))
+    expect(curves.length).toBe(3)
+    // Spread by index, so no two loops are drawn on top of each other.
+    expect(new Set(curves).size).toBe(3)
   },
 }
 
