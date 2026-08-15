@@ -38,8 +38,7 @@
     "dist"
   ],
   "scripts": {
-    "clean": "rm -rf dist",
-    "build": "npm run clean && tsc && rollup -c --environment NODE_ENV:production",
+    "build": "tsc && rollup -c --environment NODE_ENV:production",
     "analyze": "tsc && rollup -c --environment NODE_ENV:production,ANALYZE:true",
     "build-dev": "tsc && rollup -c --environment NODE_ENV:development",
     "watch": "rollup -c --environment NODE_ENV:development --watch",

@@ -59,9 +59,7 @@ awaits the child before measuring the attribution.
 
 ## Build
 
-- `tsc` compiles `src/**/*.ts` to `dist/*.js` + `.d.ts`; `npm run build`
-  wipes `dist/` first so deleted modules don't linger in the published
-  package (`files: ["dist"]`).
+- `tsc` compiles `src/**/*.ts` to `dist/*.js` + `.d.ts`.
 - Rollup then bundles `dist/index.js` → `dist/index.bundle.js`, inlining lit
   so the shipped bundle has zero runtime deps.
 - Package entry is `dist/index.bundle.js`; `dist/index.js` is the tsc
