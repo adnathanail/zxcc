@@ -37,6 +37,13 @@ diagrams. Built with Lit + D3 v5. See README.md for user-facing usage.
   `__decorate` helper (used by Lit's `@customElement` etc.) doesn't get
   rewritten to `undefined && ...`.
 
+## Committing
+
+Sometimes this repository is managed with GitButler.
+Check whether you are on the `gitbutler/workspace` branch; if so, use the `but` CLI to interact with it.
+
+**Do not add attributions to yourself in commit messages**
+
 ## Conventions
 
 - Lit decorators are on: `experimentalDecorators: true` and

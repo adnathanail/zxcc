@@ -2,14 +2,16 @@ import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
 import { expect, waitFor } from 'storybook/test'
 import { type DiagramData, ORIGINAL_COLORS } from '../src/zxRender'
-import { singleZSpider, zHzChain, zxSpiders } from './diagrams'
+import { hboxFanout, pauliWebChain, singleZSpider, zHzChain, zxSpiders } from './diagrams'
 import {
   fireKey,
   fireMouse,
+  pathDataIn,
   performDrag,
   shadowRootOf,
   translateOf,
   waitForNode,
+  waitForNodes,
 } from './interactionHelpers'
 
 interface Args {
@@ -231,6 +233,81 @@ export const BrushSelectThenDrag: Story = {
         expect(zy1 - zy0).toBeCloseTo(DY, 1)
         expect(xx1 - xx0).toBeCloseTo(DX, 1)
         expect(xy1 - xy0).toBeCloseTo(DY, 1)
+      })
+    })
+  },
+}
+
+// —————————————————————————————————————————————————————————————————————————
+// 5. An H-box that isn't in a chain falls back to barycentre placement.
+//
+// getHboxChainInfo() only resolves a chain for an H-box of degree exactly 2.
+// A degree-3 H-box therefore takes the fallback branch, which parks it at the
+// mean of its non-H-box neighbours, nudged north-east by 0.25 * scale.
+//
+// We assert the *direction* of the nudge rather than its magnitude: deriving
+// 0.25 * scale here would just restate the layout maths in the test.
+// —————————————————————————————————————————————————————————————————————————
+
+export const HboxBarycentreFallback: Story = {
+  name: '5. Degree-3 H-box falls back to barycentre',
+  args: { diagram: hboxFanout },
+  play: async ({ canvasElement, step }) => {
+    const root = await shadowRootOf(canvasElement)
+
+    let hbox!: SVGGElement
+    let spiders!: SVGGElement[]
+    await step('wait for the H-box and its three spiders to mount', async () => {
+      hbox = await waitForNode(root, 'rect', H_FILL)
+      spiders = await waitForNodes(root, 'circle', Z_FILL, 3)
+    })
+
+    await step('H-box sits north-east of its neighbour barycentre', () => {
+      const positions = spiders.map(translateOf)
+      const meanX = positions.reduce((a, [x]) => a + x, 0) / positions.length
+      const meanY = positions.reduce((a, [, y]) => a + y, 0) / positions.length
+      const [hx, hy] = translateOf(hbox)
+
+      // North-east: x nudged positive, y nudged negative (SVG y grows down).
+      expect(hx).toBeGreaterThan(meanX)
+      expect(hy).toBeLessThan(meanY)
+    })
+  },
+}
+
+// —————————————————————————————————————————————————————————————————————————
+// 6. Pauli-web strands follow their endpoints during a drag.
+//
+// web_curve() runs from source to the (source, target) midpoint, so moving a
+// single endpoint is enough to change the path data of every strand touching
+// it. Only strands whose source or target is selected get redrawn.
+// —————————————————————————————————————————————————————————————————————————
+
+export const PauliWebFollowsDrag: Story = {
+  name: '6. Pauli-web strands redraw on drag',
+  args: { diagram: pauliWebChain },
+  play: async ({ canvasElement, step }) => {
+    const DX = 35
+    const DY = 25
+
+    const root = await shadowRootOf(canvasElement)
+
+    let zSpider!: SVGGElement
+    await step('wait for the Z spider to mount', async () => {
+      zSpider = await waitForNode(root, 'circle', Z_FILL)
+    })
+
+    const webBefore = pathDataIn(root, 'web')
+    expect(webBefore.length).toBeGreaterThan(0)
+    expect(webBefore.every(d => d !== '')).toBe(true)
+
+    await step(`drag the Z spider by (${DX}, ${DY}) and assert strands follow`, async () => {
+      performDrag(zSpider, DX, DY)
+      await waitFor(() => {
+        const webAfter = pathDataIn(root, 'web')
+        expect(webAfter.length).toBe(webBefore.length)
+        const changed = webAfter.filter((d, i) => d !== webBefore[i])
+        expect(changed.length).toBeGreaterThan(0)
       })
     })
   },

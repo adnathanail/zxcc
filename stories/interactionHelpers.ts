@@ -34,6 +34,22 @@ export async function waitForNode(
   })
 }
 
+/** All node <g>s carrying `shape[fill]`, in document (i.e. node-id) order. */
+export async function waitForNodes(
+  root: ShadowRoot,
+  shape: 'circle' | 'rect',
+  fill: string,
+  count: number,
+): Promise<SVGGElement[]> {
+  return waitFor(() => {
+    const gs = [...root.querySelectorAll<SVGGElement>(`svg g.node g:has(${shape}[fill="${fill}"])`)]
+    if (gs.length < count) {
+      throw new Error(`expected ${count} ${shape}[fill=${fill}] nodes, saw ${gs.length}`)
+    }
+    return gs
+  })
+}
+
 /** The `d` of every path in a layer group, in document order. */
 export function pathDataIn(root: ShadowRoot, layer: 'link' | 'web'): string[] {
   return [...root.querySelectorAll<SVGPathElement>(`svg g.${layer} path`)].map(
