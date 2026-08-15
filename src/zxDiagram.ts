@@ -23,6 +23,9 @@ const defaultTrueBoolean = {
 
 @customElement('zx-diagram')
 export class ZxDiagramElement extends LitElement {
+  /** The diagram to draw. Replace the object to change it — layout runs on a
+   *  new identity, so mutating the one already assigned paints nothing new.
+   *  {@link refresh} is the escape hatch if you must mutate in place. */
   @property({ attribute: false }) diagram: DiagramData | null = null
 
   /** Draw each node's id above it (pyzx's `draw_d3(labels=...)`). Defaults on,
