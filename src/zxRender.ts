@@ -59,8 +59,8 @@ export interface DiagramData {
    *  parameterized diagrams in place of the placeholder `phase` field. */
   labels?: [number, string][]
   pauliWeb?: PauliWebLink[]
-  /** Global scalar, pre-formatted (pyzx's `g.scalar.to_unicode()`). Only
-   *  painted when the element opts in via `show-scalar`. */
+  /** Global scalar, pre-formatted (pyzx's `g.scalar.to_unicode()`). Painted
+   *  below the diagram whenever present; omit the field to hide it. */
   scalar?: string
 }
 
@@ -121,6 +121,9 @@ export interface RenderData {
   labels: Map<number, string>
   /** Pre-formatted global scalar, or `''` when the diagram carries none. */
   scalar_str: string
+  /** Baseline for the scalar, inside the strip reserved below the diagram.
+   *  Only meaningful when `scalar_str` is non-empty. */
+  scalar_y: number
 }
 
 const VertexType = {
@@ -136,6 +139,10 @@ const VertexType = {
 // black circle); keep it as an alias for backward compatibility.
 const WIRE = VertexType.W_INPUT
 const EdgeType = { SIMPLE: 1, HADAMARD: 2, W_IO: 3 } as const
+
+/** Scalar placement, in px from the bottom edge of the diagram box. */
+const SCALAR_BASELINE_GAP = 0
+const SCALAR_BOTTOM_MARGIN = 30
 
 const EDGE_TYPE_OF: Record<DiagramEdgeKind, number> = {
   simple: EdgeType.SIMPLE,
@@ -349,9 +356,23 @@ export function render(diagram: DiagramData): RenderData {
   if (scale > 50) scale = 50
   if (scale < 20) scale = 20
 
+  // Pad width by 2 rows (why rows??)
   const width = (maxrow - minrow + 2) * scale
-  const height = (maxqub - minqub + 3) * scale
   const node_size = Math.max(0.2 * scale, 2)
+
+  // Pad height by 2 qubits
+  //   pulled out topPad into separate variable,
+  //   in case we want to adjust it separately,
+  //   as it should also then affect node positioning
+  const topPad = scale
+  const diagramHeight = topPad + (maxqub - minqub) * scale + scale
+
+  // Work out scalar_y
+  const scalar_str = diagram.scalar ?? ''
+  const scalar_y = diagramHeight + SCALAR_BASELINE_GAP
+  // Adjust svg height if scalar present
+  const height =
+    diagramHeight + (scalar_str !== '' ? SCALAR_BASELINE_GAP + SCALAR_BOTTOM_MARGIN : 0)
 
   // Emit nodes in id order. H-boxes without a row land at the top-left
   // placeholder coordinate; the viewer's update_hboxes() repositions them
@@ -364,7 +385,7 @@ export function render(diagram: DiagramData): RenderData {
     return {
       name: String(n.id),
       x: (row - minrow + 1) * scale,
-      y: (qubit - minqub + 2) * scale,
+      y: topPad + (qubit - minqub) * scale,
       t: n.t,
       phase: n.phaseStr,
       ground: n.ground,
@@ -423,6 +444,7 @@ export function render(diagram: DiagramData): RenderData {
     auto_hbox: !positioned,
     boxes,
     labels,
-    scalar_str: diagram.scalar ?? '',
+    scalar_str,
+    scalar_y,
   }
 }

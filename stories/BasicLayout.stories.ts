@@ -1,7 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
+import { expect } from 'storybook/test'
 import type { DiagramData } from '../src/zxRender'
 import { singleZSpider } from './diagrams'
+import { shadowRootOf, translateOf } from './interactionHelpers'
 
 interface Args {
   diagram: DiagramData
@@ -41,6 +43,36 @@ export const IdentityWire: Story = {
 export const SingleZSpider: Story = {
   name: '2. Single Z spider with a phase',
   args: { diagram: singleZSpider },
+  // Guards the canvas padding: pyzx offset nodes 2*scale from the top but only
+  // 1*scale from the bottom, leaving a conspicuous empty band above every
+  // diagram. Padding should match the 1*scale used either side horizontally.
+  //
+  // This diagram carries no `scalar`, so the equal top/bottom padding also
+  // pins down that no scalar strip is reserved when there is nothing to show.
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    const svg = root.querySelector<SVGSVGElement>('svg')
+    if (!svg) throw new Error('svg not found')
+
+    const nodes = [...svg.querySelectorAll<SVGGElement>('g.node g')].map(translateOf)
+    const ys = nodes.map(([, y]) => y)
+    const xs = nodes.map(([x]) => x)
+    const height = Number(svg.getAttribute('height'))
+    const width = Number(svg.getAttribute('width'))
+
+    const padTop = Math.min(...ys)
+    const padBottom = height - Math.max(...ys)
+    const padLeft = Math.min(...xs)
+    const padRight = width - Math.max(...xs)
+
+    expect(padTop).toBeCloseTo(padBottom, 1)
+    expect(padTop).toBeCloseTo(padLeft, 1)
+    expect(padLeft).toBeCloseTo(padRight, 1)
+
+    // The scalar is the only direct <text> child of the <svg> — node phases and
+    // labels live inside their node groups. Omitting `scalar` draws nothing.
+    expect(svg.querySelectorAll(':scope > text').length).toBe(0)
+  },
 }
 
 export const BellStatePrep: Story = {

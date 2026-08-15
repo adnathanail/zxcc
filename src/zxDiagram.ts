@@ -86,9 +86,6 @@ function placeAttribution({ g, text, chip, width, height }: Attribution): void {
 export class ZxDiagramElement extends LitElement {
   @property({ attribute: false }) diagram: DiagramData | null = null
 
-  /** Paint `diagram.scalar` in the top-left (pyzx's `show_scalar`). */
-  @property({ type: Boolean, attribute: 'show-scalar' }) showScalar = false
-
   // Container background is Bootstrap .bg-light-subtle
   // Attribution background is Bootstrap .bg-secondary-subtle w/ 50% transparency
   static styles = css`
@@ -123,7 +120,8 @@ export class ZxDiagramElement extends LitElement {
       node_size: renderData.node_size,
       auto_hbox: renderData.auto_hbox,
       show_labels: true,
-      scalar_str: this.showScalar ? renderData.scalar_str : '',
+      scalar_str: renderData.scalar_str,
+      scalar_y: renderData.scalar_y,
       boxes: renderData.boxes,
       labels: renderData.labels,
       colors: renderData.colors,

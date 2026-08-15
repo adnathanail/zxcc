@@ -8,8 +8,9 @@
 
 Framework-agnostic web component for rendering [ZX-calculus](https://zxcalculus.com) diagrams.
 
-<img src="img/basic_layout_demo.png" alt="Basic layout demo" width="30%" />
-<img src="img/algebraic_layout_demo.png" alt="Algebraic layout demo" width="30%" />
+| Example basic layout | Example algebraic layout |
+| ----------------------- | ------------------ |
+| ![Basic layout demo](img/basic_layout_demo.png) | ![Algebraic layout demo](img/algebraic_layout_demo.png) |
 
 [Checkout the demo](https://main--6a7e12985acc92e6ec37bdaa.chromatic.com)
 
@@ -50,7 +51,7 @@ interface DiagramData {
   boxes?: { kind: 'stack' | 'compose'; nodeIds: number[] }[]
   labels?: [number, string][]  // node-id → phase-label override
   pauliWeb?: { src: number; tgt: number; kind: 'X' | 'Y' | 'Z' | 'I' }[]
-  scalar?: string        // global scalar; shown only with `show-scalar`
+  scalar?: string        // global scalar, drawn below the diagram
 }
 
 interface DiagramNode {
@@ -75,15 +76,6 @@ interface DiagramEdge {
 
 If any node carries `col`, auto-layout is skipped and every node is expected to carry both `col` and `qubit`.
 Otherwise a BFS from the inputs assigns rows and qubits.
-
-## Element attributes
-
-These mirror the keyword arguments of pyzx's `draw_d3()` and control presentation
-only — graph structure always lives in `diagram`.
-
-| Attribute | Property | Default | Meaning |
-| --- | --- | --- | --- |
-| `show-scalar` | `showScalar` | `false` | Paint `diagram.scalar` in the top-left corner. |
 
 ## Development
 

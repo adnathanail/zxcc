@@ -2,26 +2,21 @@ import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
 import { expect } from 'storybook/test'
 import { COLORS, type DiagramData } from '../src/zxRender'
-import { shadowRootOf } from './interactionHelpers'
+import { shadowRootOf, translateOf } from './interactionHelpers'
 
 interface Args {
   diagram: DiagramData
-  showScalar?: boolean
 }
 
 const meta: Meta<Args> = {
   title: 'Advanced features',
-  render: ({ diagram, showScalar }) =>
-    html`<zx-diagram
-      .diagram=${diagram}
-      ?show-scalar=${showScalar ?? false}
-      style="min-height: 160px"
-    ></zx-diagram>`,
+  render: ({ diagram }) =>
+    html`<zx-diagram .diagram=${diagram} style="min-height: 160px"></zx-diagram>`,
   parameters: {
     docs: {
       description: {
         component:
-          'Shapes and annotations beyond plain Z/X spiders: W-input/W-output pairs, the Z-box, Hadamard edges (as blue line rather than yellow H-box), and Pauli-web strands overlaid on edges.',
+          'Shapes and annotations beyond plain Z/X spiders: W-input/W-output pairs, the Z-box, Hadamard and W-io edges, grounded vertices, vdata annotations, the global scalar, and Pauli-web strands overlaid on edges.',
       },
     },
   },
@@ -163,12 +158,12 @@ export const VertexData: Story = {
   },
 }
 
-// The diagram's global scalar, painted top-left. Only shown when the element
-// opts in via show-scalar (pyzx's draw_d3(show_scalar=True)).
+// The diagram's global scalar, painted below the diagram. Shown whenever
+// `scalar` is present — unlike pyzx, which needs a separate show_scalar flag
+// because its graphs always carry a Scalar object.
 export const Scalar: Story = {
   name: 'Global scalar',
   args: {
-    showScalar: true,
     diagram: {
       nodes: [
         { id: 0, type: 'input', ioId: 0 },
@@ -184,8 +179,39 @@ export const Scalar: Story = {
   },
   play: async ({ canvasElement }) => {
     const root = await shadowRootOf(canvasElement)
-    const texts = [...root.querySelectorAll('svg > text')].map(t => t.textContent)
-    expect(texts).toContain('2^(-1/2)·e^(iπ/4)')
+    const svg = root.querySelector<SVGSVGElement>('svg')
+    if (!svg) throw new Error('svg not found')
+
+    const scalar = [...svg.querySelectorAll<SVGTextElement>(':scope > text')].find(t =>
+      t.textContent?.includes('2^(-1/2)·e^(iπ/4)'),
+    )
+    if (!scalar) throw new Error('scalar text not rendered')
+
+    // Centred on the canvas rather than pinned to pyzx's fixed x: 60.
+    expect(scalar.getAttribute('text-anchor')).toBe('middle')
+    expect(Number(scalar.getAttribute('x'))).toBeCloseTo(Number(svg.getAttribute('width')) / 2, 1)
+    expect(scalar.getAttribute('font-family')).toBe('monospace')
+
+    // In the strip below the diagram, clear of every node...
+    const nodeYs = [...svg.querySelectorAll<SVGGElement>('g.node g')].map(g => translateOf(g)[1])
+    const scalarY = Number(scalar.getAttribute('y'))
+    expect(scalarY).toBeGreaterThan(Math.max(...nodeYs))
+
+    // ...and above the attribution badge, which is anchored to the bottom-right
+    // of the same SVG. Compared against its real position rather than a fixed
+    // margin, so retuning the strip can't silently start overlapping it. The
+    // chip's y is in the group's own space, so it needs the group's translate
+    // added back to land in the coordinates the scalar is placed in.
+    const attribution = svg.querySelector<SVGGElement>('g.attribution')
+    const chip = attribution?.querySelector('rect')
+    if (!attribution || !chip) throw new Error('attribution badge not rendered')
+    expect(scalarY).toBeLessThan(Number(chip.getAttribute('y')) + translateOf(attribution)[1])
+
+    // Leading '×' in the node-id grey, then the value itself.
+    const [times, value] = [...scalar.querySelectorAll('tspan')]
+    expect(times.textContent).toBe('×')
+    expect(times.getAttribute('fill')).toBe('#999')
+    expect(value.textContent).toBe('2^(-1/2)·e^(iπ/4)')
   },
 }
 
