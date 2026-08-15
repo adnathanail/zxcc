@@ -184,8 +184,19 @@ export function showGraph(tag: HTMLElement, graphIn: GraphData, opts: ShowGraphO
 
   const groundOffset = 2.5 * node_size
 
-  // Minimum lineParam distance between adjacent H-boxes and endpoints.
-  const hboxMargin = 0.05
+  // Radius of the circle circumscribing an H-box's square, so a clearance
+  // built from it holds whatever angle the chain runs at.
+  const hboxRadius = 0.75 * node_size * Math.SQRT2
+
+  // Radius of the circle enclosing a node as drawn — see the shape branches in
+  // the node-painting loop below. Used to keep a dragged H-box off whatever
+  // sits at the end of its chain, which is not always a full-size spider.
+  function nodeRadius(d: LiveNode): number {
+    if (d.t === 0) return 0.5 * node_size // boundary dot
+    if (d.t === 4) return 0.2 * node_size // W-input dot
+    if (d.t === 3 || d.t === 6) return hboxRadius // H-box / Z-box square
+    return node_size // spiders, W-output triangle
+  }
 
   // Trace an H-box chain to its non-H-box endpoints. Returns the ordered
   // list of chain hboxes plus the index of `d` within that list.
@@ -616,14 +627,26 @@ export function showGraph(tag: HTMLElement, graphIn: GraphData, opts: ShowGraphO
           if (lenSq > 0.001) {
             const dParam = (dx * ex + dy * ey) / lenSq
             const newParam = (n.lineParam ?? 0.5) + dParam
-            let minParam = hboxMargin,
-              maxParam = 1 - hboxMargin
+            // Clearances are pixel distances — the shapes are a fixed size —
+            // while lineParam is a fraction of the chain, so divide through by
+            // the chain's length to convert. A flat lineParam margin would
+            // shrink to nothing on a long chain and let the shapes intersect.
+            const len = Math.sqrt(lenSq)
+            const clearOf = (other: LiveNode) => (hboxRadius + nodeRadius(other)) / len
             const idx = info.index
-            if (idx > 0) minParam = (info.hboxes[idx - 1].lineParam ?? 0) + hboxMargin
-            if (idx < info.hboxes.length - 1) {
-              maxParam = (info.hboxes[idx + 1].lineParam ?? 1) - hboxMargin
-            }
-            n.lineParam = Math.max(minParam, Math.min(maxParam, newParam))
+            const prev = idx > 0 ? info.hboxes[idx - 1] : null
+            const next = idx < info.hboxes.length - 1 ? info.hboxes[idx + 1] : null
+            const minParam = prev ? (prev.lineParam ?? 0) + clearOf(prev) : clearOf(info.endpointA)
+            const maxParam = next
+              ? (next.lineParam ?? 1) - clearOf(next)
+              : 1 - clearOf(info.endpointB)
+            // A chain too short to seat its H-boxes has no gap to clamp into;
+            // splitting the difference keeps the box between its neighbours
+            // rather than snapping it to one side.
+            n.lineParam =
+              minParam > maxParam
+                ? (minParam + maxParam) / 2
+                : Math.max(minParam, Math.min(maxParam, newParam))
           }
           const pos = computeHboxPosition(n)
           if (pos) {
