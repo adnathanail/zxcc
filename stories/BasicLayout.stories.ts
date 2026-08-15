@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
 import { expect } from 'storybook/test'
-import type { DiagramData } from '../src/zxRender'
-import { singleZSpider } from './diagrams'
-import { shadowRootOf, translateOf } from './interactionHelpers'
+import { type DiagramData, ORIGINAL_COLORS } from '../src/zxRender'
+import { singleZSpider, zHHzChain } from './diagrams'
+import { shadowRootOf, translateOf, waitForNodes } from './interactionHelpers'
 
 interface Args {
   diagram: DiagramData
@@ -157,8 +157,46 @@ export const SymbolicPhaseLabel: Story = {
   },
 }
 
+// The at-rest layout behind the two H-box chain-clamp drag stories. H-boxes
+// carry no row of their own: the viewer parks a chain of them on the line
+// between its two non-H-box endpoints, evenly spaced at lineParam
+// (i + 1) / (n + 1) — so 1/3 and 2/3 for a pair.
+//
+// This is the baseline the drag clamp has to preserve. At rest the boxes are a
+// third of the chain apart and comfortably clear; it is only the clamp's
+// margin, which is a fraction of the chain rather than a pixel distance, that
+// lets a dragged box come to rest on top of its neighbour.
+export const ChainedHboxes: Story = {
+  name: '8. Chained H-boxes',
+  args: { diagram: zHHzChain },
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    const spiders = await waitForNodes(root, 'circle', ORIGINAL_COLORS.Z, 2)
+    const hboxes = await waitForNodes(root, 'rect', ORIGINAL_COLORS.H, 2)
+
+    const [[ax, ay], [bx, by]] = spiders.map(translateOf)
+    const [[h1x, h1y], [h2x, h2y]] = hboxes.map(translateOf)
+
+    // Both boxes sit on the segment joining the two Z spiders...
+    expect(ay).toBeCloseTo(by, 5)
+    expect(h1y).toBeCloseTo(ay, 5)
+    expect(h2y).toBeCloseTo(ay, 5)
+
+    // ...evenly spaced, so the three gaps along it are equal.
+    const span = bx - ax
+    expect(h1x - ax).toBeCloseTo(span / 3, 5)
+    expect(h2x - h1x).toBeCloseTo(span / 3, 5)
+    expect(bx - h2x).toBeCloseTo(span / 3, 5)
+
+    // ...and far enough apart to not paint over each other. Whatever the drag
+    // clamp ends up enforcing, it should never leave less room than this.
+    const boxWidth = Number(hboxes[0].querySelector('rect')?.getAttribute('width'))
+    expect(h2x - h1x).toBeGreaterThanOrEqual(boxWidth)
+  },
+}
+
 export const RenderErrorPath: Story = {
-  name: '7. Render error path',
+  name: '9. Render error path',
   parameters: {
     docs: {
       description: {
