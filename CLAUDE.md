@@ -4,29 +4,58 @@ Framework-agnostic `<zx-diagram>` web component for rendering ZX-calculus
 diagrams. Built with Lit, no runtime dependencies. See README.md for
 user-facing usage.
 
-## Pipeline
+## Layout of `src/`
 
 ```
 DiagramData  --layout()-->  Scene  --<zx-viewer>-->  SVG
 ```
 
-- `src/types.ts` — both data contracts. `Diagram*` is the public input shape
+`src/` is split in two: the root holds what is about a diagram however it is
+drawn, and `src/graph/` holds the ZX diagram's own painter and the geometry
+only it needs. **Two rules hold, and both are checkable:**
+
+1. A file in a subfolder imports only from its own folder and from `src/`.
+2. Everything in `src/` is imported by *every* subfolder or by none. A module
+   used by only one of them belongs inside that one.
+
+The split is there for a second way of drawing the same diagram, which is what
+`Scene` being above it buys: `<zx-diagram>` lays a diagram out once and hands
+the result to whichever painter is on, rather than each painter laying it out
+its own way.
+
+**`src/` — shared, or nothing to do with any one view**
+
+- `types.ts` — both data contracts. `Diagram*` is the public input shape
   consumers hand to `<zx-diagram>`; `Scene*` is the laid-out, pixel-space
   result and is internal to the package.
-- `src/layout.ts` — pure layout. BFS from the inputs assigns col/qubit
-  (skipped when the diagram arrives pre-positioned from the algebraic ZX
-  walker), scales the grid to pixels, reserves the strip the scalar sits in,
-  and annotates parallel edges with `index`/`parallel` so the viewer can fan
-  them into arcs.
-- `src/geometry.ts` — DOM-free geometry: the `Topology` class (adjacency,
-  H-box chain tracing, pixel-clearance clamping, position resolution) plus
-  the path builders (`linkPath`, `webPath`, `boxBounds`, `groundSymbolPath`).
-- `src/colors.ts` — the pyzx palettes and the scheme lookup.
-- `src/attribution.ts` — the "❤️ zxcc" badge drawn into the diagram's SVG.
-- `src/zxViewer.ts` — `<zx-viewer>`, the painter. Internal to the package.
-- `src/zxDiagram.ts` — `<zx-diagram>`, the public element.
-- `src/index.ts` — package entry: `ZxDiagramElement`, the palettes, the
-  input types.
+- `layout.ts` — pure layout, producing that `Scene`. BFS from the inputs
+  assigns col/qubit (skipped when the diagram arrives pre-positioned from the
+  algebraic ZX walker), scales the grid to pixels, reserves the strip the
+  scalar sits in, and annotates parallel edges with `index`/`parallel` so the
+  viewer can fan them into arcs.
+- `topology.ts` — the `Topology` class: adjacency, H-box chain tracing,
+  pixel-clearance clamping, and the positions auto-placed H-boxes resolve to.
+  Shared because the layout leaves H-boxes unplaced, so anything that needs a
+  coordinate for one has to ask.
+- `curves.ts` — `Point`, the `Curve` union, and
+  `edgeCurve`/`curvePath`/`curvePointAt`. `edgeCurve` is the single answer to
+  where the wire between two points runs (straight, fanned arc, or self-loop);
+  `curvePath` draws that curve and `curvePointAt` evaluates it, so drawing a
+  wire and finding a point on it cannot disagree.
+- `colors.ts` — the pyzx palettes, the scheme lookup, and which entry each
+  kind of thing is painted with (`nodeColor`, `edgeColor`, `webColor`). Those
+  lookups are here rather than in the painter so anything else standing for
+  the same node comes out the same colour.
+- `attribution.ts` — the "❤️ zxcc" badge drawn into the diagram's SVG.
+- `zxDiagram.ts` — `<zx-diagram>`, the public element.
+- `index.ts` — package entry: `ZxDiagramElement`, the palettes, the input
+  types.
+
+**`src/graph/` — the ZX diagram itself**
+
+- `geometry.ts` — DOM-free path builders: `linkPath`, `webPath`, `boxBounds`,
+  `groundSymbolPath`, plus `Rect` and the H-box drag arithmetic.
+- `viewer.ts` — `<zx-viewer>`, the painter. Internal to the package.
 
 ## The two elements
 
