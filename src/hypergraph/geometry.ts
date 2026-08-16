@@ -146,32 +146,49 @@ export interface BlobSizes {
   dot: number
 }
 
-/** A blob's dots in the node's own frame: the ones it reaches out to, the ones
- *  it must not swallow, and the hull it would be if nothing were in the way.
- *  Built once per blob so the reach can be evaluated cheaply, many times. */
+/** A blob's dots in the frame the reach is measured in: the ones it reaches
+ *  out to, the ones it must not swallow, and the hull it would be if nothing
+ *  were in the way. Built once per blob so the reach can be evaluated cheaply,
+ *  many times. */
 interface BlobShape {
+  /** Where the reach is measured from, in scene coordinates: the average of
+   *  the blob's own dots.
+   *
+   *  It has to be a point inside the shape, or one distance per direction
+   *  would not describe the boundary — and the average of a set of points is
+   *  always inside their hull. The node's own position would do that job too,
+   *  and used to, but the node is not drawn in this view, so a hull taken over
+   *  it wraps a point that isn't there — obvious the moment a dot is dragged
+   *  away from its spider. A blob's shape now comes only from dots you can
+   *  see. */
+  centre: Point
   members: Point[]
   foreign: Point[]
-  /** Hull of the node and its own dots, so a spider whose legs all run the
-   *  same way still gets a blob covering the spider itself. */
   hull: Point[]
   radius: number
   clearance: number
 }
 
 function shapeOf(blob: HypergraphBlob, pos: Map<string, Point>, sizes: BlobSizes): BlobShape {
-  const own = new Set(blob.dots)
+  const own = blob.dots.map(id => pos.get(id)).filter(p => p !== undefined)
+  const centre = {
+    x: own.reduce((sum, p) => sum + p.x, 0) / (own.length || 1),
+    y: own.reduce((sum, p) => sum + p.y, 0) / (own.length || 1),
+  }
+
+  const ownIds = new Set(blob.dots)
   const members: Point[] = []
   const foreign: Point[] = []
   for (const [id, p] of pos) {
-    const relative = { x: p.x - blob.x, y: p.y - blob.y }
-    if (own.has(id)) members.push(relative)
+    const relative = { x: p.x - centre.x, y: p.y - centre.y }
+    if (ownIds.has(id)) members.push(relative)
     else foreign.push(relative)
   }
   return {
+    centre,
     members,
     foreign,
-    hull: convexHull([{ x: 0, y: 0 }, ...members]),
+    hull: convexHull(members),
     radius: sizes.radius,
     clearance: CLEARANCE * sizes.dot,
   }
@@ -236,7 +253,7 @@ export function blobOutline(
   for (let i = 0; i < OUTLINE_SAMPLES; i++) {
     const angle = (2 * Math.PI * i) / OUTLINE_SAMPLES
     const r = reach(shape, angle)
-    points.push(`${blob.x + r * Math.cos(angle)} ${blob.y + r * Math.sin(angle)}`)
+    points.push(`${shape.centre.x + r * Math.cos(angle)} ${shape.centre.y + r * Math.sin(angle)}`)
   }
   return `M ${points.join(' L ')} Z`
 }
@@ -257,8 +274,8 @@ export function blobContains(
 ): boolean {
   const shape = shapeOf(blob, pos, sizes)
   if (shape.members.length === 0) return false
-  const dx = point.x - blob.x
-  const dy = point.y - blob.y
+  const dx = point.x - shape.centre.x
+  const dy = point.y - shape.centre.y
   const distance = Math.hypot(dx, dy)
   if (distance === 0) return true
   return distance <= reach(shape, Math.atan2(dy, dx))
@@ -273,15 +290,20 @@ export function blobLabelAnchor(
 ): Point | null {
   const own = blob.dots.map(id => pos.get(id)).filter(p => p !== undefined)
   if (own.length === 0) return null
-  const top = Math.min(blob.y, ...own.map(p => p.y))
-  return { x: blob.x, y: top - radius - 5 }
+  const x = own.reduce((sum, p) => sum + p.x, 0) / own.length
+  const top = Math.min(...own.map(p => p.y))
+  return { x, y: top - radius - 5 }
 }
 
 /** The middle of a blob — the point a leader line from its caption is aimed
- *  at. The node's own position, which is inside the outline by construction:
- *  every reach is measured from it, and the floor keeps that reach positive in
+ *  at. The same average of its own dots the reach is measured from, so it is
+ *  inside the outline by construction: the floor keeps that reach positive in
  *  every direction. */
 export function blobCentre(blob: HypergraphBlob, pos: Map<string, Point>): Point | null {
-  const placed = blob.dots.some(id => pos.has(id))
-  return placed ? { x: blob.x, y: blob.y } : null
+  const own = blob.dots.map(id => pos.get(id)).filter(p => p !== undefined)
+  if (own.length === 0) return null
+  return {
+    x: own.reduce((sum, p) => sum + p.x, 0) / own.length,
+    y: own.reduce((sum, p) => sum + p.y, 0) / own.length,
+  }
 }

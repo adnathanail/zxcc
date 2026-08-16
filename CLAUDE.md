@@ -85,21 +85,26 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
 - `geometry.ts` — `wireDot` (where a wire's dot sits) and the blob outline,
   plus `blobContains` (the same shape as a hit test), `blobLabelAnchor` and
   `blobCentre` (where a caption sits, and what its leader points at).
-  The outline is the rounded convex hull of the node and its own dots, **cut
-  back around foreign dots** and rounded off: hull-shaped wherever nothing is
+  The outline is the rounded convex hull of its own dots, **cut
+  back around foreign dots**: hull-shaped wherever nothing is
   in the way, bending in where something is. It has to be able to go
   non-convex — a hull spans everything between its dots, so a foreign dot
   between two of a spider's legs is inside any hull holding both, and moving
   the dots about only changes which blob swallows which dot.
 
-  It is all written as a **reach**: one distance per direction from the node.
+  It is all written as a **reach**: one distance per direction from the
+  average of the blob's own dots.
   That makes the boundary a single closed loop that cannot cross itself
   however deeply it is cut, lets the outline be walked round by sampling
   rather than by intersecting shapes, and makes `blobContains` the same
-  calculation as the outline, so the two cannot disagree. Three terms: the
-  hull, cut back short of any foreign dot in the way, floored by the corridor
-  out to each of its own dots — dropping a dot it holds would be a worse lie
-  than holding one it doesn't. The two lengths involved are different things:
+  calculation as the outline, so the two cannot disagree. Measuring from the
+  average of the dots rather than from the ZX node — which is what it used to
+  be — keeps every part of a blob's shape derived from something you can see:
+  the node isn't drawn in this view, so a hull taken over it wrapped a point
+  that wasn't there, which showed up the moment a dot was dragged away from
+  its spider. Three terms: the hull of its own dots, cut back short of any
+  foreign dot in the way, floored by the corridor out to each of its own —
+  dropping a dot it holds would be a worse lie than holding one it doesn't. The two lengths involved are different things:
   the outline stands off its *own* dots by the blob radius, and keeps clear of
   a foreign dot by a multiple of the radius that dot is *drawn* at, which is
   much smaller. Conflating them had the boundary swerving around a circle four

@@ -122,20 +122,13 @@ export function layoutHypergraph(diagram: DiagramData, scene: Scene): Hypergraph
 
   const placed = new Set(dots.map(d => d.id))
   const blobs: HypergraphBlob[] = hg.hyperedges
-    .map(e => {
-      // The node's own position, in the same zoomed space as the dots: a blob
-      // reaches out from the node it stands for.
-      const at = pos.get(e.nodeId) ?? { x: 0, y: 0 }
-      return {
-        id: e.id,
-        x: at.x * ZOOM,
-        y: at.y * ZOOM,
-        name: e.name,
-        phase: e.phase,
-        kind: e.kind,
-        dots: [...new Set(e.wires)].filter(w => placed.has(w)),
-      }
-    })
+    .map(e => ({
+      id: e.id,
+      name: e.name,
+      phase: e.phase,
+      kind: e.kind,
+      dots: [...new Set(e.wires)].filter(w => placed.has(w)),
+    }))
     .filter(b => b.dots.length > 0)
 
   // A dot sits at the midpoint of an edge, inside the box the ZX nodes span,
@@ -146,18 +139,18 @@ export function layoutHypergraph(diagram: DiagramData, scene: Scene): Hypergraph
   let minY = 0
   let maxX = scene.width * ZOOM
   let maxY = scene.height * ZOOM
-  for (const p of [...dots, ...blobs]) {
-    minX = Math.min(minX, p.x - blobRadius)
-    minY = Math.min(minY, p.y - blobRadius)
-    maxX = Math.max(maxX, p.x + blobRadius)
-    maxY = Math.max(maxY, p.y + blobRadius)
+  for (const d of dots) {
+    minX = Math.min(minX, d.x - blobRadius)
+    minY = Math.min(minY, d.y - blobRadius)
+    maxX = Math.max(maxX, d.x + blobRadius)
+    maxY = Math.max(maxY, d.y + blobRadius)
   }
   const shiftX = -Math.min(0, minX)
   const shiftY = -Math.min(0, minY)
   if (shiftX !== 0 || shiftY !== 0) {
-    for (const p of [...dots, ...blobs]) {
-      p.x += shiftX
-      p.y += shiftY
+    for (const d of dots) {
+      d.x += shiftX
+      d.y += shiftY
     }
   }
 

@@ -129,9 +129,15 @@ Answers to the questions above, as built:
    were briefly the same number, which made the boundary swerve around a
    circle four times the size of the dot it was dodging.
 
-   Everything is a **reach**, one distance per direction from the node, which
-   keeps the boundary a single closed loop that cannot cross itself and makes
-   the hit test identical to the outline. Overlapping blobs are still told
+   Everything is a **reach**, one distance per direction from the average of
+   the blob's own dots, which keeps the boundary a single closed loop that
+   cannot cross itself and makes the hit test identical to the outline. The
+   measuring point has to lie inside the shape, and the average of a set of
+   points always lies inside their hull. It was the ZX node's position at
+   first; that works too, but the node is not drawn in this view, so the hull
+   wrapped a point that wasn't there — plainly visible once a dot could be
+   dragged away from its spider. `HypergraphBlob` no longer carries a position
+   at all. Overlapping blobs are still told
    apart only by their outlines crossing over a translucent fill.
 
    A cut leaves a corner where it rejoins the hull. Rounding those off by
