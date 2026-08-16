@@ -125,9 +125,10 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   the blobs overlap and SVG reports only the topmost. The two presses select by
   different tests on purpose: a press on canvas asks what is *here* (geometry),
   a press on a dot asks which hyperedges that wire is *part of* (membership,
-  `blob.dots`). A dot often sits inside a blob that doesn't hold it — the hulls
-  are crowded — and highlighting that blob would report an accident of the
-  layout as a fact about the hypergraph. Selected blobs paint last and take
+  `blob.dots`). The two now agree far more often than they did, since the
+  outline is cut back around dots it doesn't hold, but they stay distinct
+  questions: what a blob *reaches over* is still an accident of the layout
+  rather than a fact about the hypergraph. Selected blobs paint last and take
   the same blue stroke `<zx-viewer>` uses, and each gets a dashed leader from
   its caption to the middle of the blob — a caption sits just off the top of
   its outline, which in a pile of overlapping blobs looks like it could belong
@@ -138,10 +139,14 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   `<zx-viewer>` does: a blob is filled with its node's own colour at 40%
   opacity and outlined in black, so overlapping blobs read as both colours,
   and a dot takes its edge's colour (an H-wire's dot is blue).
-  A blob is the hull of *its own* dots, so it can swallow a dot belonging to
-  another hyperedge — the drawing then claims a wire is part of something it
-  isn't. Rather than bend the layout into never overlapping, the overlap is
-  drawn: a red copy of the dot, clipped to a `<clipPath>` holding the outlines
+  The red trespass marks predate the cut-back outline, which was the real fix
+  for a blob swallowing a dot it doesn't hold. They are kept as the near-miss
+  warning: `#trespasses` asks `blobContains` with the standoff fattened by a
+  dot's radius, so it flags a dot whose drawn *circle* grazes an outline, where
+  the membership the cut guarantees is about its *centre*. A diagram at rest
+  marks nothing; drag a dot and the boundary can end up grazing one it has
+  correctly excluded, which is what the marks then show. The overlap is drawn
+  rather than hidden: a red copy of the dot, clipped to a `<clipPath>` holding the outlines
   of every blob it has strayed into (a clip path is the union of its children,
   so several at once still work), so exactly the part that is somewhere it
   shouldn't be goes red and a dot half inside comes out half red. The marks
@@ -151,10 +156,11 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   and selects the dot under it. A tally in that same red — `N trespassing
   nodes` — is centred across the strip between the bottom of the drawing and
   the bottom of the SVG, since each red mark is local and a dot half-buried
-  under a neighbour's blob is easy to miss. Its count follows a drag but its
-  position doesn't: the strip is measured from where the layout put the dots,
-  not where they have been dragged to, so it reads as a caption on the drawing
-  rather than another thing moving in it.
+  under a neighbour's blob is easy to miss. It is absent altogether when
+  nothing is marked, which is the resting state. Its count follows a drag but
+  its position doesn't: the strip is measured from where the layout put the
+  dots, not where they have been dragged to, so it reads as a caption on the
+  drawing rather than another thing moving in it.
 
 ## The elements
 

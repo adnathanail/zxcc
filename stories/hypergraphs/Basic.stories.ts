@@ -179,17 +179,11 @@ export const StrongComplementarity: Story = {
     // outline broke while leaving membership correct.
     expectBlobBreathingRoom(root)
 
-    // The red is clipped to the blobs strayed into — both of the two that don't
-    // hold w6 — so only the part of the dot actually inside them is painted,
-    // and a dot half in and half out comes out half red.
-    const clip = root.querySelector(`clipPath[id$="-w6"]`)
-    expect(clip?.querySelectorAll('path').length).toBe(2)
-
-    // Each red mark is local, so the count is written out once in the same red,
-    // below the drawing.
-    const tally = root.querySelector<SVGTextElement>('svg text.tally')
-    expect(tally?.textContent).toBe('2 trespassing nodes')
-    expect(tally?.getAttribute('fill')).toBe('#e00')
+    // So nothing is trespassing. This diagram is where the red marks were first
+    // needed — a hull put one on each crossing wire — so it is also where their
+    // absence says the most.
+    expect(root.querySelectorAll('svg g.overlap circle').length).toBe(0)
+    expect(root.querySelector('svg text.tally')).toBeNull()
   },
 }
 

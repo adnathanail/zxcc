@@ -161,11 +161,9 @@ export const HypergraphDotDrag: Story = {
 
     const [x, y] = translateOf(await dotFor('w6'))
     const before = outlineOf('e1')
-    // The diagram already has trespasses at rest, so the tally is on screen
-    // before the drag starts — which is what makes it possible to check that
-    // dragging doesn't shift it.
-    const tallyBefore = tallyAt()
-    if (!tallyBefore) throw new Error('no tally before the drag')
+    // At rest the outline dodges every dot it doesn't hold, so nothing is
+    // trespassing and there is no tally to show.
+    expect(tallyAt()).toBeNull()
 
     performDrag(await dotFor('w6'), 30, -20)
 
@@ -185,37 +183,19 @@ export const HypergraphDotDrag: Story = {
     expectBlobMembership(root, strongComplementarity)
     expectBlobBreathingRoom(root)
 
-    // Dragging w6 reshapes e6, one of the two blobs holding it, and e6 ends up
-    // swallowing part of w7 — a wire it does not hold. That is a *partial*
-    // trespass, which is what the red mark is for: it is clipped to the blob
-    // strayed into, so only the part of w7 actually inside e6 is painted.
-    // Asserted by sampling w7's rim against e6's rendered outline — the same
-    // `d` the mark is clipped to, so this is the shape on screen rather than a
-    // second calculation of it — and finding it partly in and partly out.
-    const mark = root.querySelector<SVGCircleElement>('g.overlap circle[data-wire="w7"]')
-    if (!mark) throw new Error('w7 is not marked as overlapping anything')
-    const intruded = root.querySelector<SVGPathElement>('g[data-hyperedge="e6"] path')
-    if (!intruded) throw new Error('blob e6 not mounted')
+    // The red marks are a finer test than membership, and a drag is what
+    // separates the two. Membership asks where a dot's *centre* is; a mark asks
+    // whether the circle you can see overlaps an outline at all, which is
+    // `blobContains` with the standoff fattened by a dot's radius. Dragging w6
+    // pulls boundaries up against dots they clear by less than that, so the
+    // marks come back while every centre is still where it belongs — the
+    // drawing reporting that it is close to claiming something untrue, rather
+    // than that it has.
+    const marked = root.querySelectorAll('g.overlap circle[data-wire]')
+    expect(marked.length).toBeGreaterThan(0)
 
-    const cx = Number(mark.getAttribute('cx'))
-    const cy = Number(mark.getAttribute('cy'))
-    const r = Number(mark.getAttribute('r'))
-    const rim = Array.from({ length: 24 }, (_, i) => {
-      const angle = (i / 24) * 2 * Math.PI
-      return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) }
-    })
-    const inside = rim.filter(p => intruded.isPointInFill(p)).length
-    expect(inside).toBeGreaterThan(0)
-    expect(inside).toBeLessThan(rim.length)
-
-    // The count is derived from the same set the red marks are, so it follows a
-    // drag. Its position doesn't: that comes from where the layout put the dots
-    // rather than where they have been dragged to, so the caption stays put
-    // while the drawing under it moves.
-    const tally = tallyAt()
-    expect(tally?.text).toBe(
-      `${root.querySelectorAll('g.overlap circle[data-wire]').length} trespassing nodes`,
-    )
-    expect(tally?.at).toEqual(tallyBefore.at)
+    // The count is derived from the same set the red marks are, so it follows
+    // the drag that created them.
+    expect(tallyAt()?.text).toBe(`${marked.length} trespassing nodes`)
   },
 }

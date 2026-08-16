@@ -249,6 +249,15 @@ export class ZxHypergraphViewerElement extends LitElement {
    * `dotSize` of the outline, which is `blobContains` asked with a standoff
    * fattened by that much — the same reach the outline is drawn from, so a dot
    * cannot be marked as overlapping something it visibly clears.
+   *
+   * Since `blobOutline` began cutting its boundary back around foreign dots,
+   * this marks nothing in a diagram at rest: the cut keeps every foreign dot
+   * `CLEARANCE` dot-radii clear, which is wider than the fattening here. What
+   * is left is a near-miss warning, and it earns its place under a drag — the
+   * dots move, the cut follows them, and a boundary can end up grazing a dot it
+   * has correctly excluded. It is also the only thing that would report the one
+   * case the cut cannot fix: a dot so close to a blob's own that pulling the
+   * boundary in would collapse the blob.
    */
   #trespasses(scene: HypergraphScene, pos: Map<string, Point>) {
     const sizes = { radius: scene.blobRadius + scene.dotSize, dot: scene.dotSize }
