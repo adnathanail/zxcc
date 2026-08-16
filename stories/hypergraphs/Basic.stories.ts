@@ -1,7 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
+import { expect, waitFor } from 'storybook/test'
 import type { DiagramData } from '../../src/types'
 import { strongComplementarity } from '../diagrams'
+import { shadowRootOf } from '../interactionHelpers'
 
 interface Args {
   diagram: DiagramData
@@ -40,6 +42,13 @@ export default meta
 
 type Story = StoryObj<Args>
 
+/** Each blob's caption, split into its `<tspan>` pieces — `Z(`, the phase, `)`
+ *  — so the assertions can tell the grey name from the blue phase. */
+const blobCaptions = (root: ParentNode) =>
+  [...root.querySelectorAll('svg g.blob text')].map(t =>
+    [...t.querySelectorAll('tspan')].map(s => s.textContent),
+  )
+
 export const TwoSpiders: Story = {
   name: '1. Two spiders, three wires',
   parameters: {
@@ -64,6 +73,8 @@ export const TwoSpiders: Story = {
         { src: 2, tgt: 3 },
       ],
     },
+
+    showLabels: false,
   },
 }
 
@@ -121,6 +132,19 @@ export const HadamardAndParallelEdges: Story = {
       ],
     },
   },
+  // A blob's caption is `name(phase)`, and the phase half takes `<zx-viewer>`'s
+  // blue so the same phase reads the same in either view.
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    await waitFor(() =>
+      expect(blobCaptions(root)).toEqual([
+        ['Z(', 'π/2', ')'],
+        ['X(', '0', ')'],
+      ]),
+    )
+    const phases = [...root.querySelectorAll('svg g.blob text tspan[fill="#00d"]')]
+    expect(phases.map(t => t.textContent)).toEqual(['π/2', '0'])
+  },
 }
 
 export const HadamardNode: Story = {
@@ -165,8 +189,46 @@ export const StrongComplementarity: Story = {
   args: { diagram: strongComplementarity },
 }
 
+// Labels off hides the names, not the phases: a blob's `Z(π/2)` drops to
+// `π/2`, and a node with no phase to show — a default-π Hadamard — loses its
+// text altogether. This mirrors `<zx-viewer>`, where `show-labels` only ever
+// governed the grey id text and the phase was always painted.
+export const LabelsHidden: Story = {
+  name: '6. Labels hidden',
+  args: {
+    showLabels: false,
+    diagram: {
+      nodes: [
+        { id: 0, type: 'input', ioId: 0 },
+        { id: 1, type: 'spider', color: 'Z', phase: 'π/2' },
+        { id: 2, type: 'hadamard' },
+        { id: 3, type: 'spider', color: 'X', phase: '0' },
+        { id: 4, type: 'output', ioId: 0 },
+      ],
+      edges: [
+        { src: 0, tgt: 1 },
+        { src: 1, tgt: 2 },
+        { src: 2, tgt: 3 },
+        { src: 3, tgt: 4 },
+      ],
+    },
+  },
+  parameters: { chromatic: { disableSnapshot: true } },
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    // The Z spider keeps its phase, the X spider its `0`, and both are still
+    // blue; the names and the parens around them went with the labels. The
+    // default-π Hadamard has no phase to show, so its blob goes uncaptioned.
+    await waitFor(() => expect(blobCaptions(root)).toEqual([['π/2'], ['0']]))
+    const phases = [...root.querySelectorAll('svg g.blob text tspan[fill="#00d"]')]
+    expect(phases.length).toBe(2)
+    // The wire ids are the other thing that went away.
+    expect(root.querySelectorAll('svg g.dot text').length).toBe(0)
+  },
+}
+
 export const UnsupportedNodeType: Story = {
-  name: '6. Node type with no blob',
+  name: '7. Node type with no blob',
   parameters: {
     docs: {
       story: {

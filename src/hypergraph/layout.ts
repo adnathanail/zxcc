@@ -93,7 +93,8 @@ export function layoutHypergraph(diagram: DiagramData, scene: Scene): Hypergraph
       const node = byId.get(e.nodeId) as DiagramNode
       return {
         id: e.id,
-        label: e.label,
+        name: e.name,
+        phase: e.phase,
         kind: blobKind(node),
         dots: [...new Set(e.wires)].filter(w => placed.has(w)),
       }

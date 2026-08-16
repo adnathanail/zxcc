@@ -11,7 +11,7 @@
 
 import { html, LitElement, nothing, type PropertyValues, type SVGTemplateResult, svg } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
-import { edgeColor, nodeColor, ORIGINAL_COLORS } from '../colors'
+import { edgeColor, LABEL_FILL, nodeColor, ORIGINAL_COLORS, PHASE_FILL } from '../colors'
 import type { Point } from '../curves'
 import { blobContains, blobLabelAnchor, blobOutline } from './geometry'
 import type { HypergraphBlob, HypergraphScene } from './types'
@@ -25,14 +25,18 @@ const BLOB_STYLE = 'stroke-width: 1.5px; stroke: black'
 /** The blue a selected node gets in `<zx-viewer>`, so a selection looks the
  *  same whichever view you are in. */
 const SELECTED_STYLE = 'stroke-width: 2px; stroke: #00f'
-const LABEL_FILL = '#555'
+/** A blob's name, darker than the `LABEL_FILL` grey the wire ids take: it sits
+ *  over a filled blob rather than on bare canvas. Local to this painter, as the
+ *  graph view has nothing it corresponds to. */
+const NAME_FILL = '#555'
 
 @customElement('zx-hypergraph-viewer')
 export class ZxHypergraphViewerElement extends LitElement {
   @property({ attribute: false }) scene: HypergraphScene | null = null
   /** Palette to paint with, as `<zx-viewer>` takes. */
   @property({ attribute: false }) colors: Record<string, string> = ORIGINAL_COLORS
-  /** Draw each dot's wire id and each blob's label. */
+  /** Draw each dot's wire id and each blob's name. With it off a blob still
+   *  shows its phase, if it has one. */
   @property({ attribute: false }) showLabels = true
   /** Extra SVG painted on top, in the scene's coordinate space. */
   @property({ attribute: false }) overlay: SVGTemplateResult | null = null
@@ -130,8 +134,26 @@ export class ZxHypergraphViewerElement extends LitElement {
     })
   }
 
+  /** The blob's caption, as `<tspan>`s: the name in grey — dropped when labels
+   *  are off, since it only repeats what the blob's colour already says — and
+   *  the phase in `<zx-viewer>`'s blue, which stays either way because it is
+   *  part of what the diagram *means*.
+   *
+   *  Built as an array rather than written out inline because Lit renders one
+   *  with nothing between the items: a newline between two children of a
+   *  `<text>` would render as a space and knock the caption off centre. */
+  #blobCaption(blob: HypergraphBlob): SVGTemplateResult[] {
+    const name = this.showLabels ? blob.name : ''
+    const parts: SVGTemplateResult[] = []
+    if (name) parts.push(svg`<tspan>${blob.phase ? `${name}(` : name}</tspan>`)
+    if (blob.phase) parts.push(svg`<tspan fill=${PHASE_FILL}>${blob.phase}</tspan>`)
+    if (name && blob.phase) parts.push(svg`<tspan>)</tspan>`)
+    return parts
+  }
+
   #renderBlob(scene: HypergraphScene, blob: HypergraphBlob, pos: Map<string, Point>) {
-    const anchor = this.showLabels ? blobLabelAnchor(blob, pos, scene.blobRadius) : null
+    const caption = this.#blobCaption(blob)
+    const anchor = caption.length > 0 ? blobLabelAnchor(blob, pos, scene.blobRadius) : null
     const selected = this.#selected.has(blob.id)
     return svg`
       <g data-hyperedge=${blob.id}>
@@ -141,8 +163,8 @@ export class ZxHypergraphViewerElement extends LitElement {
         ${
           anchor
             ? svg`<text x=${anchor.x} y=${anchor.y} text-anchor="middle" font-size="11px"
-                font-family="monospace" fill=${LABEL_FILL}
-                style="pointer-events: none; user-select: none;">${blob.label}</text>`
+                font-family="monospace" fill=${NAME_FILL}
+                style="pointer-events: none; user-select: none;">${caption}</text>`
             : nothing
         }
       </g>`
@@ -174,7 +196,7 @@ export class ZxHypergraphViewerElement extends LitElement {
                 ${
                   this.showLabels
                     ? svg`<text y=${scene.blobRadius + 11} text-anchor="middle" font-size="10px"
-                        font-family="monospace" fill="#999"
+                        font-family="monospace" fill=${LABEL_FILL}
                         style="pointer-events: none; user-select: none;">${dot.id}</text>`
                     : nothing
                 }

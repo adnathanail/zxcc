@@ -13,7 +13,7 @@
 
 import { html, LitElement, nothing, type PropertyValues, type SVGTemplateResult, svg } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
-import { edgeColor, nodeColor, ORIGINAL_COLORS, webColor } from '../colors'
+import { edgeColor, LABEL_FILL, nodeColor, ORIGINAL_COLORS, PHASE_FILL, webColor } from '../colors'
 import type { Point } from '../curves'
 import { Topology } from '../topology'
 import type { BoxKind, NodeKind, Scene, SceneNode } from '../types'
@@ -255,14 +255,14 @@ export class ZxViewerElement extends LitElement {
         ${
           node.text
             ? svg`<text y=${0.7 * size + 14} text-anchor="middle" font-size="12px"
-                font-family="monospace" fill="#00d"
+                font-family="monospace" fill=${PHASE_FILL}
                 style="pointer-events: none; user-select: none;">${node.text}</text>`
             : nothing
         }
         ${
           this.showLabels
             ? svg`<text y=${-0.7 * size - 8} text-anchor="middle" font-size="10px"
-                font-family="monospace" fill="#999"
+                font-family="monospace" fill=${LABEL_FILL}
                 style="pointer-events: none; user-select: none;">${node.id}</text>`
             : nothing
         }
@@ -287,7 +287,7 @@ export class ZxViewerElement extends LitElement {
     // No whitespace inside <text>: SVG would render it, off-centring the
     // scalar. The gap after the '×' is the tspan's dx instead.
     return svg`
-      <text x=${scene.width / 2} y=${scene.scalarY} text-anchor="middle" font-family="monospace"><tspan fill="#999">×</tspan><tspan dx="0.4em">${scene.scalar}</tspan></text>`
+      <text x=${scene.width / 2} y=${scene.scalarY} text-anchor="middle" font-family="monospace"><tspan fill=${LABEL_FILL}>×</tspan><tspan dx="0.4em">${scene.scalar}</tspan></text>`
   }
 
   render() {

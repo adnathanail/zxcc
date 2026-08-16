@@ -46,7 +46,10 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   `linkPath` draws that curve and `wireDot` evaluates it at t = 0.5, so the
   painted wire and the hypergraph's dot on it cannot disagree.
 - `colors.ts` — the pyzx palettes, the scheme lookup, and which entry each
-  kind of thing is painted with (`nodeColor`, `edgeColor`, `webColor`). Those
+  kind of thing is painted with (`nodeColor`, `edgeColor`, `webColor`), plus
+  `PHASE_FILL` and `LABEL_FILL`, the blue both painters write a phase in and
+  the grey they write an id label in — hard-coded in pyzx, so neither is a
+  palette entry and neither moves with `color-scheme`. Those
   lookups are here rather than in either painter so a spider and the blob
   standing for the same spider cannot come out different colours.
 - `attribution.ts` — the "❤️ zxcc" badge drawn into the diagram's SVG.
@@ -67,7 +70,12 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   `Hypergraph{Wire,Edge,Data}` for the conversion, `Hypergraph{Dot,Blob,Scene}`
   for the laid-out result.
 - `convert.ts` — `toHypergraph`, turning a `DiagramData` into wires (one per
-  ZX edge) and hyperedges (one per non-boundary ZX node).
+  ZX edge) and hyperedges (one per non-boundary ZX node). A hyperedge carries
+  its `name` (`Z`) and `phase` (`π/2`) as separate fields, plus the joined
+  `label` (`Z(π/2)`) for a caller that wants one string: `show-labels` drops
+  the name and keeps the phase, and the viewer paints the phase in
+  `<zx-viewer>`'s blue, so a phase reads the same in either view. That is the
+  same split `layout()` makes between a node's id label and its `text`.
 - `geometry.ts` — `wireDot` (where a wire's dot sits), `convexHull`/`blobPath`
   (the outline enclosing a set of dots), `blobContains` (the same shape as a
   hit test), and `blobOutline`/`blobLabelAnchor` over a live dot-position map.
