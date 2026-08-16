@@ -5,6 +5,8 @@ export {
   ORIGINAL_COLORS,
   RGB_COLORS,
 } from './colors'
+export { toHypergraph } from './hypergraph/convert'
+export type { HypergraphData, HypergraphEdge, HypergraphWire } from './hypergraph/types'
 export type {
   BoxKind,
   DiagramBox,

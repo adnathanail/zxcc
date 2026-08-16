@@ -7,23 +7,33 @@ user-facing usage.
 ## Layout of `src/`
 
 ```
-DiagramData  --layout()-->  Scene  --<zx-viewer>-->  SVG
+DiagramData  --layout()-->  Scene  --<zx-viewer>-->            SVG   (graph)
+                            Scene  --layoutHypergraph()-->  HypergraphScene
+                                   --<zx-hypergraph-viewer>-->  SVG   (hypergraph)
 ```
 
-`src/` is split in two: the root holds what is about a diagram however it is
-drawn, and `src/graph/` holds the ZX diagram's own painter and the geometry
-only it needs. **Two rules hold, and both are checkable:**
+`src/` has two subfolders, `graph/` and `hypergraph/`, one per way of drawing
+a diagram. **Two rules hold, and both are checkable:**
 
 1. A file in a subfolder imports only from its own folder and from `src/`.
-2. Everything in `src/` is imported by *every* subfolder or by none. A module
-   used by only one of them belongs inside that one.
+   Neither subfolder ever reaches into the other.
+2. Everything in `src/` is imported by *both* subfolders or by *neither*. A
+   module used by only one of them belongs inside that one.
 
-The split is there for a second way of drawing the same diagram, which is what
-`Scene` being above it buys: `<zx-diagram>` lays a diagram out once and hands
-the result to whichever painter is on, rather than each painter laying it out
-its own way.
+One module is knowingly out of step with rule 2: `colors.ts` sits in `src/`
+but only `graph/` imports it so far. It is there in preparation — the palettes
+are public API surfaced by `<zx-diagram color-scheme>`, and colouring blobs
+from a spider's palette entry is the next thing planned for the hypergraph
+view (`docs/hypergraph-plan.md`, item 4). Every other root module satisfies
+the rule outright.
 
-**`src/` — shared, or nothing to do with any one view**
+Rule 2 is what put `layout()` above the split rather than in `graph/`: the
+`Scene` it produces is the shared intermediate both views draw from, so
+`<zx-diagram>` runs it once and hands the result to whichever painter is on.
+`layoutHypergraph` therefore takes a `Scene` rather than laying the diagram
+out a second time — that is what stops `hypergraph/` needing `graph/`.
+
+**`src/` — shared, or nothing to do with either view**
 
 - `types.ts` — both data contracts. `Diagram*` is the public input shape
   consumers hand to `<zx-diagram>`; `Scene*` is the laid-out, pixel-space
@@ -35,21 +45,20 @@ its own way.
   viewer can fan them into arcs.
 - `topology.ts` — the `Topology` class: adjacency, H-box chain tracing,
   pixel-clearance clamping, and the positions auto-placed H-boxes resolve to.
-  Shared because the layout leaves H-boxes unplaced, so anything that needs a
-  coordinate for one has to ask.
+  Shared because the layout leaves H-boxes unplaced and both views need them
+  somewhere.
 - `curves.ts` — `Point`, the `Curve` union, and
   `edgeCurve`/`curvePath`/`curvePointAt`. `edgeCurve` is the single answer to
   where the wire between two points runs (straight, fanned arc, or self-loop);
-  `curvePath` draws that curve and `curvePointAt` evaluates it, so drawing a
-  wire and finding a point on it cannot disagree.
-- `colors.ts` — the pyzx palettes, the scheme lookup, and which entry each
-  kind of thing is painted with (`nodeColor`, `edgeColor`, `webColor`). Those
-  lookups are here rather than in the painter so anything else standing for
-  the same node comes out the same colour.
+  `linkPath` draws that curve and `wireDot` evaluates it at t = 0.5, so the
+  painted wire and the hypergraph's dot on it cannot disagree.
+- `colors.ts` — the pyzx palettes and the scheme lookup. See the note above:
+  the hypergraph view doesn't read them yet.
 - `attribution.ts` — the "❤️ zxcc" badge drawn into the diagram's SVG.
-- `zxDiagram.ts` — `<zx-diagram>`, the public element.
+- `zxDiagram.ts` — `<zx-diagram>`, the public element, and the only file that
+  knows about both views.
 - `index.ts` — package entry: `ZxDiagramElement`, the palettes, the input
-  types.
+  types, `toHypergraph`.
 
 **`src/graph/` — the ZX diagram itself**
 
@@ -57,17 +66,35 @@ its own way.
   `groundSymbolPath`, plus `Rect` and the H-box drag arithmetic.
 - `viewer.ts` — `<zx-viewer>`, the painter. Internal to the package.
 
-## The two elements
+**`src/hypergraph/` — the dual: wires become dots, spiders become blobs**
+
+- `types.ts` — the dual's data contracts, `../types.ts`'s counterpart:
+  `Hypergraph{Wire,Edge,Data}` for the conversion, `Hypergraph{Dot,Blob,Scene}`
+  for the laid-out result.
+- `convert.ts` — `toHypergraph`, turning a `DiagramData` into wires (one per
+  ZX edge) and hyperedges (one per non-boundary ZX node).
+- `geometry.ts` — `wireDot` (where a wire's dot sits), `convexHull`/`blobPath`
+  (the outline enclosing a set of dots), and `blobOutline`/`blobLabelAnchor`
+  over a live dot-position map.
+- `layout.ts` — `layoutHypergraph`, parking each wire's dot at the midpoint of
+  its edge so the two views line up, then zooming the positions, since the
+  dual has twice the marks at half the spacing.
+- `viewer.ts` — `<zx-hypergraph-viewer>`, the second painter. Internal, light
+  DOM, and static — no interactions yet.
+
+## The elements
 
 `<zx-diagram>` runs `layout()` in `willUpdate()` into `@state` (`scene` /
-`error`), then renders `<zx-viewer>` inside a scroll container. It owns the
-presentation properties that mirror pyzx's `draw_d3` keyword arguments
-(`show-labels`, `color-scheme`, `scale`, `colors`), resolves a scheme name to
-a palette, and passes the attribution badge down as the viewer's `overlay`.
-It carries the stylesheet for the whole shadow tree, the viewer's SVG
-included.
+`hypergraph` / `error`), then renders one of the two painters inside a scroll
+container — `<zx-viewer>`, or `<zx-hypergraph-viewer>` when
+`view-as-hypergraph` is set. The two states are mutually exclusive: only one
+view is built per update. It owns the presentation properties that mirror
+pyzx's `draw_d3` keyword arguments (`show-labels`, `color-scheme`, `scale`,
+`colors`), resolves a scheme name to a palette, and passes the attribution
+badge down as the painter's `overlay`. It carries the stylesheet for the whole
+shadow tree, the painters' SVG included.
 
-`<zx-viewer>` renders into the **light DOM** (`createRenderRoot() { return
+Both painters render into the **light DOM** (`createRenderRoot() { return
 this }`). It is an internal part of `<zx-diagram>`: sharing the host's
 stylesheet keeps the SVG reachable from `zx-diagram.shadowRoot` (which every
 story's play function relies on) and avoids a second shadow boundary. It is
@@ -82,9 +109,13 @@ mutates state and calls `requestUpdate()`. Those fields are plain private
 fields rather than `@state()` precisely because they are mutated in place and
 paired with an explicit `requestUpdate()`.
 
-Because `<zx-viewer>` updates on its own cycle, anything that needs the SVG in
-the DOM has to await it: `<zx-diagram>` overrides `getUpdateComplete()` and
-awaits the child before measuring the attribution.
+Because a painter updates on its own cycle, anything that needs the SVG in the
+DOM has to await it: `<zx-diagram>` overrides `getUpdateComplete()` and awaits
+whichever child is mounted before measuring the attribution.
+
+`<zx-hypergraph-viewer>` holds no interaction state at all yet — it derives
+every blob outline from the dot positions in `render()`, the same way, so
+adding drags means making that map state rather than restructuring it.
 
 ## Build
 
