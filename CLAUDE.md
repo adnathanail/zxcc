@@ -76,15 +76,17 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   the name and keeps the phase, and the viewer paints the phase in
   `<zx-viewer>`'s blue, so a phase reads the same in either view. That is the
   same split `layout()` makes between a node's id label and its `text`.
+  `blobKind` is here too, and is the *only* place the hypergraph half looks at
+  a `DiagramNodeType`: it maps a node to the shape its blob takes and rejects
+  anything that hasn't got one, so a W, Z-box or `wire` node throws with a
+  message naming it. Everything downstream reads the hyperedge's `kind` and so
+  never has to consider a node type it can't draw.
 - `geometry.ts` — `wireDot` (where a wire's dot sits), `convexHull`/`blobPath`
   (the outline enclosing a set of dots), `blobContains` (the same shape as a
   hit test), and `blobOutline`/`blobLabelAnchor` over a live dot-position map.
 - `layout.ts` — `layoutHypergraph`, parking each wire's dot at the midpoint of
   its edge so the two views line up, then zooming the positions, since the
-  dual has twice the marks at half the spacing. `blobKind` is also where an
-  unsupported node type is rejected: only spiders and Hadamards have a blob
-  shape, so a W, Z-box or `wire` node throws with a message naming the node,
-  rather than being painted as something it isn't.
+  dual has twice the marks at half the spacing.
 - `viewer.ts` — `<zx-hypergraph-viewer>`, the second painter. Internal and
   light DOM. Two pieces of interaction state, both plain fields paired with an
   explicit `requestUpdate()`: the selection, and the dragged dot positions.

@@ -121,8 +121,9 @@ outwards and rounded off, so it stays readable at any arity — one dot gives a 
 
 Blobs are filled with the same palette entry their spider would be — Z green, X red, H yellow — so
 `color-scheme` and `colors` apply to this view too, and a dot takes its edge's colour. Only spiders
-and Hadamards have a blob shape so far: a diagram containing a W, Z-box or `wire` node throws with a
-message naming the node. Inputs and outputs are always fine — they're wires, not hyperedges.
+and Hadamards have a blob shape so far: a diagram containing a W, Z-box or `wire` node is rejected by
+the conversion, which throws with a message naming the node. Inputs and outputs are always fine —
+they're wires, not hyperedges.
 
 The conversion is also available standalone:
 
