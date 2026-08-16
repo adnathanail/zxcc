@@ -36,7 +36,15 @@ export interface HypergraphEdge {
   id: string
   /** The ZX node (spider, H-box, W, Z-box) this hyperedge came from. */
   nodeId: number
-  /** Display label, e.g. `Z(π/2)`, `X(0)`, `H`. */
+  /** What the node is, without its phase: `Z`, `X`, `H`, `Zbox`. */
+  name: string
+  /** The phase on its own, e.g. `π/2`, and empty for a node that carries
+   *  none. Kept apart from the name because the two are drawn differently —
+   *  the name is what `show-labels` hides, and the phase is painted in the
+   *  diagram view's blue. */
+  phase: string
+  /** The two joined, e.g. `Z(π/2)`, `X(0)`, `H` — the one-string form, for a
+   *  caller that wants a label rather than the pieces. */
   label: string
   /** Incident wire ids, in edge order. A self-loop appears twice — the
    *  spider's arity counts both of its legs. */
@@ -73,8 +81,12 @@ export type HyperedgeKind = Extract<NodeKind, 'z-spider' | 'x-spider' | 'hadamar
 export interface HypergraphBlob {
   /** The hyperedge's id, `e<node id>`. */
   id: string
-  /** Display label, e.g. `Z(π/2)`. */
-  label: string
+  /** What the node is, without its phase: `Z`, `X`, `H`. This is the half
+   *  `show-labels` governs. */
+  name: string
+  /** The phase on its own, e.g. `π/2` — drawn in the diagram view's blue, and
+   *  kept when labels are off. Empty when the node has no phase to show. */
+  phase: string
   /** Which node it stands for, and so which palette entry it is painted
    *  with — the same one that node itself would be. */
   kind: HyperedgeKind

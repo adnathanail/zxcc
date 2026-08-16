@@ -63,8 +63,13 @@ export const COLOR_SCHEMES: Record<ColorSchemeName, Record<string, string>> = {
   grayscale: GRAYSCALE_COLORS,
 }
 
-/** @deprecated use {@link ORIGINAL_COLORS}. */
-export const COLORS = ORIGINAL_COLORS
+/** Fill for a node's phase text */
+export const PHASE_FILL = '#00d'
+
+/** Fill for graph node ids and hypergraph wire ids
+ *  (and the `×` in front of the scalar)
+ */
+export const LABEL_FILL = '#999'
 
 /** Fill for a node — and for the hypergraph blob standing for that same node,
  *  which is why this is shared rather than private to `<zx-viewer>`. */
