@@ -103,6 +103,39 @@ The palettes are exported too, if you want to build a variant:
 import { ORIGINAL_COLORS, RGB_COLORS, GRAYSCALE_COLORS, COLOR_SCHEMES } from '@adnathanail/zxcc'
 ```
 
+## Hypergraph view
+
+Set the `view-as-hypergraph` attribute (or the `viewAsHypergraph` property) to draw the diagram's
+hypergraph dual instead of the diagram — the roles of wires and spiders swap. Every ZX edge becomes
+a node (a *wire*), drawn as a dot; every non-boundary ZX node becomes a *hyperedge*, drawn as a blob
+enclosing the dots of the wires incident to it. Boundaries aren't hyperedges, they're just the loose
+end of a wire.
+
+```html
+<zx-diagram id="d" view-as-hypergraph></zx-diagram>
+```
+
+Each dot sits at the midpoint of the edge it came from, so the two views line up: toggling the
+attribute keeps everything in the same place. A blob's outline is the convex hull of its dots pushed
+outwards and rounded off, so it stays readable at any arity — one dot gives a circle, two a capsule.
+
+The conversion is also available standalone:
+
+```js
+import { toHypergraph } from '@adnathanail/zxcc'
+
+const hg = toHypergraph(diagram)  // { wires, hyperedges }
+```
+
+For the diagram in the usage example above, `toHypergraph` gives two wires — `w0` joining node 0 to
+node 1 and carrying input 0, `w1` joining 1 to 2 and carrying output 0 — and the one hyperedge
+`e1  Z(π/2)  {w0, w1}`.
+
+A self-loop appears twice in its spider's wire list, since both of the spider's legs land on it.
+Parallel edges stay distinct wires. An edge's `kind` rides along on the wire, so a `hadamard` edge
+stays a single wire rather than becoming a hyperedge of its own — but an explicit `hadamard` *node*
+does become one.
+
 ## Development
 
 Install npm dependencies:
