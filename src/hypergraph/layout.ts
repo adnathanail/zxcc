@@ -15,10 +15,10 @@
 
 import type { Point } from '../curves'
 import { Topology } from '../topology'
-import type { DiagramData, DiagramNode, Scene } from '../types'
+import type { DiagramData, Scene } from '../types'
 import { toHypergraph } from './convert'
 import { wireDot } from './geometry'
-import type { HyperedgeKind, HypergraphBlob, HypergraphDot, HypergraphScene } from './types'
+import type { HypergraphBlob, HypergraphDot, HypergraphScene } from './types'
 
 /** Blob standoff and dot radius, as fractions of the ZX layout's scale — the
  *  *unzoomed* one, so both shrink relative to the spacing as `ZOOM` grows. */
@@ -32,27 +32,13 @@ const DOT_RADIUS = 0.12
 const ZOOM = 1.6
 
 /**
- * Which shape — and so which palette entry — a node's blob is drawn with.
- *
- * Only spiders and Hadamards have one. A W, a Z-box or a bare `wire` node is a
- * hyperedge in the conversion, but there is no agreed way to draw it here yet,
- * and quietly painting it as something else would be worse than saying so.
- * Boundaries never reach this: they are wires, not hyperedges.
- */
-function blobKind(node: DiagramNode): HyperedgeKind {
-  if (node.type === 'spider') return node.color === 'X' ? 'x-spider' : 'z-spider'
-  if (node.type === 'hadamard') return 'hadamard'
-  throw new Error(
-    `Hypergraph view: node ${node.id} is a '${node.type}', only 'spider' and ` +
-      `'hadamard' nodes can be drawn as hyperedges. ` +
-      `('input' and 'output' are fine: they are wires, not hyperedges.)`,
-  )
-}
-
-/**
  * Lay out the hypergraph dual of `diagram`, positioned from `scene` — the
  * result of `layout(diagram)`, which the caller supplies so that both views
  * are drawn from one and the same layout.
+ *
+ * Throws by way of `toHypergraph` on a node that has no blob shape — only
+ * spiders and Hadamards do — so everything from here on has a shape and a
+ * colour to be drawn with.
  */
 export function layoutHypergraph(diagram: DiagramData, scene: Scene): HypergraphScene {
   const hg = toHypergraph(diagram)
@@ -85,20 +71,14 @@ export function layoutHypergraph(diagram: DiagramData, scene: Scene): Hypergraph
   })
 
   const placed = new Set(dots.map(d => d.id))
-  const byId = new Map(diagram.nodes.map(n => [n.id, n]))
   const blobs: HypergraphBlob[] = hg.hyperedges
-    .map(e => {
-      // A hyperedge always came from a node of this diagram, so this only
-      // misses on a malformed `nodes`/`edges` pair, which `layout` rejects too.
-      const node = byId.get(e.nodeId) as DiagramNode
-      return {
-        id: e.id,
-        name: e.name,
-        phase: e.phase,
-        kind: blobKind(node),
-        dots: [...new Set(e.wires)].filter(w => placed.has(w)),
-      }
-    })
+    .map(e => ({
+      id: e.id,
+      name: e.name,
+      phase: e.phase,
+      kind: e.kind,
+      dots: [...new Set(e.wires)].filter(w => placed.has(w)),
+    }))
     .filter(b => b.dots.length > 0)
 
   // A dot sits at the midpoint of an edge, inside the box the ZX nodes span,

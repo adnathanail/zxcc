@@ -24,9 +24,9 @@ pipeline rather than inside it.
 
 - **Wires**: one per ZX edge, id `w<edge index>`, carrying `src`/`tgt`, the
   edge's `kind`, and which endpoints are boundaries.
-- **Hyperedges**: one per non-boundary ZX node, id `e<node id>`, carrying a
-  display `label` (`Z(π/2)`, `X(0)`, `H`, `W-in`, `Zbox(…)`) and the ids of its
-  incident wires.
+- **Hyperedges**: one per non-boundary ZX node, id `e<node id>`, carrying its
+  `kind` (`z-spider`, `x-spider`, `hadamard`), a display `label` (`Z(π/2)`,
+  `X(0)`, `H`) and the ids of its incident wires.
 
 `toHypergraph` is exported from the package entry, so the conversion is usable
 standalone; `layoutHypergraph` is not — its output is pixel-space and internal,
@@ -55,8 +55,12 @@ matters for the drawing, so they're worth re-reading before starting on it.
   it; an explicit `hadamard` *node* becomes its own arity-2 hyperedge. Those
   are two encodings of the same thing in `DiagramData` and they land
   differently here. Worth deciding whether to normalise one into the other.
-- **Every non-boundary vertex becomes a hyperedge**, not only spiders — W-in,
-  W-out, Z-box and `wire` nodes are vertices with incident wires too.
+- **Only spiders and Hadamards become hyperedges.** A W-in, W-out, Z-box or
+  `wire` node is a vertex with incident wires too, but none of them has a blob
+  shape to be drawn as, so the conversion rejects the diagram outright rather
+  than producing a hyperedge nothing downstream can paint. That check is in
+  `toHypergraph` — the earliest point — so `layoutHypergraph` and the viewer
+  only ever see the three kinds they have answers for.
 
 ## The drawing (`src/hypergraph/`)
 
@@ -106,7 +110,8 @@ Answers to the questions above, as built:
    can't disagree, which is also what makes `colors.ts` a legitimate root
    module under the folder rules.
 
-   Only spiders and Hadamards have a blob shape. A W, Z-box or `wire` node is not supported.
+   Only spiders and Hadamards have a blob shape. A W, Z-box or `wire` node is
+   not supported, and `toHypergraph` says so rather than picking a colour.
 
 5. **Labels.** Open. Drawn under `show-labels` — the wire id under each dot,
    the hyperedge label over the top of each blob — and they collide when blobs

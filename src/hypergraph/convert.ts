@@ -7,32 +7,33 @@
 // hyperedge contains.
 //
 // Pure and DOM-free, and the counterpart of `src/layout.ts` in this half of
-// the package: `src/hypergraphLayout.ts` is what gives the result coordinates.
+// the package: `./layout.ts` is what gives the result coordinates.
 
 import type { DiagramData, DiagramNode } from '../types'
-import type { HypergraphData, HypergraphEdge, HypergraphWire } from './types'
+import type { HyperedgeKind, HypergraphData, HypergraphEdge, HypergraphWire } from './types'
 
-/** What the node is, without its phase — `Z`, `X`, `H`, `Zbox`. Kept apart
- *  from the phase because the two are drawn differently: the viewer paints the
- *  name grey and the phase in the same blue `<zx-viewer>` uses, and drops the
- *  name alone when labels are off. */
-function nameFor(n: DiagramNode): string {
-  switch (n.type) {
-    case 'spider':
-      return n.color ?? 'Z'
-    case 'hadamard':
-      return 'H'
-    case 'z-box':
-      return 'Zbox'
-    case 'w-input':
-      return 'W-in'
-    case 'w-output':
-      return 'W-out'
-    case 'wire':
-      return 'wire'
-    default:
-      return n.type
-  }
+/**
+ * Which shape — and so which palette entry — the node's blob is drawn with,
+ * and the one place the hypergraph rejects a node it can't draw.
+ */
+function blobKind(n: DiagramNode): HyperedgeKind {
+  if (n.type === 'spider') return n.color === 'X' ? 'x-spider' : 'z-spider'
+  if (n.type === 'hadamard') return 'hadamard'
+  throw new Error(
+    `Hypergraph view: node ${n.id} is a '${n.type}', only 'spider' and ` +
+      `'hadamard' nodes can be drawn as hyperedges. ` +
+      `('input' and 'output' are fine: they are wires, not hyperedges.)`,
+  )
+}
+
+/** What the node is, without its phase — `Z`, `X`, `H`. Kept apart from the
+ *  phase because the two are drawn differently: the viewer paints the name grey
+ *  and the phase in the same blue `<zx-viewer>` uses, and drops the name alone
+ *  when labels are off. */
+const NAMES: Record<HyperedgeKind, string> = {
+  'z-spider': 'Z',
+  'x-spider': 'X',
+  hadamard: 'H',
 }
 
 /** The two joined back up, `Z(π/2)` — the one-string form, for a caller of
@@ -46,23 +47,16 @@ function labelFor(name: string, phase: string): string {
  *  convention included, and empty for anything that carries no phase. The
  *  hypergraph keeps it apart from the label so that turning labels off hides
  *  the name and not the phase, as it does in the diagram view. */
-function phaseFor(n: DiagramNode, phaseOverride?: string): string {
+function phaseFor(n: DiagramNode, kind: HyperedgeKind, phaseOverride?: string): string {
   if (phaseOverride !== undefined) return phaseOverride
-  switch (n.type) {
-    case 'spider':
-    case 'z-box':
-      return n.phase ?? ''
-    case 'hadamard': {
-      const raw = n.phase ?? 'π'
-      return raw === 'π' ? '' : raw
-    }
-    default:
-      return ''
-  }
+  if (kind !== 'hadamard') return n.phase ?? ''
+  const raw = n.phase ?? 'π'
+  return raw === 'π' ? '' : raw
 }
 
 /** Convert a ZX diagram to its hypergraph dual. Throws the same way `layout`
- *  does on a malformed diagram (missing `nodes`/`edges`). */
+ *  does on a malformed diagram (missing `nodes`/`edges`), and on a non-boundary
+ *  node that is neither a spider nor a Hadamard — see {@link blobKind}. */
 export function toHypergraph(diagram: DiagramData): HypergraphData {
   const labels = new Map<number, string>(diagram.labels ?? [])
   const byId = new Map<number, DiagramNode>()
@@ -71,11 +65,13 @@ export function toHypergraph(diagram: DiagramData): HypergraphData {
   const hyperedges = new Map<number, HypergraphEdge>()
   for (const n of diagram.nodes) {
     if (n.type === 'input' || n.type === 'output') continue
-    const name = nameFor(n)
-    const phase = phaseFor(n, labels.get(n.id))
+    const kind = blobKind(n)
+    const name = NAMES[kind]
+    const phase = phaseFor(n, kind, labels.get(n.id))
     hyperedges.set(n.id, {
       id: `e${n.id}`,
       nodeId: n.id,
+      kind,
       name,
       phase,
       label: labelFor(name, phase),

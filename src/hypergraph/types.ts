@@ -30,13 +30,22 @@ export interface HypergraphWire {
   boundaries: { nodeId: number; kind: 'input' | 'output'; ioId?: number }[]
 }
 
+/** The ZX nodes that have a blob shape. A diagram carrying any other
+ *  non-boundary node can't be drawn as a hypergraph yet, and `toHypergraph`
+ *  says so rather than picking a colour for it — so nothing downstream of the
+ *  conversion has to consider the other node types at all. */
+export type HyperedgeKind = Extract<NodeKind, 'z-spider' | 'x-spider' | 'hadamard'>
+
 /** A non-boundary ZX node, as the set of wires incident to it. */
 export interface HypergraphEdge {
   /** Stable id, `e<node id>`. */
   id: string
-  /** The ZX node (spider, H-box, W, Z-box) this hyperedge came from. */
+  /** The ZX node (spider or H-box) this hyperedge came from. */
   nodeId: number
-  /** What the node is, without its phase: `Z`, `X`, `H`, `Zbox`. */
+  /** What the node is, and so which palette entry its blob is painted with —
+   *  the same one the node itself would be. */
+  kind: HyperedgeKind
+  /** What the node is, without its phase: `Z`, `X`, `H`. */
   name: string
   /** The phase on its own, e.g. `π/2`, and empty for a node that carries
    *  none. Kept apart from the name because the two are drawn differently —
@@ -71,11 +80,6 @@ export interface HypergraphDot {
   /** The ZX endpoints the wire joins, e.g. `0—2`. */
   label: string
 }
-
-/** The ZX nodes that have a blob shape. A diagram carrying any other
- *  non-boundary node can't be drawn as a hypergraph yet, and `layoutHypergraph`
- *  says so rather than picking a colour for it. */
-export type HyperedgeKind = Extract<NodeKind, 'z-spider' | 'x-spider' | 'hadamard'>
 
 /** A hyperedge, drawn as a shape enclosing the dots of its wires. */
 export interface HypergraphBlob {

@@ -233,7 +233,7 @@ export const UnsupportedNodeType: Story = {
     docs: {
       story: {
         description:
-          'Only spiders and Hadamards have a blob shape. A W, Z-box or `wire` node converts to a hyperedge happily enough, but there is no agreed way to draw it, so the layout says so rather than picking a colour. `<zx-diagram>` shows the message in its error state; drop `view-as-hypergraph` and the same diagram draws fine.',
+          'Only spiders and Hadamards have a blob shape. A W, Z-box or `wire` node would be a hyperedge in the dual, but there is no agreed way to draw one, so `toHypergraph` rejects the diagram rather than picking a colour. `<zx-diagram>` shows the message in its error state; drop `view-as-hypergraph` and the same diagram draws fine.',
       },
     },
   },
