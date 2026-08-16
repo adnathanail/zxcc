@@ -38,9 +38,17 @@ const LEADER_STYLE = `stroke: ${SELECTED_STROKE}; stroke-width: 1px; stroke-dash
  *  line starts clear of the glyphs. */
 const LEADER_GAP = 4
 /** A blob's name, darker than the `LABEL_FILL` grey the wire ids take: it sits
- *  over a filled blob rather than on bare canvas. Local to this painter, as the
- *  graph view has nothing it corresponds to. */
+ *  over a filled blob rather than on bare canvas. */
 const NAME_FILL = '#555'
+/** The red which the part of a dot that has strayed into a blob not holding it
+ *  is painted. */
+const OVERLAP_FILL = '#e00'
+
+/** Distinguishes one viewer's clip paths from another's. `url(#…)` resolves
+ *  within the tree the reference sits in, and normally that is one
+ *  `<zx-diagram>`'s shadow root with a single viewer in it — but two viewers
+ *  in one light-DOM tree would otherwise share ids. */
+let instances = 0
 
 @customElement('zx-hypergraph-viewer')
 export class ZxHypergraphViewerElement extends LitElement {
@@ -61,6 +69,8 @@ export class ZxHypergraphViewerElement extends LitElement {
   #positions = new Map<string, Point>()
   /** Tears down the in-flight drag, if any. */
   #endGesture: (() => void) | null = null
+  /** Prefix for this viewer's clip-path ids — see {@link instances}. */
+  #uid = `zxhg${++instances}`
 
   protected createRenderRoot() {
     return this
@@ -219,6 +229,28 @@ export class ZxHypergraphViewerElement extends LitElement {
       </g>`
   }
 
+  /**
+   * Each dot that has strayed into a blob not holding it, with the blobs it has
+   * strayed into.
+   *
+   * A dot's circle meets a blob's outline exactly when its centre is within
+   * `blobRadius + dotSize` of the blob's hull, which is `blobContains` asked
+   * with a fattened radius — the same predicate the outline is drawn with, so
+   * a dot cannot be marked as overlapping something it visibly clears.
+   */
+  #trespasses(scene: HypergraphScene, pos: Map<string, Point>) {
+    const reach = scene.blobRadius + scene.dotSize
+    return scene.dots
+      .map(dot => {
+        const centre = pos.get(dot.id) ?? { x: dot.x, y: dot.y }
+        const blobs = scene.blobs.filter(
+          b => !b.dots.includes(dot.id) && blobContains(b, pos, reach, centre),
+        )
+        return { dot, centre, blobs }
+      })
+      .filter(t => t.blobs.length > 0)
+  }
+
   render() {
     const scene = this.scene
     if (!scene) return nothing
@@ -229,10 +261,24 @@ export class ZxHypergraphViewerElement extends LitElement {
     const blobs = [...scene.blobs].sort(
       (a, b) => Number(this.#selected.has(a.id)) - Number(this.#selected.has(b.id)),
     )
+    const trespasses = this.#trespasses(scene, pos)
 
     return html`
       <svg width=${scene.width} height=${scene.height}
         style="max-width: none; max-height: none" @mousedown=${this.#onDown}>
+        <!-- One clip per trespassing dot, holding the outlines of every blob it
+             has strayed into: a clip path is the union of its children, so what
+             comes through is the whole of the dot that is somewhere it should
+             not be, however many blobs it overlaps at once. -->
+        <defs>
+          ${trespasses.map(
+            ({ dot, blobs: wrong }) => svg`
+              <clipPath id=${`${this.#uid}-${dot.id}`} clipPathUnits="userSpaceOnUse">
+                ${wrong.map(b => svg`<path d=${blobOutline(b, pos, scene.blobRadius)} />`)}
+              </clipPath>`,
+          )}
+        </defs>
+
         <g class="blob">${blobs.map(blob => this.#renderBlob(scene, blob, pos))}</g>
 
         <!-- Leaders are a layer of their own, above every blob: inside a blob's
@@ -258,6 +304,21 @@ export class ZxHypergraphViewerElement extends LitElement {
                     : nothing
                 }
               </g>`,
+          )}
+        </g>
+
+        <!-- The red goes over the dot rather than replacing it, so a dot half
+             inside a blob it doesn't belong to reads as half red. These sit in
+             absolute coordinates, not in the dot's translated group, because a
+             clip path is resolved in the coordinate system of whatever
+             references it — inside the group the outlines would be shifted by
+             the dot's own position. They carry data-wire so pressing the red
+             part still drags and selects the dot underneath. -->
+        <g class="overlap">
+          ${trespasses.map(
+            ({ dot, centre }) => svg`
+              <circle data-wire=${dot.id} cx=${centre.x} cy=${centre.y} r=${scene.dotSize}
+                fill=${OVERLAP_FILL} clip-path=${`url(#${this.#uid}-${dot.id})`} />`,
           )}
         </g>
 

@@ -182,11 +182,26 @@ export const StrongComplementarity: Story = {
     docs: {
       story: {
         description:
-          'The characteristic 2 to 2 strong complementarity diagram, testing the hypergraph rendering of more difficult hulls.',
+          'The characteristic 2 to 2 strong complementarity diagram, testing the hypergraph rendering of more difficult hulls. A blob is the hull of its own dots, so it can swallow a dot belonging to another hyperedge: the two crossing wires land in the middle of the picture, inside all four blobs though only two hold each. The part of a dot inside a blob that does not hold it is painted red, so the drawing shows where it is claiming something untrue rather than hiding it.',
       },
     },
   },
   args: { diagram: strongComplementarity },
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    const flagged = () =>
+      [...root.querySelectorAll('svg g.overlap circle')].map(c => c.getAttribute('data-wire'))
+
+    // w6 (1—6) and w7 (2—5) are the crossing wires. Each is held by two blobs
+    // and sits inside the other two; every other dot is where it belongs.
+    await waitFor(() => expect(flagged()).toEqual(['w6', 'w7']))
+
+    // The red is clipped to the blobs strayed into — both of the two that don't
+    // hold w6 — so only the part of the dot actually inside them is painted,
+    // and a dot half in and half out comes out half red.
+    const clip = root.querySelector(`clipPath[id$="-w6"]`)
+    expect(clip?.querySelectorAll('path').length).toBe(2)
+  },
 }
 
 // Labels off hides the names, not the phases: a blob's `Z(π/2)` drops to
