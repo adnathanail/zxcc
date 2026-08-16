@@ -114,6 +114,17 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   `<zx-viewer>` does: a blob is filled with its node's own colour at 40%
   opacity and outlined in black, so overlapping blobs read as both colours,
   and a dot takes its edge's colour (an H-wire's dot is blue).
+  A blob is the hull of *its own* dots, so it can swallow a dot belonging to
+  another hyperedge — the drawing then claims a wire is part of something it
+  isn't. Rather than bend the layout into never overlapping, the overlap is
+  drawn: a red copy of the dot, clipped to a `<clipPath>` holding the outlines
+  of every blob it has strayed into (a clip path is the union of its children,
+  so several at once still work), so exactly the part that is somewhere it
+  shouldn't be goes red and a dot half inside comes out half red. The marks
+  live in their own layer in absolute coordinates, not in the dot's translated
+  group, since a clip path resolves in the coordinate system of whatever
+  references it; they carry `data-wire`, so pressing the red part still drags
+  and selects the dot under it.
 
 ## The elements
 
@@ -203,8 +214,10 @@ Check whether you are on the `gitbutler/workspace` branch; if so, use the `but` 
   and `g.attribution` carrying a `rect` chip. The hypergraph view has its own:
   `g.blob` wrapping per-hyperedge `<g data-hyperedge>`, `g.dot` wrapping
   per-wire `<g data-wire>`, a selected blob marked by `#00f` in its path's
-  `style` and its leader as `line.leader[data-hyperedge]`, and a blob's caption
-  split into `<tspan>`s with the phase carrying `fill="#00d"`. Shared
+  `style` and its leader as `line.leader[data-hyperedge]`, a blob's caption
+  split into `<tspan>`s with the phase carrying `fill="#00d"`, and a dot
+  overlapping a blob that doesn't hold it as `g.overlap circle[data-wire]`
+  with its `clipPath` id ending `-<wire id>`. Shared
   query/gesture helpers live in
   `stories/interactionHelpers.ts`.
 - Stories live outside `src/` so they don't get emitted by the library `tsc`
