@@ -47,9 +47,10 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   painted wire and the hypergraph's dot on it cannot disagree.
 - `colors.ts` — the pyzx palettes, the scheme lookup, and which entry each
   kind of thing is painted with (`nodeColor`, `edgeColor`, `webColor`), plus
-  `PHASE_FILL` and `LABEL_FILL`, the blue both painters write a phase in and
-  the grey they write an id label in — hard-coded in pyzx, so neither is a
-  palette entry and neither moves with `color-scheme`. Those
+  `PHASE_FILL`, `LABEL_FILL` and `SELECTED_STROKE` — the blue both painters
+  write a phase in, the grey they write an id label in, and the blue they
+  outline a selection in. None is a palette entry, so none moves with
+  `color-scheme`. Those
   lookups are here rather than in either painter so a spider and the blob
   standing for the same spider cannot come out different colours.
 - `attribution.ts` — the "❤️ zxcc" badge drawn into the diagram's SVG.
@@ -83,7 +84,8 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   never has to consider a node type it can't draw.
 - `geometry.ts` — `wireDot` (where a wire's dot sits), `convexHull`/`blobPath`
   (the outline enclosing a set of dots), `blobContains` (the same shape as a
-  hit test), and `blobOutline`/`blobLabelAnchor` over a live dot-position map.
+  hit test), and `blobOutline`/`blobLabelAnchor`/`blobCentre` over a live
+  dot-position map.
 - `layout.ts` — `layoutHypergraph`, parking each wire's dot at the midpoint of
   its edge so the two views line up, then zooming the positions, since the
   dual has twice the marks at half the spacing.
@@ -96,7 +98,12 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   whose outline contains the point, tested against the geometry
   (`blobContains`) rather than by asking the DOM what was hit, since the blobs
   overlap and SVG reports only the topmost. Selected blobs paint last and take
-  the same blue stroke `<zx-viewer>` uses. It takes the same `colors`
+  the same blue stroke `<zx-viewer>` uses, and each gets a dashed leader from
+  its caption to the middle of the blob — a caption sits just off the top of
+  its outline, which in a pile of overlapping blobs looks like it could belong
+  to any of them. Leaders are their own layer above every blob, since inside a
+  blob's group they would be painted over by whichever blobs came after.
+  It takes the same `colors`
   palette
   `<zx-viewer>` does: a blob is filled with its node's own colour at 40%
   opacity and outlined in black, so overlapping blobs read as both colours,
@@ -189,8 +196,10 @@ Check whether you are on the `gitbutler/workspace` branch; if so, use the `but` 
   for id labels, the scalar as the only direct `<text>` child of the `<svg>`,
   and `g.attribution` carrying a `rect` chip. The hypergraph view has its own:
   `g.blob` wrapping per-hyperedge `<g data-hyperedge>`, `g.dot` wrapping
-  per-wire `<g data-wire>`, and a selected blob marked by `#00f` in its path's
-  `style`. Shared query/gesture helpers live in
+  per-wire `<g data-wire>`, a selected blob marked by `#00f` in its path's
+  `style` and its leader as `line.leader[data-hyperedge]`, and a blob's caption
+  split into `<tspan>`s with the phase carrying `fill="#00d"`. Shared
+  query/gesture helpers live in
   `stories/interactionHelpers.ts`.
 - Stories live outside `src/` so they don't get emitted by the library `tsc`
   build; `tsconfig.stories.json` type-checks them (wired into `npm run lint`).

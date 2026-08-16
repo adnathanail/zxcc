@@ -117,6 +117,14 @@ export function blobOutline(blob: HypergraphBlob, pos: Map<string, Point>, radiu
   return blobPath(dotPoints(blob, pos), radius)
 }
 
+/** Mean of the points — inside the hull of them, and so inside the outline
+ *  `blobPath` draws around it. */
+function centroid(points: Point[]): Point {
+  const x = points.reduce((sum, p) => sum + p.x, 0) / points.length
+  const y = points.reduce((sum, p) => sum + p.y, 0) / points.length
+  return { x, y }
+}
+
 /** Baseline for a blob's label: centred over the blob, just clear of the top
  *  of its outline. */
 export function blobLabelAnchor(
@@ -126,9 +134,17 @@ export function blobLabelAnchor(
 ): Point | null {
   const points = dotPoints(blob, pos)
   if (points.length === 0) return null
-  const x = points.reduce((sum, p) => sum + p.x, 0) / points.length
   const top = Math.min(...points.map(p => p.y))
-  return { x, y: top - radius - 5 }
+  return { x: centroid(points).x, y: top - radius - 5 }
+}
+
+/** The middle of a blob — the point a leader line from its caption is aimed
+ *  at. Inside the outline by construction, and far enough from the caption to
+ *  be worth drawing a line to: the caption is parked a few pixels off the top
+ *  of the outline, so a line to the boundary would be too short to see. */
+export function blobCentre(blob: HypergraphBlob, pos: Map<string, Point>): Point | null {
+  const points = dotPoints(blob, pos)
+  return points.length === 0 ? null : centroid(points)
 }
 
 function distanceToSegment(p: Point, a: Point, b: Point): number {
