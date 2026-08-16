@@ -12,7 +12,7 @@ import { attributionTemplate, placeAttribution } from './attribution'
 import { COLOR_SCHEMES, type ColorSchemeName } from './colors'
 import { layout } from './layout'
 import type { DiagramData, Scene } from './types'
-import './zxViewer'
+import './graph/viewer'
 
 // A plain `{type: Boolean}` attribute can't express "off" for a property that
 // defaults to true — absence and `="false"` would both have to mean false.
@@ -77,6 +77,13 @@ export class ZxDiagramElement extends LitElement {
     if (changed.has('diagram') || changed.has('scale')) this.relayout()
   }
 
+  /** The palette the painter is handed: an explicit `colors` override wins
+   *  over the named scheme, and an unknown scheme name falls back to pyzx's
+   *  original. */
+  private get palette(): Record<string, string> {
+    return this.colors ?? COLOR_SCHEMES[this.colorScheme] ?? COLOR_SCHEMES.original
+  }
+
   /** `<zx-viewer>` updates on its own cycle, so the SVG this element's
    *  template asks for isn't in the DOM until the child has rendered too. */
   protected override async getUpdateComplete(): Promise<boolean> {
@@ -138,7 +145,7 @@ export class ZxDiagramElement extends LitElement {
       <div class="container">
         <zx-viewer
           .scene=${this.scene}
-          .colors=${this.colors ?? COLOR_SCHEMES[this.colorScheme] ?? COLOR_SCHEMES.original}
+          .colors=${this.palette}
           .showLabels=${this.showLabels}
           .overlay=${attributionTemplate(this.scene.width, this.scene.height)}
         ></zx-viewer>

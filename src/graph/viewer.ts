@@ -13,18 +13,18 @@
 
 import { html, LitElement, nothing, type PropertyValues, type SVGTemplateResult, svg } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
-import { ORIGINAL_COLORS, webColor } from './colors'
+import { edgeColor, nodeColor, ORIGINAL_COLORS, webColor } from '../colors'
+import type { Point } from '../curves'
+import { Topology } from '../topology'
+import type { BoxKind, NodeKind, Scene, SceneNode } from '../types'
 import {
   boxBounds,
   groundSymbolPath,
   lineParamDelta,
   linkPath,
-  type Point,
   type Rect,
-  Topology,
   webPath,
 } from './geometry'
-import type { BoxKind, DiagramEdgeKind, NodeKind, Scene, SceneNode } from './types'
 
 const SELECTED_STYLE = 'stroke-width: 2px; stroke: #00f'
 const NODE_STYLE = 'stroke-width: 1.5px'
@@ -32,36 +32,6 @@ const NODE_STYLE = 'stroke-width: 1.5px'
 const BOX_STYLE: Record<BoxKind, { fill: string; stroke: string; dash: string }> = {
   stack: { fill: 'rgba(255,165,80,0.10)', stroke: 'rgba(220,130,30,0.65)', dash: '4 3' },
   compose: { fill: 'rgba(100,160,255,0.10)', stroke: 'rgba(50,110,220,0.65)', dash: '0' },
-}
-
-function nodeFill(kind: NodeKind, colors: Record<string, string>): string {
-  switch (kind) {
-    case 'z-spider':
-      return colors.Z
-    case 'x-spider':
-      return colors.X
-    case 'hadamard':
-      return colors.H
-    case 'w-input':
-      return colors.W
-    case 'w-output':
-      return colors.Walt
-    case 'z-box':
-      return colors.Zalt
-    default:
-      return colors.boundary
-  }
-}
-
-function edgeStroke(kind: DiagramEdgeKind, colors: Record<string, string>): string {
-  switch (kind) {
-    case 'hadamard':
-      return colors.Hedge
-    case 'w-io':
-      return colors.Xedge
-    default:
-      return colors.edge
-  }
 }
 
 function clamp(v: number, lo: number, hi: number): number {
@@ -246,7 +216,7 @@ export class ZxViewerElement extends LitElement {
   /** The node's body: a circle for spiders, boundaries and W-inputs, a square
    *  for H-boxes and Z-boxes, a triangle for W-outputs. */
   #renderShape(kind: NodeKind, size: number, style: string) {
-    const fill = nodeFill(kind, this.colors)
+    const fill = nodeColor(kind, this.colors)
     if (kind === 'hadamard' || kind === 'z-box') {
       return svg`<rect
         x=${-0.75 * size} y=${-0.75 * size}
@@ -354,7 +324,7 @@ export class ZxViewerElement extends LitElement {
         <g class="link">
           ${scene.links.map(
             link => svg`<path
-              d=${linkPath(link, pos)} stroke=${edgeStroke(link.kind, this.colors)}
+              d=${linkPath(link, pos)} stroke=${edgeColor(link.kind, this.colors)}
               fill="transparent" style="stroke-width: 1.5px" />`,
           )}
         </g>

@@ -1,23 +1,14 @@
-// Pure geometry for the viewer: H-box chain tracing, position resolution,
-// and the SVG path strings for edges, Pauli strands, and boxes.
+// Adjacency-derived queries over a laid-out `Scene`: which nodes neighbour
+// which, the H-box chains that runs of degree-2 H-boxes form, and the final
+// positions those H-boxes resolve to.
 //
-// Nothing here touches the DOM. `<zx-viewer>` keeps only the *inputs* to
-// these functions as state (dragged positions, H-box line parameters,
-// selection) and derives every coordinate it paints by calling them.
+// Shared, because both views need positions for the H-boxes the layout leaves
+// unplaced: `<zx-viewer>` to paint them, the hypergraph layout to find the
+// midpoint of a wire that ends on one. DOM-free, and holds no drawing state —
+// it is built once per scene and reused across renders.
 
-import type { NodeKind, Scene, SceneBox, SceneLink, SceneWeb } from './types'
-
-export interface Point {
-  x: number
-  y: number
-}
-
-export interface Rect {
-  x: number
-  y: number
-  width: number
-  height: number
-}
+import type { Point } from './curves'
+import type { NodeKind, Scene } from './types'
 
 /** An unbroken run of degree-2 H-boxes and the two non-H-box nodes it
  *  connects. `hboxes` is ordered from `a` to `b`; `index` is the position of
@@ -243,84 +234,7 @@ export class Topology {
   }
 }
 
-export function along(a: Point, b: Point, t: number): Point {
+/** The point a fraction `t` of the way from `a` to `b`. */
+function along(a: Point, b: Point, t: number): Point {
   return { x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) }
-}
-
-/** How far a drag of (dx, dy) advances an H-box along its chain line, or
- *  null when the endpoints coincide and the line is degenerate. */
-export function lineParamDelta(a: Point, b: Point, dx: number, dy: number): number | null {
-  const ex = b.x - a.x
-  const ey = b.y - a.y
-  const lenSq = ex * ex + ey * ey
-  if (lenSq <= 0.001) return null
-  return (dx * ex + dy * ey) / lenSq
-}
-
-/** Straight for a lone edge, a fanned quadratic arc for parallel edges, and
- *  a loop above the node for self-edges. */
-export function linkPath(link: SceneLink, pos: Map<number, Point>): string {
-  const s = pos.get(link.source)
-  const t = pos.get(link.target)
-  if (!s || !t) return ''
-
-  if (s.x === t.x && s.y === t.y) {
-    const spread = link.parallel === 1 ? 40 : 20 + (link.index + 1) * 10
-    return `M ${s.x} ${s.y} C ${s.x - spread} ${s.y - spread}, ${s.x + spread} ${s.y - spread}, ${t.x} ${t.y}`
-  }
-  if (link.parallel === 1) return `M ${s.x} ${s.y} L ${t.x} ${t.y}`
-
-  const dx = t.x - s.x
-  const dy = t.y - s.y
-  const midX = 0.5 * (s.x + t.x)
-  const midY = 0.5 * (s.y + t.y)
-  const bow = link.index / (link.parallel - 1) - 0.5
-  return `M ${s.x} ${s.y} Q ${midX - bow * dy} ${midY + bow * dx}, ${t.x} ${t.y}`
-}
-
-/** A strand runs from its source to the midpoint of the edge it sits on. */
-export function webPath(web: SceneWeb, pos: Map<number, Point>): string {
-  const s = pos.get(web.source)
-  const t = pos.get(web.target)
-  if (!s || !t) return ''
-  return `M ${s.x} ${s.y} L ${(s.x + t.x) / 2} ${(s.y + t.y) / 2}`
-}
-
-/** Bounding rect around a box's nodes, or null when none of them are on the
- *  diagram (its wires were spliced away). */
-export function boxBounds(box: SceneBox, pos: Map<number, Point>, pad: number): Rect | null {
-  let minX = Number.POSITIVE_INFINITY
-  let minY = Number.POSITIVE_INFINITY
-  let maxX = Number.NEGATIVE_INFINITY
-  let maxY = Number.NEGATIVE_INFINITY
-  for (const id of box.nodeIds) {
-    const p = pos.get(id)
-    if (!p) continue
-    if (p.x < minX) minX = p.x
-    if (p.y < minY) minY = p.y
-    if (p.x > maxX) maxX = p.x
-    if (p.y > maxY) maxY = p.y
-  }
-  if (!Number.isFinite(minX)) return null
-  return {
-    x: minX - pad,
-    y: minY - pad,
-    width: maxX - minX + 2 * pad,
-    height: maxY - minY + 2 * pad,
-  }
-}
-
-/** The pyzx ground symbol: a vertical stem, then three horizontal strokes of
- *  decreasing width. `size` is the symbol's full extent, so the stem and the
- *  widest stroke each reach `size / 2` from the node's centre. */
-export function groundSymbolPath(size: number): string {
-  const s = size / 2
-  const t = (s * 2) / 3
-  const u = s / 3
-  return (
-    `M 0 ${-s} L 0 0 ` +
-    `M ${-s} 0 L ${s} 0 ` +
-    `M ${-t} ${u} L ${t} ${u} ` +
-    `M ${-u} ${2 * u} L ${u} ${2 * u}`
-  )
 }
