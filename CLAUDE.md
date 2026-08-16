@@ -124,7 +124,13 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   live in their own layer in absolute coordinates, not in the dot's translated
   group, since a clip path resolves in the coordinate system of whatever
   references it; they carry `data-wire`, so pressing the red part still drags
-  and selects the dot under it.
+  and selects the dot under it. A tally in that same red — `N trespassing
+  nodes` — is centred across the strip between the bottom of the drawing and
+  the bottom of the SVG, since each red mark is local and a dot half-buried
+  under a neighbour's blob is easy to miss. Its count follows a drag but its
+  position doesn't: the strip is measured from where the layout put the dots,
+  not where they have been dragged to, so it reads as a caption on the drawing
+  rather than another thing moving in it.
 
 ## The elements
 
@@ -217,7 +223,8 @@ Check whether you are on the `gitbutler/workspace` branch; if so, use the `but` 
   `style` and its leader as `line.leader[data-hyperedge]`, a blob's caption
   split into `<tspan>`s with the phase carrying `fill="#00d"`, and a dot
   overlapping a blob that doesn't hold it as `g.overlap circle[data-wire]`
-  with its `clipPath` id ending `-<wire id>`. Shared
+  with its `clipPath` id ending `-<wire id>`, and the trespass tally as
+  `text.tally`. Shared
   query/gesture helpers live in
   `stories/interactionHelpers.ts`.
 - Stories live outside `src/` so they don't get emitted by the library `tsc`

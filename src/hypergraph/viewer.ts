@@ -43,6 +43,11 @@ const NAME_FILL = '#555'
 /** The red which the part of a dot that has strayed into a blob not holding it
  *  is painted. */
 const OVERLAP_FILL = '#e00'
+/** How close the trespass tally may come to the bottom edge of the SVG. The
+ *  canvas is grown to fit the blobs but not the wire ids written under them, so
+ *  a diagram whose lowest dot sets the height can leave no strip to centre in.
+ */
+const TALLY_MARGIN = 8
 
 /** Distinguishes one viewer's clip paths from another's. `url(#…)` resolves
  *  within the tree the reference sits in, and normally that is one
@@ -251,6 +256,42 @@ export class ZxHypergraphViewerElement extends LitElement {
       .filter(t => t.blobs.length > 0)
   }
 
+  /**
+   * How many dots are trespassing, written across the strip of canvas below the
+   * drawing.
+   *
+   * The count is the one thing about the trespasses that the red marks
+   * themselves can't say: each mark is local, and a dot half-buried under a
+   * neighbouring blob is easy to miss entirely. It is painted in the same red
+   * so the tally and the marks it counts read as one thing.
+   *
+   * `layout()` leaves padding under the diagram and `layoutHypergraph` grows
+   * the canvas to whatever the blobs need, so the strip between the bottom of
+   * the drawing and the bottom of the SVG is where the drawing isn't — the
+   * tally goes in the middle of it.
+   *
+   * Measured from where the layout *put* the dots, not from where they have
+   * been dragged to, so the text stays where it started for as long as the
+   * scene does. It reads as a caption on the drawing rather than part of it,
+   * and a caption that slid up and down while you dragged a dot would pull the
+   * eye away from the thing being dragged. That also makes the position
+   * independent of the interaction state, so it can't be chased off the canvas
+   * by a dot dragged past the bottom edge.
+   */
+  #renderTally(scene: HypergraphScene, count: number) {
+    if (count === 0) return nothing
+    // The lowest thing painted: a blob's outline stands `blobRadius` off its
+    // lowest dot, and a wire id is written under that again.
+    const dotsBottom = scene.dots.reduce((y, d) => Math.max(y, d.y + scene.blobRadius), 0)
+    const bottom = dotsBottom + (this.showLabels ? 14 : 0)
+    const y = Math.min((bottom + scene.height) / 2, scene.height - TALLY_MARGIN)
+    const label = `${count} trespassing node${count === 1 ? '' : 's'}`
+    return svg`<text class="tally" x=${scene.width / 2} y=${y}
+      text-anchor="middle" dominant-baseline="middle" font-size="12px"
+      font-family="monospace" fill=${OVERLAP_FILL}
+      style="pointer-events: none; user-select: none;">${label}</text>`
+  }
+
   render() {
     const scene = this.scene
     if (!scene) return nothing
@@ -322,6 +363,7 @@ export class ZxHypergraphViewerElement extends LitElement {
           )}
         </g>
 
+        ${this.#renderTally(scene, trespasses.length)}
         ${this.overlay ?? nothing}
       </svg>
     `
