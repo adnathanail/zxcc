@@ -13,7 +13,15 @@
 
 import { html, LitElement, nothing, type PropertyValues, type SVGTemplateResult, svg } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
-import { edgeColor, LABEL_FILL, nodeColor, ORIGINAL_COLORS, PHASE_FILL, webColor } from '../colors'
+import {
+  edgeColor,
+  LABEL_FILL,
+  nodeColor,
+  ORIGINAL_COLORS,
+  PHASE_FILL,
+  SELECTED_STROKE,
+  webColor,
+} from '../colors'
 import type { Point } from '../curves'
 import { Topology } from '../topology'
 import type { BoxKind, NodeKind, Scene, SceneNode } from '../types'
@@ -26,7 +34,7 @@ import {
   webPath,
 } from './geometry'
 
-const SELECTED_STYLE = 'stroke-width: 2px; stroke: #00f'
+const SELECTED_STYLE = `stroke-width: 2px; stroke: ${SELECTED_STROKE}`
 const NODE_STYLE = 'stroke-width: 1.5px'
 
 const BOX_STYLE: Record<BoxKind, { fill: string; stroke: string; dash: string }> = {

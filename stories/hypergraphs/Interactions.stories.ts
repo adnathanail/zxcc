@@ -61,18 +61,35 @@ export const HypergraphBlobSelection: Story = {
       fireMouse('mousedown', svg, box.left + x, box.top + y)
     }
 
+    // Nothing is selected to begin with, so nothing is leadered.
+    expect(root.querySelectorAll('line.leader').length).toBe(0)
+
     // w0 is the top-left boundary leg, which only the first Z spider holds.
     clickDot('w0')
     await waitFor(() => expect(selectedBlobsIn(root)).toEqual(['e1']))
+    // The selected blob gets a line from its caption down to its own outline —
+    // which caption goes with which shape is the thing four overlapping blobs
+    // make unreadable. It starts just under the caption's baseline.
+    const leader = root.querySelector<SVGLineElement>('line.leader[data-hyperedge="e1"]')
+    const caption = root.querySelector<SVGTextElement>('g[data-hyperedge="e1"] text')
+    expect(leader).not.toBeNull()
+    expect(Number(leader?.getAttribute('x1'))).toBeCloseTo(Number(caption?.getAttribute('x')), 5)
+    expect(Number(leader?.getAttribute('y1'))).toBeGreaterThan(Number(caption?.getAttribute('y')))
+    // …and ends below where it starts, on the blob under the caption.
+    expect(Number(leader?.getAttribute('y2'))).toBeGreaterThan(Number(leader?.getAttribute('y1')))
 
     // Every spider has a leg on one of the two crossing wires, and both of
     // those dots sit dead centre — so a click there is inside all four blobs.
     clickDot('w6')
     await waitFor(() => expect(selectedBlobsIn(root)).toEqual(['e1', 'e2', 'e5', 'e6']))
+    // One leader each: with the four piled on top of each other, that is what
+    // says which of the four captions belongs to which.
+    expect(root.querySelectorAll('line.leader').length).toBe(4)
 
-    // A click on bare canvas drops the selection.
+    // A click on bare canvas drops the selection, and the leaders with it.
     fireMouse('mousedown', svg, box.left + 2, box.top + 2)
     await waitFor(() => expect(selectedBlobsIn(root)).toEqual([]))
+    expect(root.querySelectorAll('line.leader').length).toBe(0)
   },
 }
 

@@ -11,9 +11,16 @@
 
 import { html, LitElement, nothing, type PropertyValues, type SVGTemplateResult, svg } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
-import { edgeColor, LABEL_FILL, nodeColor, ORIGINAL_COLORS, PHASE_FILL } from '../colors'
+import {
+  edgeColor,
+  LABEL_FILL,
+  nodeColor,
+  ORIGINAL_COLORS,
+  PHASE_FILL,
+  SELECTED_STROKE,
+} from '../colors'
 import type { Point } from '../curves'
-import { blobContains, blobLabelAnchor, blobOutline } from './geometry'
+import { blobCentre, blobContains, blobLabelAnchor, blobOutline } from './geometry'
 import type { HypergraphBlob, HypergraphScene } from './types'
 
 /** A blob is filled with its node's own palette colour and outlined in black,
@@ -22,9 +29,14 @@ import type { HypergraphBlob, HypergraphScene } from './types'
  *  two of them — so an overlap reads as the two colours over each other. */
 const BLOB_FILL_OPACITY = '0.4'
 const BLOB_STYLE = 'stroke-width: 1.5px; stroke: black'
-/** The blue a selected node gets in `<zx-viewer>`, so a selection looks the
- *  same whichever view you are in. */
-const SELECTED_STYLE = 'stroke-width: 2px; stroke: #00f'
+const SELECTED_STYLE = `stroke-width: 2px; stroke: ${SELECTED_STROKE}`
+/** The leader line from a selected blob's caption to the blob itself. Dashed
+ *  and thin so it reads as an annotation over the drawing rather than another
+ *  wire in it. */
+const LEADER_STYLE = `stroke: ${SELECTED_STROKE}; stroke-width: 1px; stroke-dasharray: 3 3; pointer-events: none`
+/** Gap between the caption's baseline and the top of its leader line, so the
+ *  line starts clear of the glyphs. */
+const LEADER_GAP = 4
 /** A blob's name, darker than the `LABEL_FILL` grey the wire ids take: it sits
  *  over a filled blob rather than on bare canvas. Local to this painter, as the
  *  graph view has nothing it corresponds to. */
@@ -151,9 +163,36 @@ export class ZxHypergraphViewerElement extends LitElement {
     return parts
   }
 
+  /** Where a blob's caption sits, or null when it has none to place. */
+  #captionAnchor(scene: HypergraphScene, blob: HypergraphBlob): Point | null {
+    if (this.#blobCaption(blob).length === 0) return null
+    return blobLabelAnchor(blob, this.#positions, scene.blobRadius)
+  }
+
+  /**
+   * The line joining a selected blob's caption to the blob it names.
+   *
+   * Captions sit a few pixels off the top of their outline and the blobs
+   * overlap, so in a crowded drawing a caption appears to sit on several shapes
+   * at once — which one it belongs to is exactly what is unclear. The line runs
+   * all the way to the middle of the blob rather than stopping at its edge,
+   * both because a line to the edge would be a few pixels long and because
+   * ending inside the shape is what makes it unambiguous.
+   *
+   * Only the selection gets one: a line per blob would be as much clutter as
+   * the ambiguity it fixes.
+   */
+  #renderLeader(scene: HypergraphScene, blob: HypergraphBlob) {
+    const anchor = this.#captionAnchor(scene, blob)
+    const end = blobCentre(blob, this.#positions)
+    if (!anchor || !end) return nothing
+    return svg`<line class="leader" data-hyperedge=${blob.id}
+      x1=${anchor.x} y1=${anchor.y + LEADER_GAP} x2=${end.x} y2=${end.y} style=${LEADER_STYLE} />`
+  }
+
   #renderBlob(scene: HypergraphScene, blob: HypergraphBlob, pos: Map<string, Point>) {
     const caption = this.#blobCaption(blob)
-    const anchor = caption.length > 0 ? blobLabelAnchor(blob, pos, scene.blobRadius) : null
+    const anchor = this.#captionAnchor(scene, blob)
     const selected = this.#selected.has(blob.id)
     return svg`
       <g data-hyperedge=${blob.id}>
@@ -185,6 +224,14 @@ export class ZxHypergraphViewerElement extends LitElement {
       <svg width=${scene.width} height=${scene.height}
         style="max-width: none; max-height: none" @mousedown=${this.#onDown}>
         <g class="blob">${blobs.map(blob => this.#renderBlob(scene, blob, pos))}</g>
+
+        <!-- Leaders are a layer of their own, above every blob: inside a blob's
+             group each one would be painted over by whichever blobs come after
+             it, and a half-covered line joining a caption to a shape is worse
+             than no line. -->
+        <g class="leader">
+          ${blobs.filter(b => this.#selected.has(b.id)).map(b => this.#renderLeader(scene, b))}
+        </g>
 
         <g class="dot">
           ${scene.dots.map(

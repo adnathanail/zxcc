@@ -71,6 +71,12 @@ export const PHASE_FILL = '#00d'
  */
 export const LABEL_FILL = '#999'
 
+/** Stroke for whatever the last click selected — a node in the graph view, a
+ *  blob and its leader line in the hypergraph — so a selection looks the same
+ *  whichever view you are in.
+ */
+export const SELECTED_STROKE = '#00f'
+
 /** Fill for a node — and for the hypergraph blob standing for that same node,
  *  which is why this is shared rather than private to `<zx-viewer>`. */
 export function nodeColor(kind: NodeKind, colors: Record<string, string>): string {

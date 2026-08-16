@@ -74,7 +74,7 @@ export const TwoSpiders: Story = {
       ],
     },
 
-    showLabels: false,
+    showLabels: true,
   },
 }
 
