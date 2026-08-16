@@ -82,10 +82,29 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   anything that hasn't got one, so a W, Z-box or `wire` node throws with a
   message naming it. Everything downstream reads the hyperedge's `kind` and so
   never has to consider a node type it can't draw.
-- `geometry.ts` — `wireDot` (where a wire's dot sits), `convexHull`/`blobPath`
-  (the outline enclosing a set of dots), `blobContains` (the same shape as a
-  hit test), and `blobOutline`/`blobLabelAnchor`/`blobCentre` over a live
-  dot-position map.
+- `geometry.ts` — `wireDot` (where a wire's dot sits) and the blob outline,
+  plus `blobContains` (the same shape as a hit test), `blobLabelAnchor` and
+  `blobCentre` (where a caption sits, and what its leader points at).
+  The outline is the rounded convex hull of the node and its own dots, **cut
+  back around foreign dots** and rounded off: hull-shaped wherever nothing is
+  in the way, bending in where something is. It has to be able to go
+  non-convex — a hull spans everything between its dots, so a foreign dot
+  between two of a spider's legs is inside any hull holding both, and moving
+  the dots about only changes which blob swallows which dot.
+
+  It is all written as a **reach**: one distance per direction from the node.
+  That makes the boundary a single closed loop that cannot cross itself
+  however deeply it is cut, lets the outline be walked round by sampling
+  rather than by intersecting shapes, and makes `blobContains` the same
+  calculation as the outline, so the two cannot disagree. Three terms: the
+  hull, cut back short of any foreign dot in the way, floored by the corridor
+  out to each of its own dots — dropping a dot it holds would be a worse lie
+  than holding one it doesn't. The two lengths involved are different things:
+  the outline stands off its *own* dots by the blob radius, and keeps clear of
+  a foreign dot by a multiple of the radius that dot is *drawn* at, which is
+  much smaller. Conflating them had the boundary swerving around a circle four
+  times the size of the dot it was avoiding. `CLEARANCE` is the only thing
+  setting how much air a dodged dot gets.
 - `layout.ts` — `layoutHypergraph`, parking each wire's dot at the midpoint of
   its edge so the two views line up, then zooming the positions, since the
   dual has twice the marks at half the spacing.
@@ -257,5 +276,15 @@ Check whether you are on the `gitbutler/workspace` branch; if so, use the `but` 
   midpoint — are spread the same way and for the same reason
   (`spreadCoincident`). Ties there are exact: on an integer grid a midpoint is
   always a multiple of half a scale, so two dots either coincide or sit half a
-  column apart. That is why a tie-break is enough and no finer grid is
-  needed — the midpoints already are the grid.
+  column apart, which is why a tie-break is enough and no finer grid is
+  needed. Spreading is *across* the column and fills one column pitch: along
+  it just repacks the tied dots among the column's other dots, and the blobs
+  reaching for them need the air.
+- The claim the hypergraph view lives or dies by is that a blob holds its own
+  dots and no others. It is asserted, not assumed —
+  `expectBlobMembership(root, diagram)` in the story helpers reads it back off
+  the painted SVG with `isPointInFill`, and is run on the two diagrams where
+  the blobs crowd hardest. `expectBlobBreathingRoom` is its metric companion:
+  the outline must also stay clear of the dots it holds, which membership
+  alone does not catch. Smoothing the outline once left membership perfectly
+  correct while pulling the boundary to within a pixel of a dot's edge.

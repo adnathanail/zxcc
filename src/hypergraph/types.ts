@@ -81,10 +81,16 @@ export interface HypergraphDot {
   label: string
 }
 
-/** A hyperedge, drawn as a shape enclosing the dots of its wires. */
+/** A hyperedge, drawn as a star reaching from its node out to the dots of its
+ *  wires. */
 export interface HypergraphBlob {
   /** The hyperedge's id, `e<node id>`. */
   id: string
+  /** Where the ZX node itself sits — the point every one of the blob's
+   *  corridors runs from, and what makes the shape star-shaped rather than a
+   *  hull. */
+  x: number
+  y: number
   /** What the node is, without its phase: `Z`, `X`, `H`. This is the half
    *  `show-labels` governs. */
   name: string

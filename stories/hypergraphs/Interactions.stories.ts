@@ -2,8 +2,10 @@ import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
 import { expect, waitFor } from 'storybook/test'
 import type { DiagramData } from '../../src/index'
-import { strongComplementarity } from '../diagrams'
+import { fourSpiderSquare, strongComplementarity } from '../diagrams'
 import {
+  expectBlobBreathingRoom,
+  expectBlobMembership,
   fireMouse,
   performDrag,
   selectedBlobsIn,
@@ -86,13 +88,14 @@ export const HypergraphBlobSelection: Story = {
     // and the click below would land inside all four blobs instead of three.
     expect(dotFor('w6')).not.toEqual(dotFor('w7'))
 
-    // w6 is a leg of both spiders it joins, and lies on the edge of the hull
-    // the second Z spider's blob draws up the middle — so three of the four.
+    // w6 is the wire from node 1 to node 6, so its dot is inside exactly the
+    // two blobs standing for those spiders — the whole claim of the view. A
+    // hull would have put it inside all four.
     clickDot('w6')
-    await waitFor(() => expect(selectedBlobsIn(root)).toEqual(['e1', 'e2', 'e6']))
-    // One leader each: with the three piled on top of each other, that is what
+    await waitFor(() => expect(selectedBlobsIn(root)).toEqual(['e1', 'e6']))
+    // One leader each: with the two piled on top of each other, that is what
     // says which of the captions belongs to which.
-    expect(root.querySelectorAll('line.leader').length).toBe(3)
+    expect(root.querySelectorAll('line.leader').length).toBe(2)
 
     // A click on bare canvas drops the selection, and the leaders with it.
     fireMouse('mousedown', svg, box.left + 2, box.top + 2)
@@ -101,16 +104,34 @@ export const HypergraphBlobSelection: Story = {
 
     // A press that lands on a *dot* selects by membership rather than by
     // geometry: the blobs that hold that wire, which for w6 (the 1—6 crossing
-    // wire) is its two endpoints. Clicking the same spot as bare canvas picked
-    // out three above, because w6 lies on the edge of e2's hull as well — but
-    // e2 does not hold w6, and where its hull happens to fall is an accident of
-    // the layout rather than something about the hypergraph.
+    // wire) is its two endpoints. The two tests stay distinct — one asks what
+    // is here, the other what this wire is part of — but now that the outline
+    // is cut back around dots it doesn't hold, they agree on w6 rather than the
+    // geometry over-reporting.
     const dot = root.querySelector<SVGGElement>('g[data-wire="w6"]')
     if (!dot) throw new Error('dot w6 not mounted')
     const [x, y] = translateOf(dot)
     fireMouse('mousedown', dot, box.left + x, box.top + y)
     await waitFor(() => expect(selectedBlobsIn(root)).toEqual(['e1', 'e6']))
     fireMouse('mouseup', window, box.left + x, box.top + y)
+
+    expectBlobMembership(root, strongComplementarity)
+    expectBlobBreathingRoom(root)
+  },
+}
+
+// The invariant on its own, on the other diagram where the blobs pile up: four
+// spiders in a square, every dot shared by two of them.
+export const HypergraphBlobMembership: Story = {
+  name: '3. Blob membership',
+  args: { diagram: fourSpiderSquare },
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    await waitFor(() => {
+      if (!root.querySelector('svg g.blob path')) throw new Error('blobs not mounted')
+    })
+    expectBlobMembership(root, fourSpiderSquare)
+    expectBlobBreathingRoom(root)
   },
 }
 
@@ -155,6 +176,14 @@ export const HypergraphDotDrag: Story = {
     // reshaped are the two highlighted — a drag doesn't have to end for the
     // selection to happen, and never selects the blobs w6 merely sits inside.
     expect(selectedBlobsIn(root)).toEqual(['e1', 'e6'])
+
+    // The reshaping is where the outline earns its keep. Dragging w6 across the
+    // picture pulls e6's boundary after it, past dots e6 does not hold — and the
+    // cut has to keep dodging them as it goes, not just in the pose the layout
+    // happened to produce. This is the invariant checked under strain, which is
+    // what dragging is for.
+    expectBlobMembership(root, strongComplementarity)
+    expectBlobBreathingRoom(root)
 
     // Dragging w6 reshapes e6, one of the two blobs holding it, and e6 ends up
     // swallowing part of w7 — a wire it does not hold. That is a *partial*

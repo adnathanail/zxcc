@@ -107,10 +107,41 @@ Answers to the questions above, as built:
    already are the grid. A wider spread was tried and is worse: it pushes each
    tied dot up against the next dot in the column, pairing it with the wrong
    partner.
-3. **Blob geometry.** `blobPath` — convex hull, offset outwards by a radius,
-   arcs at the corners. One dot gives a circle, two a capsule, more a rounded
-   convex polygon, so arity 2 is fine. Overlapping blobs are currently told
+3. **Blob geometry.** The rounded convex hull of the node and its dots, cut
+   back around foreign dots and rounded off. On a plain chain that is exactly
+   the old capsule; the cuts only appear where a dot that isn't the blob's own
+   would otherwise be swallowed.
+
+   A purely convex outline is wrong and not fixably so: a hull spans everything
+   between its dots, so a foreign dot lying between two of a spider's legs is
+   inside any hull holding both. In the strong complementarity diagram the dot
+   for 1—6 sits square between two of node 2's legs, and moving the dots about
+   only changes *which* blob wrongly swallows *which* dot.
+
+   A pure star of corridors from the node was tried in between. It is correct
+   and much simpler, but it reads as spindly: the shape people draw by hand is
+   fat and hull-like, pinching in only where it has to. The star survives as
+   the floor term — the outline never cuts inside the corridor to one of its
+   own dots.
+
+   The outline stands off its own dots by the blob radius, but keeps clear of
+   a foreign dot by a multiple of the radius *that dot is drawn at* — the two
+   were briefly the same number, which made the boundary swerve around a
+   circle four times the size of the dot it was dodging.
+
+   Everything is a **reach**, one distance per direction from the node, which
+   keeps the boundary a single closed loop that cannot cross itself and makes
+   the hit test identical to the outline. Overlapping blobs are still told
    apart only by their outlines crossing over a translucent fill.
+
+   A cut leaves a corner where it rejoins the hull. Rounding those off by
+   averaging the reach over a few degrees was tried and dropped. Averaging can
+   only pull the boundary *in*, which sounds safe and is the opposite: pulling
+   in cannot break the clearance around a dot the blob dodges (measured: 11.9px
+   either way) but it cuts straight through the floor holding the boundary off
+   a dot the blob *keeps* — 6.3px from a dot drawn at 6px, against 17.2px
+   without it. `expectBlobBreathingRoom` now guards that, and fails on the
+   smoothed outline.
 4. **Colour.** Done. A blob is filled with the palette entry its own node
    would be painted with — Z green, X red, H yellow — at 40% opacity with a
    black outline, so an overlap reads as both colours and the picture matches
@@ -131,6 +162,42 @@ Answers to the questions above, as built:
    norm and seeing which blobs share a spot is the point of clicking. The hit
    test is `blobContains`, geometry rather than SVG hit-testing. Dragging is
    still open, and still a matter of making the dot-position map state.
+
+## Where it stops working
+
+`strongComplementarityOf(z, x)` in `stories/diagrams.ts` builds the n-to-m
+strong complementarity diagram — every Z spider joined to every X spider — and
+story 7 draws it at 4-to-4. It is the worst case by construction: every Z—X
+wire crosses every other, so all their dots land in the one column between the
+ranks, and every blob has to reach across that column past dots it doesn't own.
+
+Measured off the painted SVG (a spider of degree d contributes d dot-in-blob
+incidences, so the expected total is 2n(n+1)):
+
+| size | dots | blobs | incidences (expected) | tightest own-dot gap |
+| --- | --- | --- | --- | --- |
+| 2×2 | 8 | 4 | 12 (12) | 17.3px |
+| 3×3 | 15 | 6 | 26 (24) | 17.3px |
+| 4×4 | 24 | 8 | 50 (40) | 1.5px |
+
+So it is exact at 2×2, leaks two dots at 3×3, and at 4×4 a quarter of the
+incidences are wrong and the outline is squeezed to 1.5px off a dot it holds.
+
+**This is density, not the outline model.** The same algorithm on the same
+diagram, with `ZOOM` raised so the dots have more room:
+
+| `ZOOM` | incidences (expected 40) | tightest own-dot gap |
+| --- | --- | --- |
+| 1.6 (current) | 50 | 1.5px |
+| 2.4 | 44 | 2.4px |
+| 3.2 | 40 | 16.6px |
+
+At 3.2 the 4×4 case is exactly right again. The fix is therefore room rather
+than a cleverer shape: a zoom that grows with how many dots share a column,
+or a layout that stops piling every crossing's dot into the same column in the
+first place. Whichever it is, `expectBlobMembership` and
+`expectBlobBreathingRoom` are the check — they are not asserted on story 7 yet
+precisely because it fails them today.
 
 ## Next
 

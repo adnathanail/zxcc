@@ -1,14 +1,51 @@
 // Geometry for the hypergraph view: where a wire's dot sits, and the outline
-// that encloses the dots of one hyperedge.
+// of the blob standing for one ZX node.
 //
 // DOM-free, and the counterpart of `src/geometry.ts`, which stays the geometry
 // of the ZX diagram itself. The two share `src/curves.ts` and nothing else:
 // `wireDot` reads the very curve the ZX viewer paints a wire as, rather than a
 // second opinion about where that wire runs.
+//
+// —— The blob outline ——
+//
+// A blob wants to be the rounded convex hull of its dots: that is the shape
+// that reads as "these dots belong together". But a hull spans everything
+// between its dots, so a dot belonging to *another* spider that happens to lie
+// between two of this one's legs ends up inside it, and the picture then says
+// that wire is a leg of this spider. In the 2-to-2 strong complementarity
+// diagram that is not a corner case, it is the middle of the diagram.
+//
+// So the outline is that hull, cut back around the dots it must not hold: fat
+// and convex wherever nothing is in the way, bending in around a foreign dot
+// where one is. It is written as one distance per direction from the node — a
+// reach — which keeps the boundary a single closed loop that cannot cross
+// itself however deeply it has been cut, and makes "is this point inside" the
+// same calculation as "where is the boundary".
+//
+// The cut leaves a corner where it rejoins the hull. Rounding those off by
+// averaging the reach over a few degrees was tried and removed. Averaging can
+// only pull the boundary *in*, which sounds safe and is the opposite: pulling
+// in cannot break the clearance around a dot the blob avoids, but it cuts
+// straight through the floor that keeps it off a dot the blob *holds*. It had
+// the outline passing 6.3px from a dot drawn at 6px — all but touching it —
+// where the floor alone gives the full 17.5px.
 
 import { curvePointAt, edgeCurve, type Point } from '../curves'
 import type { SceneLink } from '../types'
 import type { HypergraphBlob } from './types'
+
+/** How finely the outline is sampled, in samples per turn. Straight stretches
+ *  come out exact whatever the rate — every sample sits on the boundary — so
+ *  this only has to suit the curved parts, where 180 leaves an error well
+ *  under a tenth of a pixel. */
+const OUTLINE_SAMPLES = 180
+
+/** How far clear of a foreign dot the outline passes, as a multiple of the
+ *  radius that dot is *drawn* at. It is the dot you can see that the boundary
+ *  is dodging, not the blob's own much larger radius — and this is the only
+ *  thing that sets how much air there is around a dodged dot, so it is the
+ *  knob to turn when a cut looks tight. */
+const CLEARANCE = 2
 
 /** Where the dot for a wire goes: halfway along the curve the ZX viewer draws
  *  the same edge as. That is why parallel edges get distinct dots — they are
@@ -44,122 +81,169 @@ function convexHull(points: Point[]): Point[] {
   return [...halfHull(unique), ...halfHull([...unique].reverse())]
 }
 
-/** Shoelace, in screen axes. Positive means the polygon runs clockwise as
- *  drawn, which is the orientation {@link blobPath} offsets outwards from. */
-function signedArea(polygon: Point[]): number {
-  let sum = 0
-  for (let i = 0; i < polygon.length; i++) {
-    const p = polygon[i]
-    const q = polygon[(i + 1) % polygon.length]
-    sum += p.x * q.y - q.x * p.y
-  }
-  return sum
-}
-
-/** The hull wound so it runs clockwise as drawn, which is the direction
- *  `blobPath` offsets outwards from and `blobContains` tests against. A
- *  two-point hull has zero area and is symmetric, so its winding is moot. */
-function orientedHull(points: Point[]): Point[] {
-  const hull = convexHull(points)
-  if (signedArea(hull) < 0) hull.reverse()
-  return hull
+/** Where a ray from the origin leaves the disc of radius `r` about `c`, or
+ *  -Infinity when it misses. */
+function discExit(dir: Point, c: Point, r: number): number {
+  const projection = dir.x * c.x + dir.y * c.y
+  const discriminant = projection * projection - (c.x * c.x + c.y * c.y) + r * r
+  return discriminant < 0 ? Number.NEGATIVE_INFINITY : projection + Math.sqrt(discriminant)
 }
 
 /**
- * A closed outline enclosing every point, standing `radius` off the convex
- * hull of them: straight along each hull edge, a circular arc round each hull
- * vertex. One point gives a circle, two give a capsule, more give a rounded
- * convex polygon — so a hyperedge stays legible at any arity.
+ * Where a ray from the origin leaves the capsule of radius `r` around the
+ * segment `a`–`b`: through one of the round ends, or through a flat side.
+ *
+ * -Infinity when the ray misses it altogether, so callers can take the maximum
+ * over several capsules and get the exit from their union.
  */
-export function blobPath(points: Point[], radius: number): string {
-  const hull = orientedHull(points)
-  if (hull.length === 0) return ''
+function capsuleExit(dir: Point, a: Point, b: Point, r: number): number {
+  let exit = Math.max(discExit(dir, a, r), discExit(dir, b, r))
+
+  const ex = b.x - a.x
+  const ey = b.y - a.y
+  const length = Math.hypot(ex, ey)
+  if (length === 0) return exit
+  const ux = ex / length
+  const uy = ey / length
+
+  // Distance from the segment's line is a signed cross product; at a flat-side
+  // exit it is ±r, and the crossing has to land alongside the segment rather
+  // than off one of its ends, which the round ends above have covered.
+  const denominator = dir.x * uy - dir.y * ux
+  if (Math.abs(denominator) > 1e-9) {
+    const base = a.x * uy - a.y * ux
+    for (const offset of [r, -r]) {
+      const t = (base + offset) / denominator
+      if (t < 0) continue
+      const along = (t * dir.x - a.x) * ux + (t * dir.y - a.y) * uy
+      if (along >= 0 && along <= length) exit = Math.max(exit, t)
+    }
+  }
+  return exit
+}
+
+/** Where a ray from the origin first comes within `clearance` of `q`, or
+ *  Infinity when it never does. */
+function approachDistance(dir: Point, q: Point, clearance: number): number {
+  const across = q.x * dir.y - q.y * dir.x
+  if (Math.abs(across) >= clearance) return Number.POSITIVE_INFINITY
+  const along = q.x * dir.x + q.y * dir.y
+  const enter = along - Math.sqrt(clearance * clearance - across * across)
+  // A foreign dot sitting right on top of the node cannot be kept out by
+  // pulling the boundary in — that would collapse the blob to nothing — so it
+  // is left to the membership assertion in the stories to complain about.
+  return enter <= 0 ? Number.POSITIVE_INFINITY : enter
+}
+
+/** The two lengths a blob's outline depends on. They are different things and
+ *  were briefly the same one, which had the boundary swerving around a circle
+ *  four times the size of the dot it was avoiding. */
+export interface BlobSizes {
+  /** How far the outline stands off the dots the blob does hold. */
+  radius: number
+  /** Radius a dot is drawn at, which sets how far the outline keeps off a dot
+   *  the blob doesn't hold. */
+  dot: number
+}
+
+/** A blob's dots in the node's own frame: the ones it reaches out to, the ones
+ *  it must not swallow, and the hull it would be if nothing were in the way.
+ *  Built once per blob so the reach can be evaluated cheaply, many times. */
+interface BlobShape {
+  members: Point[]
+  foreign: Point[]
+  /** Hull of the node and its own dots, so a spider whose legs all run the
+   *  same way still gets a blob covering the spider itself. */
+  hull: Point[]
+  radius: number
+  clearance: number
+}
+
+function shapeOf(blob: HypergraphBlob, pos: Map<string, Point>, sizes: BlobSizes): BlobShape {
+  const own = new Set(blob.dots)
+  const members: Point[] = []
+  const foreign: Point[] = []
+  for (const [id, p] of pos) {
+    const relative = { x: p.x - blob.x, y: p.y - blob.y }
+    if (own.has(id)) members.push(relative)
+    else foreign.push(relative)
+  }
+  return {
+    members,
+    foreign,
+    hull: convexHull([{ x: 0, y: 0 }, ...members]),
+    radius: sizes.radius,
+    clearance: CLEARANCE * sizes.dot,
+  }
+}
+
+/**
+ * How far the outline runs from the node in direction `dir` (a unit vector).
+ * Three terms, in the order they matter:
+ *
+ * - the rounded convex hull of the node and its own dots, which is the whole
+ *   shape when nothing is in the way;
+ * - cut back short of any foreign dot the ray would otherwise run into, which
+ *   is what bends the boundary in around one;
+ * - but never inside the corridor out to one of its own dots, since dropping a
+ *   dot it does hold would be a worse lie than holding one it doesn't.
+ */
+function reach(shape: BlobShape, angle: number): number {
+  const { members, foreign, hull, radius, clearance } = shape
+  const origin = { x: 0, y: 0 }
+  const dir = { x: Math.cos(angle), y: Math.sin(angle) }
+
+  let hullReach = radius
   if (hull.length === 1) {
-    const { x, y } = hull[0]
-    return (
-      `M ${x - radius} ${y} A ${radius} ${radius} 0 1 1 ${x + radius} ${y} ` +
-      `A ${radius} ${radius} 0 1 1 ${x - radius} ${y} Z`
-    )
+    hullReach = Math.max(hullReach, discExit(dir, hull[0], radius))
+  } else {
+    for (let i = 0; i < hull.length; i++) {
+      hullReach = Math.max(
+        hullReach,
+        capsuleExit(dir, hull[i], hull[(i + 1) % hull.length], radius),
+      )
+    }
   }
-  // Offset each edge along its outward normal; consecutive offset edges are
-  // then joined by an arc centred on the hull vertex between them.
-  const edges = hull.map((p, i) => {
-    const q = hull[(i + 1) % hull.length]
-    const dx = q.x - p.x
-    const dy = q.y - p.y
-    const len = Math.hypot(dx, dy) || 1
-    const nx = (dy / len) * radius
-    const ny = (-dx / len) * radius
-    return { from: { x: p.x + nx, y: p.y + ny }, to: { x: q.x + nx, y: q.y + ny } }
-  })
 
-  let d = `M ${edges[0].from.x} ${edges[0].from.y}`
-  for (let i = 0; i < edges.length; i++) {
-    const next = edges[(i + 1) % edges.length]
-    d += ` L ${edges[i].to.x} ${edges[i].to.y}`
-    d += ` A ${radius} ${radius} 0 0 1 ${next.from.x} ${next.from.y}`
+  let limit = Number.POSITIVE_INFINITY
+  for (const q of foreign) {
+    limit = Math.min(limit, approachDistance(dir, q, clearance))
   }
-  return `${d} Z`
+
+  let floor = radius
+  for (const m of members) floor = Math.max(floor, capsuleExit(dir, origin, m, radius))
+
+  return Math.max(floor, Math.min(hullReach, limit))
 }
 
-function dotPoints(blob: HypergraphBlob, pos: Map<string, Point>): Point[] {
-  const points: Point[] = []
-  for (const id of blob.dots) {
-    const p = pos.get(id)
-    if (p) points.push(p)
-  }
-  return points
-}
-
-/** The outline for one blob, from the live dot positions. Derived per render
- *  rather than stored, the way `<zx-viewer>` derives its box bounds. */
-export function blobOutline(blob: HypergraphBlob, pos: Map<string, Point>, radius: number): string {
-  return blobPath(dotPoints(blob, pos), radius)
-}
-
-/** Mean of the points — inside the hull of them, and so inside the outline
- *  `blobPath` draws around it. */
-function centroid(points: Point[]): Point {
-  const x = points.reduce((sum, p) => sum + p.x, 0) / points.length
-  const y = points.reduce((sum, p) => sum + p.y, 0) / points.length
-  return { x, y }
-}
-
-/** Baseline for a blob's label: centred over the blob, just clear of the top
- *  of its outline. */
-export function blobLabelAnchor(
+/**
+ * The outline of a blob, walked round as one closed loop.
+ *
+ * Writing the boundary as a reach per direction is what keeps this simple:
+ * the shape is star-shaped about the node by construction, so the loop cannot
+ * cross itself however deeply the hull has been cut back, and there are no
+ * overlapping pieces whose union has to be worked out.
+ */
+export function blobOutline(
   blob: HypergraphBlob,
   pos: Map<string, Point>,
-  radius: number,
-): Point | null {
-  const points = dotPoints(blob, pos)
-  if (points.length === 0) return null
-  const top = Math.min(...points.map(p => p.y))
-  return { x: centroid(points).x, y: top - radius - 5 }
-}
+  sizes: BlobSizes,
+): string {
+  const shape = shapeOf(blob, pos, sizes)
+  if (shape.members.length === 0) return ''
 
-/** The middle of a blob — the point a leader line from its caption is aimed
- *  at. Inside the outline by construction, and far enough from the caption to
- *  be worth drawing a line to: the caption is parked a few pixels off the top
- *  of the outline, so a line to the boundary would be too short to see. */
-export function blobCentre(blob: HypergraphBlob, pos: Map<string, Point>): Point | null {
-  const points = dotPoints(blob, pos)
-  return points.length === 0 ? null : centroid(points)
-}
-
-function distanceToSegment(p: Point, a: Point, b: Point): number {
-  const dx = b.x - a.x
-  const dy = b.y - a.y
-  const lengthSq = dx * dx + dy * dy
-  // A zero-length segment is the one-point hull: the distance to the point.
-  const t = lengthSq === 0 ? 0 : ((p.x - a.x) * dx + (p.y - a.y) * dy) / lengthSq
-  const clamped = Math.max(0, Math.min(1, t))
-  return Math.hypot(p.x - (a.x + clamped * dx), p.y - (a.y + clamped * dy))
+  const points: string[] = []
+  for (let i = 0; i < OUTLINE_SAMPLES; i++) {
+    const angle = (2 * Math.PI * i) / OUTLINE_SAMPLES
+    const r = reach(shape, angle)
+    points.push(`${blob.x + r * Math.cos(angle)} ${blob.y + r * Math.sin(angle)}`)
+  }
+  return `M ${points.join(' L ')} Z`
 }
 
 /**
- * Whether `point` falls inside the outline `blobOutline` draws — that is,
- * within `radius` of the hull of the blob's dots.
+ * Whether a blob, as drawn, holds this point — the same reach the outline is
+ * drawn from, so the two cannot disagree.
  *
  * Tested against the geometry rather than by asking the DOM what was clicked,
  * because blobs overlap: SVG hit-testing reports only the topmost path, and
@@ -168,27 +252,36 @@ function distanceToSegment(p: Point, a: Point, b: Point): number {
 export function blobContains(
   blob: HypergraphBlob,
   pos: Map<string, Point>,
-  radius: number,
+  sizes: BlobSizes,
   point: Point,
 ): boolean {
-  const hull = orientedHull(dotPoints(blob, pos))
-  if (hull.length === 0) return false
+  const shape = shapeOf(blob, pos, sizes)
+  if (shape.members.length === 0) return false
+  const dx = point.x - blob.x
+  const dy = point.y - blob.y
+  const distance = Math.hypot(dx, dy)
+  if (distance === 0) return true
+  return distance <= reach(shape, Math.atan2(dy, dx))
+}
 
-  // Inside the hull itself, every edge has the point on its right — the hull
-  // is convex and wound clockwise. Degenerate hulls (a point, a segment) have
-  // no interior, so they fall through to the distance test.
-  if (hull.length >= 3) {
-    let inside = true
-    for (let i = 0; i < hull.length && inside; i++) {
-      const a = hull[i]
-      const b = hull[(i + 1) % hull.length]
-      inside = (b.x - a.x) * (point.y - a.y) - (b.y - a.y) * (point.x - a.x) >= 0
-    }
-    if (inside) return true
-  }
+/** Baseline for a blob's label: centred over it, just clear of the top of its
+ *  outline. */
+export function blobLabelAnchor(
+  blob: HypergraphBlob,
+  pos: Map<string, Point>,
+  radius: number,
+): Point | null {
+  const own = blob.dots.map(id => pos.get(id)).filter(p => p !== undefined)
+  if (own.length === 0) return null
+  const top = Math.min(blob.y, ...own.map(p => p.y))
+  return { x: blob.x, y: top - radius - 5 }
+}
 
-  for (let i = 0; i < hull.length; i++) {
-    if (distanceToSegment(point, hull[i], hull[(i + 1) % hull.length]) <= radius) return true
-  }
-  return false
+/** The middle of a blob — the point a leader line from its caption is aimed
+ *  at. The node's own position, which is inside the outline by construction:
+ *  every reach is measured from it, and the floor keeps that reach positive in
+ *  every direction. */
+export function blobCentre(blob: HypergraphBlob, pos: Map<string, Point>): Point | null {
+  const placed = blob.dots.some(id => pos.has(id))
+  return placed ? { x: blob.x, y: blob.y } : null
 }

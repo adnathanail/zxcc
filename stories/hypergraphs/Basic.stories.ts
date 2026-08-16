@@ -3,8 +3,7 @@ import { html } from 'lit'
 import { expect, waitFor } from 'storybook/test'
 import type { DiagramData } from '../../src/types'
 import { fourSpiderSquare, strongComplementarity, strongComplementarityOf } from '../diagrams'
-import { strongComplementarity } from '../diagrams'
-import { shadowRootOf } from '../interactionHelpers'
+import { expectBlobBreathingRoom, expectBlobMembership, shadowRootOf } from '../interactionHelpers'
 
 interface Args {
   diagram: DiagramData
@@ -162,19 +161,23 @@ export const StrongComplementarity: Story = {
     docs: {
       story: {
         description:
-          'The characteristic 2 to 2 strong complementarity diagram, testing the hypergraph rendering of more difficult hulls. A blob is the hull of its own dots, so it can swallow a dot belonging to another hyperedge: the two crossing wires land in the middle of the picture, inside all four blobs though only two hold each. The part of a dot inside a blob that does not hold it is painted red, so the drawing shows where it is claiming something untrue rather than hiding it.',
+          'The characteristic 2 to 2 strong complementarity diagram, and the hardest case for the blob outline: the two crossing wires land in the middle of the picture, where a convex hull round any blob would swallow them. The outline is that hull cut back around the dots it must not hold, so each blob encloses its own dots and no others — and the red trespass marks, which a hull put on both crossing wires, have nothing left to mark.',
       },
     },
   },
   args: { diagram: strongComplementarity },
   play: async ({ canvasElement }) => {
     const root = await shadowRootOf(canvasElement)
-    const flagged = () =>
-      [...root.querySelectorAll('svg g.overlap circle')].map(c => c.getAttribute('data-wire'))
+    await waitFor(() => {
+      if (!root.querySelector('svg g.blob path')) throw new Error('blobs not mounted')
+    })
 
-    // w6 (1—6) and w7 (2—5) are the crossing wires. Each is held by two blobs
-    // and sits inside the other two; every other dot is where it belongs.
-    await waitFor(() => expect(flagged()).toEqual(['w6', 'w7']))
+    // Every blob holds its own dots and no others, measured off the painted
+    // path — the claim the whole view rests on, and what the cut is for.
+    expectBlobMembership(root, strongComplementarity)
+    // …and holds them with room to spare, which is the thing smoothing the
+    // outline broke while leaving membership correct.
+    expectBlobBreathingRoom(root)
 
     // The red is clipped to the blobs strayed into — both of the two that don't
     // hold w6 — so only the part of the dot actually inside them is painted,

@@ -1,8 +1,8 @@
 // Shared DOM helpers for the story play functions. The viewer mounts into
 // <zx-diagram>'s shadow root, so every query has to go through it.
 
-import { waitFor } from 'storybook/test'
-import type { ZxDiagramElement } from '../src/index'
+import { expect, waitFor } from 'storybook/test'
+import { type DiagramData, toHypergraph, type ZxDiagramElement } from '../src/index'
 
 export function parseTranslate(transform: string): [number, number] {
   const m = transform.match(/translate\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)/)
@@ -71,6 +71,76 @@ export function selectedBlobsIn(root: ShadowRoot): string[] {
   return [...root.querySelectorAll<SVGGElement>('svg g.blob g[data-hyperedge]')]
     .filter(g => (g.querySelector('path')?.getAttribute('style') ?? '').includes('#00f'))
     .map(g => g.getAttribute('data-hyperedge') ?? '')
+}
+
+/**
+ * The wires whose dots fall inside a blob **as painted** — asked of the SVG
+ * path itself rather than recomputed, so this checks the picture rather than
+ * the geometry that produced it.
+ */
+export function paintedBlobMembers(root: ShadowRoot, blobId: string): string[] {
+  const path = root.querySelector<SVGPathElement>(`g[data-hyperedge="${blobId}"] path`)
+  if (!path) throw new Error(`blob ${blobId} not mounted`)
+  return [...root.querySelectorAll<SVGGElement>('g[data-wire]')]
+    .filter(dot => {
+      const [x, y] = translateOf(dot)
+      return path.isPointInFill(new DOMPoint(x, y))
+    })
+    .map(dot => dot.getAttribute('data-wire') ?? '')
+}
+
+/**
+ * Assert the hypergraph view's central claim: every blob encloses its own dots
+ * and no others. A blob that swallows a foreign dot is drawing a different
+ * diagram — one where that wire is a leg of that spider.
+ *
+ * Convex outlines cannot promise this in general (a foreign dot between two
+ * members is inside any convex shape holding both), which is exactly why it is
+ * asserted on the diagrams that come closest to breaking it rather than
+ * assumed.
+ */
+export function expectBlobMembership(root: ShadowRoot, diagram: DiagramData): void {
+  for (const hyperedge of toHypergraph(diagram).hyperedges) {
+    const own = [...new Set(hyperedge.wires)].sort()
+    // The id rides along in the assertion so a failure names the blob.
+    expect([hyperedge.id, paintedBlobMembers(root, hyperedge.id).sort()]).toEqual([
+      hyperedge.id,
+      own,
+    ])
+  }
+}
+
+/**
+ * Assert that no blob's outline crowds a dot it holds: the boundary stays at
+ * least `dotRadii` times a dot's drawn radius away from each of its own.
+ *
+ * The companion to {@link expectBlobMembership}, and a different kind of
+ * claim: membership says the right dots are inside, this says they are inside
+ * with room to spare. Smoothing the outline once broke exactly this — it pulled
+ * the boundary to within a pixel of a dot's edge while leaving membership
+ * perfectly correct — so it is measured off the painted path too.
+ */
+export function expectBlobBreathingRoom(root: ShadowRoot, dotRadii = 2): void {
+  const dots = [...root.querySelectorAll<SVGGElement>('g[data-wire]')].map(g => ({
+    id: g.getAttribute('data-wire') ?? '',
+    at: translateOf(g),
+    radius: Number(g.querySelector('circle')?.getAttribute('r') ?? 0),
+  }))
+
+  for (const blob of root.querySelectorAll<SVGGElement>('g[data-hyperedge]')) {
+    const path = blob.querySelector('path')
+    if (!path) throw new Error(`blob ${blob.getAttribute('data-hyperedge')} has no outline`)
+    const length = path.getTotalLength()
+    const outline = Array.from({ length: 400 }, (_, i) => path.getPointAtLength((length * i) / 400))
+
+    for (const dot of dots) {
+      const [x, y] = dot.at
+      if (!path.isPointInFill(new DOMPoint(x, y))) continue
+      const gap = Math.min(...outline.map(p => Math.hypot(p.x - x, p.y - y)))
+      const where = `${blob.getAttribute('data-hyperedge')} holds ${dot.id}`
+      expect([where, gap > dotRadii * dot.radius]).toEqual([where, true])
+    }
+  }
 }
 
 /** The `fill` of every circular or rectangular node shape — spiders,

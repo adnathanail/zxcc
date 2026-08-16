@@ -31,11 +31,6 @@ const DOT_RADIUS = 0.12
  *  blobs) spreads them back out and keeps neighbouring blobs apart. */
 const ZOOM = 1.6
 
-/** How far apart dots that landed on the same point are pushed, as a fraction
- *  of the (zoomed) scale. Distinct midpoints sit half a scale apart on an
- *  integer grid, so a quarter leaves a spread group clear of its neighbours. */
-const TIE_SPREAD = 0.25
-
 /**
  * Pull apart dots that landed on the very same point.
  *
@@ -48,18 +43,23 @@ const TIE_SPREAD = 0.25
  *
  * Ties are exact, not near-misses: on an integer grid every midpoint is a
  * multiple of half a scale, so two dots are either the same point or half a
- * column apart. That is what makes spreading enough, and a re-layout onto some
- * finer grid unnecessary.
+ * column apart. Spreading a tie is therefore all the placement needs — what it
+ * cannot fix is a blob *shape* that swallows a dot it doesn't own, which is
+ * why `blobOutline` draws a star rather than a hull.
  *
  * The group is spread in one pass rather than nudged apart one dot at a time,
  * for the same reason `Topology.resolve` spreads parked H-boxes that way: an
  * iterative nudge settles exactly on its own threshold, and rounding then
- * decides whether another nudge is due. Spreading is vertical because the
- * layout runs in columns, so the column a tied group sits in is the one axis
- * with room; the step shrinks for a bigger group so the whole group stays
- * inside its own half-column.
+ * decides whether another nudge is due.
+ *
+ * Spreading is horizontal — *across* the column, not along it — and fills one
+ * column pitch however big the group is. A tie lands in a column that already
+ * holds other dots, so sliding along the column keeps the tied dots packed
+ * among them; going across puts clear air between the two, which the blobs
+ * reaching for them need. A pitch is as wide as it can go before reaching the
+ * neighbouring column of dots.
  */
-function spreadCoincident(dots: HypergraphDot[], scale: number): void {
+function spreadCoincident(dots: HypergraphDot[], pitch: number): void {
   const groups = new Map<string, HypergraphDot[]>()
   for (const dot of dots) {
     // A tenth of a pixel: this is looking for exact ties, not for crowding.
@@ -71,10 +71,10 @@ function spreadCoincident(dots: HypergraphDot[], scale: number): void {
 
   for (const group of groups.values()) {
     if (group.length < 2) continue
-    const step = Math.min(TIE_SPREAD, 0.5 / (group.length - 1)) * scale
-    const first = -((group.length - 1) / 2) * step
+    const step = pitch / (group.length - 1)
+    const first = -pitch / 2
     group.forEach((dot, i) => {
-      dot.y += first + i * step
+      dot.x += first + i * step
     })
   }
 }
@@ -122,13 +122,20 @@ export function layoutHypergraph(diagram: DiagramData, scene: Scene): Hypergraph
 
   const placed = new Set(dots.map(d => d.id))
   const blobs: HypergraphBlob[] = hg.hyperedges
-    .map(e => ({
-      id: e.id,
-      name: e.name,
-      phase: e.phase,
-      kind: e.kind,
-      dots: [...new Set(e.wires)].filter(w => placed.has(w)),
-    }))
+    .map(e => {
+      // The node's own position, in the same zoomed space as the dots: a blob
+      // reaches out from the node it stands for.
+      const at = pos.get(e.nodeId) ?? { x: 0, y: 0 }
+      return {
+        id: e.id,
+        x: at.x * ZOOM,
+        y: at.y * ZOOM,
+        name: e.name,
+        phase: e.phase,
+        kind: e.kind,
+        dots: [...new Set(e.wires)].filter(w => placed.has(w)),
+      }
+    })
     .filter(b => b.dots.length > 0)
 
   // A dot sits at the midpoint of an edge, inside the box the ZX nodes span,
@@ -139,18 +146,18 @@ export function layoutHypergraph(diagram: DiagramData, scene: Scene): Hypergraph
   let minY = 0
   let maxX = scene.width * ZOOM
   let maxY = scene.height * ZOOM
-  for (const d of dots) {
-    minX = Math.min(minX, d.x - blobRadius)
-    minY = Math.min(minY, d.y - blobRadius)
-    maxX = Math.max(maxX, d.x + blobRadius)
-    maxY = Math.max(maxY, d.y + blobRadius)
+  for (const p of [...dots, ...blobs]) {
+    minX = Math.min(minX, p.x - blobRadius)
+    minY = Math.min(minY, p.y - blobRadius)
+    maxX = Math.max(maxX, p.x + blobRadius)
+    maxY = Math.max(maxY, p.y + blobRadius)
   }
   const shiftX = -Math.min(0, minX)
   const shiftY = -Math.min(0, minY)
   if (shiftX !== 0 || shiftY !== 0) {
-    for (const d of dots) {
-      d.x += shiftX
-      d.y += shiftY
+    for (const p of [...dots, ...blobs]) {
+      p.x += shiftX
+      p.y += shiftY
     }
   }
 

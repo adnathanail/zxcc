@@ -116,8 +116,10 @@ end of a wire.
 ```
 
 Each dot sits at the midpoint of the edge it came from, so the two views line up: toggling the
-attribute keeps everything in the same place. A blob's outline is the convex hull of its dots pushed
-outwards and rounded off, so it stays readable at any arity — one dot gives a circle, two a capsule.
+attribute keeps everything in the same place. A blob is the rounded convex hull of its dots, bent in
+around any dot that isn't its own — a purely convex outline can't be right, since a foreign dot
+lying between two of a spider's legs is inside any convex region holding both. Where nothing is in
+the way, which is most diagrams, the hull is what you get.
 
 Blobs are filled with the same palette entry their spider would be — Z green, X red, H yellow — so
 `color-scheme` and `colors` apply to this view too, and a dot takes its edge's colour. Only spiders
