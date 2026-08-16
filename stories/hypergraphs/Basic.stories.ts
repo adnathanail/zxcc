@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
-import type { DiagramData } from '../src/types'
-import { strongComplementarity } from './diagrams'
+import type { DiagramData } from '../../src/types'
+import { strongComplementarity } from '../diagrams'
 
 interface Args {
   diagram: DiagramData
@@ -11,7 +11,7 @@ interface Args {
 }
 
 const meta: Meta<Args> = {
-  title: 'Hypergraph view',
+  title: 'Hypergraphs/Basic',
   render: ({ diagram, viewAsHypergraph, showLabels, colorScheme }) =>
     html`<zx-diagram
       .diagram=${diagram}

@@ -8,9 +8,15 @@ import {
   GRAYSCALE_COLORS,
   ORIGINAL_COLORS,
   RGB_COLORS,
-} from '../src/index'
-import { paletteShowcase, pauliWebChain, selfLoopSpiders } from './diagrams'
-import { nodeFillsIn, pathDataIn, shadowRootOf, strokesIn, translateOf } from './interactionHelpers'
+} from '../../src/index'
+import { paletteShowcase, pauliWebChain, selfLoopSpiders } from '../diagrams'
+import {
+  nodeFillsIn,
+  pathDataIn,
+  shadowRootOf,
+  strokesIn,
+  translateOf,
+} from '../interactionHelpers'
 
 interface Args {
   diagram: DiagramData
@@ -23,7 +29,7 @@ interface Args {
 }
 
 const meta: Meta<Args> = {
-  title: 'Advanced features',
+  title: 'Graphs/Advanced',
   render: ({ diagram, colorScheme, scale, showLabels }) =>
     html`<zx-diagram
       .diagram=${diagram}

@@ -1,13 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
-import type { DiagramData } from '../src/index'
+import type { DiagramData } from '../../src/index'
 
 interface Args {
   diagram: DiagramData
 }
 
 const meta: Meta<Args> = {
-  title: 'Algebraic layout',
+  title: 'Graphs/Algebraic',
   render: ({ diagram }) =>
     html`<zx-diagram .diagram=${diagram} style="min-height: 120px"></zx-diagram>`,
   parameters: {

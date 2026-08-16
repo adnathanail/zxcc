@@ -1,16 +1,16 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
 import { expect } from 'storybook/test'
-import { type DiagramData, ORIGINAL_COLORS } from '../src/index'
-import { singleZSpider, zHHzChain } from './diagrams'
-import { shadowRootOf, translateOf, waitForNodes } from './interactionHelpers'
+import { type DiagramData, ORIGINAL_COLORS } from '../../src/index'
+import { singleZSpider, zHHzChain } from '../diagrams'
+import { shadowRootOf, translateOf, waitForNodes } from '../interactionHelpers'
 
 interface Args {
   diagram: DiagramData
 }
 
 const meta: Meta<Args> = {
-  title: 'Basic layout (adj list)',
+  title: 'Graphs/Basic',
   render: ({ diagram }) =>
     html`<zx-diagram .diagram=${diagram} style="min-height: 120px"></zx-diagram>`,
   parameters: {
