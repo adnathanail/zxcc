@@ -90,6 +90,20 @@ export const HypergraphBlobSelection: Story = {
     fireMouse('mousedown', svg, box.left + 2, box.top + 2)
     await waitFor(() => expect(selectedBlobsIn(root)).toEqual([]))
     expect(root.querySelectorAll('line.leader').length).toBe(0)
+
+    // A press that lands on a *dot* selects by membership rather than by
+    // geometry: the blobs that hold that wire, which for w6 (the 1—6 crossing
+    // wire) is its two endpoints. Clicking the same spot as bare canvas picked
+    // out all four above, because the middle of this diagram falls inside every
+    // outline — but e2 and e5 do not hold w6, and where their hulls happen to
+    // fall is an accident of the layout rather than something about the
+    // hypergraph.
+    const dot = root.querySelector<SVGGElement>('g[data-wire="w6"]')
+    if (!dot) throw new Error('dot w6 not mounted')
+    const [x, y] = translateOf(dot)
+    fireMouse('mousedown', dot, box.left + x, box.top + y)
+    await waitFor(() => expect(selectedBlobsIn(root)).toEqual(['e1', 'e6']))
+    fireMouse('mouseup', window, box.left + x, box.top + y)
   },
 }
 
@@ -120,5 +134,9 @@ export const HypergraphDotDrag: Story = {
     await waitFor(async () => expect(translateOf(await dotFor('w6'))).toEqual([x + 30, y - 20]))
     // e1 is the blob for node 1, one of the two spiders w6 joins.
     expect(outlineOf('e1')).not.toEqual(before)
+    // The press picked out the blobs holding w6 on the way in, so the two being
+    // reshaped are the two highlighted — a drag doesn't have to end for the
+    // selection to happen, and never selects the blobs w6 merely sits inside.
+    expect(selectedBlobsIn(root)).toEqual(['e1', 'e6'])
   },
 }
