@@ -144,6 +144,8 @@ export const HadamardAndParallelEdges: Story = {
     )
     const phases = [...root.querySelectorAll('svg g.blob text tspan[fill="#00d"]')]
     expect(phases.map(t => t.textContent)).toEqual(['π/2', '0'])
+    // Nothing trespasses in a diagram this small, so there is no tally to draw.
+    expect(root.querySelector('svg text.tally')).toBeNull()
   },
 }
 
@@ -201,6 +203,12 @@ export const StrongComplementarity: Story = {
     // and a dot half in and half out comes out half red.
     const clip = root.querySelector(`clipPath[id$="-w6"]`)
     expect(clip?.querySelectorAll('path').length).toBe(2)
+
+    // Each red mark is local, so the count is written out once in the same red,
+    // below the drawing.
+    const tally = root.querySelector<SVGTextElement>('svg text.tally')
+    expect(tally?.textContent).toBe('2 trespassing nodes')
+    expect(tally?.getAttribute('fill')).toBe('#e00')
   },
 }
 

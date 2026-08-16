@@ -126,8 +126,18 @@ export const HypergraphDotDrag: Story = {
     const outlineOf = (blob: string) =>
       root.querySelector<SVGPathElement>(`g[data-hyperedge="${blob}"] path`)?.getAttribute('d')
 
+    const tallyAt = () => {
+      const t = root.querySelector<SVGTextElement>('svg text.tally')
+      return t && { text: t.textContent, at: [t.getAttribute('x'), t.getAttribute('y')] }
+    }
+
     const [x, y] = translateOf(await dotFor('w6'))
     const before = outlineOf('e1')
+    // The diagram already has trespasses at rest, so the tally is on screen
+    // before the drag starts — which is what makes it possible to check that
+    // dragging doesn't shift it.
+    const tallyBefore = tallyAt()
+    if (!tallyBefore) throw new Error('no tally before the drag')
 
     performDrag(await dotFor('w6'), 30, -20)
 
@@ -161,5 +171,15 @@ export const HypergraphDotDrag: Story = {
     const inside = rim.filter(p => intruded.isPointInFill(p)).length
     expect(inside).toBeGreaterThan(0)
     expect(inside).toBeLessThan(rim.length)
+
+    // The count is derived from the same set the red marks are, so it follows a
+    // drag. Its position doesn't: that comes from where the layout put the dots
+    // rather than where they have been dragged to, so the caption stays put
+    // while the drawing under it moves.
+    const tally = tallyAt()
+    expect(tally?.text).toBe(
+      `${root.querySelectorAll('g.overlap circle[data-wire]').length} trespassing nodes`,
+    )
+    expect(tally?.at).toEqual(tallyBefore.at)
   },
 }
