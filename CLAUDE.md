@@ -253,3 +253,9 @@ Check whether you are on the `gitbutler/workspace` branch; if so, use the `but` 
 - Barycentre-parked H-boxes are spread as a group, in one pass, rather than
   nudged one at a time: an iterative nudge settles exactly on its own
   threshold and the box visibly flicks sideways as the diagram is dragged.
+- Hypergraph dots that land on the same point — two crossing edges share a
+  midpoint — are spread the same way and for the same reason
+  (`spreadCoincident`). Ties there are exact: on an integer grid a midpoint is
+  always a multiple of half a scale, so two dots either coincide or sit half a
+  column apart. That is why a tie-break is enough and no finer grid is
+  needed — the midpoints already are the grid.

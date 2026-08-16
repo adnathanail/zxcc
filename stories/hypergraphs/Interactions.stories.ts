@@ -54,10 +54,13 @@ export const HypergraphBlobSelection: Story = {
     // Click points are read off the dots themselves rather than hard-coded,
     // so the assertions survive a change of scale or zoom.
     const box = svg.getBoundingClientRect()
-    const clickDot = (wire: string) => {
+    const dotFor = (wire: string) => {
       const dot = root.querySelector<SVGGElement>(`g[data-wire="${wire}"]`)
       if (!dot) throw new Error(`dot ${wire} not mounted`)
-      const [x, y] = translateOf(dot)
+      return translateOf(dot)
+    }
+    const clickDot = (wire: string) => {
+      const [x, y] = dotFor(wire)
       fireMouse('mousedown', svg, box.left + x, box.top + y)
     }
 
@@ -78,13 +81,18 @@ export const HypergraphBlobSelection: Story = {
     // …and ends below where it starts, on the blob under the caption.
     expect(Number(leader?.getAttribute('y2'))).toBeGreaterThan(Number(leader?.getAttribute('y1')))
 
-    // Every spider has a leg on one of the two crossing wires, and both of
-    // those dots sit dead centre — so a click there is inside all four blobs.
+    // The crossing wires 1—6 and 2—5 have the same midpoint, and the layout
+    // spreads a tie like that apart. Were it to regress they would be one dot,
+    // and the click below would land inside all four blobs instead of three.
+    expect(dotFor('w6')).not.toEqual(dotFor('w7'))
+
+    // w6 is a leg of both spiders it joins, and lies on the edge of the hull
+    // the second Z spider's blob draws up the middle — so three of the four.
     clickDot('w6')
-    await waitFor(() => expect(selectedBlobsIn(root)).toEqual(['e1', 'e2', 'e5', 'e6']))
-    // One leader each: with the four piled on top of each other, that is what
-    // says which of the four captions belongs to which.
-    expect(root.querySelectorAll('line.leader').length).toBe(4)
+    await waitFor(() => expect(selectedBlobsIn(root)).toEqual(['e1', 'e2', 'e6']))
+    // One leader each: with the three piled on top of each other, that is what
+    // says which of the captions belongs to which.
+    expect(root.querySelectorAll('line.leader').length).toBe(3)
 
     // A click on bare canvas drops the selection, and the leaders with it.
     fireMouse('mousedown', svg, box.left + 2, box.top + 2)
@@ -94,10 +102,9 @@ export const HypergraphBlobSelection: Story = {
     // A press that lands on a *dot* selects by membership rather than by
     // geometry: the blobs that hold that wire, which for w6 (the 1—6 crossing
     // wire) is its two endpoints. Clicking the same spot as bare canvas picked
-    // out all four above, because the middle of this diagram falls inside every
-    // outline — but e2 and e5 do not hold w6, and where their hulls happen to
-    // fall is an accident of the layout rather than something about the
-    // hypergraph.
+    // out three above, because w6 lies on the edge of e2's hull as well — but
+    // e2 does not hold w6, and where its hull happens to fall is an accident of
+    // the layout rather than something about the hypergraph.
     const dot = root.querySelector<SVGGElement>('g[data-wire="w6"]')
     if (!dot) throw new Error('dot w6 not mounted')
     const [x, y] = translateOf(dot)

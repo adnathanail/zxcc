@@ -31,6 +31,54 @@ const DOT_RADIUS = 0.12
  *  blobs) spreads them back out and keeps neighbouring blobs apart. */
 const ZOOM = 1.6
 
+/** How far apart dots that landed on the same point are pushed, as a fraction
+ *  of the (zoomed) scale. Distinct midpoints sit half a scale apart on an
+ *  integer grid, so a quarter leaves a spread group clear of its neighbours. */
+const TIE_SPREAD = 0.25
+
+/**
+ * Pull apart dots that landed on the very same point.
+ *
+ * Two edges that cross share a midpoint — in the 2-to-2 strong complementarity
+ * diagram the wires 1—6 and 2—5 both sit dead centre — and one dot where there
+ * should be two reads as a single wire four spiders share, which is a
+ * different diagram. `layout()` already fans *parallel* edges apart through
+ * `index`/`parallel`; this is the same problem for edges between different
+ * pairs of nodes.
+ *
+ * Ties are exact, not near-misses: on an integer grid every midpoint is a
+ * multiple of half a scale, so two dots are either the same point or half a
+ * column apart. That is what makes spreading enough, and a re-layout onto some
+ * finer grid unnecessary.
+ *
+ * The group is spread in one pass rather than nudged apart one dot at a time,
+ * for the same reason `Topology.resolve` spreads parked H-boxes that way: an
+ * iterative nudge settles exactly on its own threshold, and rounding then
+ * decides whether another nudge is due. Spreading is vertical because the
+ * layout runs in columns, so the column a tied group sits in is the one axis
+ * with room; the step shrinks for a bigger group so the whole group stays
+ * inside its own half-column.
+ */
+function spreadCoincident(dots: HypergraphDot[], scale: number): void {
+  const groups = new Map<string, HypergraphDot[]>()
+  for (const dot of dots) {
+    // A tenth of a pixel: this is looking for exact ties, not for crowding.
+    const key = `${Math.round(dot.x * 10)},${Math.round(dot.y * 10)}`
+    const group = groups.get(key)
+    if (group) group.push(dot)
+    else groups.set(key, [dot])
+  }
+
+  for (const group of groups.values()) {
+    if (group.length < 2) continue
+    const step = Math.min(TIE_SPREAD, 0.5 / (group.length - 1)) * scale
+    const first = -((group.length - 1) / 2) * step
+    group.forEach((dot, i) => {
+      dot.y += first + i * step
+    })
+  }
+}
+
 /**
  * Lay out the hypergraph dual of `diagram`, positioned from `scene` — the
  * result of `layout(diagram)`, which the caller supplies so that both views
@@ -69,6 +117,8 @@ export function layoutHypergraph(diagram: DiagramData, scene: Scene): Hypergraph
       label: `${wire.src}—${wire.tgt}`,
     })
   })
+
+  spreadCoincident(dots, scale * ZOOM)
 
   const placed = new Set(dots.map(d => d.id))
   const blobs: HypergraphBlob[] = hg.hyperedges

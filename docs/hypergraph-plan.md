@@ -97,6 +97,16 @@ Answers to the questions above, as built:
    consecutive dots are half a ZX scale apart — twice the marks at half the
    spacing. Blob radius and dot radius stay in unzoomed units, so zooming also
    buys the gap between neighbouring blobs.
+
+   Two edges that cross share a midpoint, so their dots would coincide;
+   `spreadCoincident` pulls such a group apart in one pass. Measured across the
+   stories, dots are otherwise never merely *close*: on an integer grid every
+   midpoint is a multiple of half a scale, so two dots either coincide exactly
+   or sit half a column (40px at the default scale) apart. That is why the fix
+   is a tie-break rather than a re-layout onto a finer grid — the midpoints
+   already are the grid. A wider spread was tried and is worse: it pushes each
+   tied dot up against the next dot in the column, pairing it with the wrong
+   partner.
 3. **Blob geometry.** `blobPath` — convex hull, offset outwards by a radius,
    arcs at the corners. One dot gives a circle, two a capsule, more a rounded
    convex polygon, so arity 2 is fine. Overlapping blobs are currently told
@@ -131,15 +141,10 @@ Answers to the questions above, as built:
   cost of the correspondence.
 - Dragging dots, and whether selection should mean more than "show me this
   blob" — the graph view's selection drags.
-- **Distinct wires can share a dot.** Two edges that cross have the same
-  midpoint, so their dots land on top of each other: in the strong
-  complementarity story `w6` (1—6) and `w7` (2—5) are both at the centre. The
-  hulls around them are correct, but the picture reads as one dot shared by
-  four blobs rather than two dots held by two each. `layout()` already fans
-  *parallel* edges apart via `index`/`parallel`; this is the same problem for
-  edges between different pairs, and wants the same kind of fix — spread
-  coincident dots as a group, the way `Topology.resolve` spreads
-  barycentre-parked H-boxes.
+- Labels in a crowded column. Each dot's label hangs a fixed distance below
+  it, which lands on the dot beneath when a column is dense — visible in the
+  middle of the strong complementarity story now that the tied dots are
+  spread. Part of the labels item above.
 - Play functions. The stories currently only render; the ZX ones assert on the
   SVG, and the DOM here (`g.blob > g[data-hyperedge] > path`, `g.dot >
   g[data-wire]`) is a contract in the same way.
