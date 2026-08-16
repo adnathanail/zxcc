@@ -92,12 +92,18 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
 - `viewer.ts` — `<zx-hypergraph-viewer>`, the second painter. Internal and
   light DOM. Two pieces of interaction state, both plain fields paired with an
   explicit `requestUpdate()`: the selection, and the dragged dot positions.
-  A press on a dot drags it — every blob is derived from the dot positions on
-  each render, so the blobs holding that wire reshape live, which is how the
-  drawing is checked under strain. A press anywhere else selects *every* blob
-  whose outline contains the point, tested against the geometry
-  (`blobContains`) rather than by asking the DOM what was hit, since the blobs
-  overlap and SVG reports only the topmost. Selected blobs paint last and take
+  A press on a dot selects and then drags it — every blob is derived from the
+  dot positions on each render, so the blobs holding that wire reshape live,
+  which is how the drawing is checked under strain, and selecting on the way in
+  means the ones being reshaped are the ones picked out. A press anywhere else
+  selects *every* blob whose outline contains the point, tested against the
+  geometry (`blobContains`) rather than by asking the DOM what was hit, since
+  the blobs overlap and SVG reports only the topmost. The two presses select by
+  different tests on purpose: a press on canvas asks what is *here* (geometry),
+  a press on a dot asks which hyperedges that wire is *part of* (membership,
+  `blob.dots`). A dot often sits inside a blob that doesn't hold it — the hulls
+  are crowded — and highlighting that blob would report an accident of the
+  layout as a fact about the hypergraph. Selected blobs paint last and take
   the same blue stroke `<zx-viewer>` uses, and each gets a dashed leader from
   its caption to the middle of the blob — a caption sits just off the top of
   its outline, which in a pile of overlapping blobs looks like it could belong

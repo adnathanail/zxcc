@@ -98,13 +98,24 @@ export class ZxHypergraphViewerElement extends LitElement {
   }
 
   /**
-   * A press on a dot drags it; a press anywhere else selects blobs.
+   * A press on a dot selects the blobs that hold that wire and then drags it; a
+   * press anywhere else selects whatever the point falls inside.
+   *
+   * Both are selections, but they answer different questions, so they are
+   * tested differently. Pressing bare canvas or a blob asks "what is here?",
+   * which is a question about the drawing — geometry. Pressing a *dot* asks
+   * "which hyperedges is this wire part of?", which is a question about the
+   * hypergraph — membership. A dot can easily sit inside a blob that doesn't
+   * hold it, since a blob is a hull around its own dots and the drawing is
+   * crowded; highlighting that blob would be answering with an accident of the
+   * layout.
    *
    * Dragging is what makes the view explorable: the blobs are derived from the
    * dot positions on every render, so pulling a dot about reshapes every blob
    * that holds it, live. Nothing is re-laid-out — the node a blob reaches from
    * stays where the diagram put it — so this shows the drawing under strain
-   * rather than a different drawing.
+   * rather than a different drawing. Selecting on the way in means the blobs
+   * being reshaped are the ones picked out while you reshape them.
    */
   #onDown = (e: MouseEvent) => {
     const scene = this.scene
@@ -112,36 +123,35 @@ export class ZxHypergraphViewerElement extends LitElement {
 
     const dragged = (e.target as Element).closest('[data-wire]')?.getAttribute('data-wire')
     if (dragged) {
+      this.#select(scene.blobs.filter(blob => blob.dots.includes(dragged)))
       this.#dragDot(dragged, e)
       return
     }
 
-    // Every blob the pointer is inside, not just the topmost one — the blobs
-    // overlap by construction, since a wire between two spiders is a dot both
-    // of them hold, and seeing which ones share a spot is the point. A press
-    // on bare canvas selects nothing.
     const box = (e.currentTarget as SVGSVGElement).getBoundingClientRect()
     const point = { x: e.clientX - box.left, y: e.clientY - box.top }
-    const pos = this.#positions
-    this.#selected = new Set(
-      scene.blobs
-        .filter(blob => blobContains(blob, pos, scene.blobRadius, point))
-        .map(blob => blob.id),
-    )
+    // Every blob the point is inside, not just the topmost one — the blobs
+    // overlap by construction, and seeing which ones share a spot is the point.
+    // On bare canvas that set is empty, which is how a selection is dropped.
+    this.#select(scene.blobs.filter(b => blobContains(b, this.#positions, scene.blobRadius, point)))
+  }
+
+  #select(blobs: HypergraphBlob[]) {
+    this.#selected = new Set(blobs.map(blob => blob.id))
     this.requestUpdate()
   }
 
-  /** Drag one dot, leaving the selection alone so a highlighted blob can be
-   *  watched as it is pulled about. */
+  /** Drag one dot. The dot follows the pointer from where it was pressed rather
+   *  than by accumulated steps, so a drag can't drift from the pointer over a
+   *  long gesture. */
   #dragDot(id: string, start: MouseEvent) {
-    let lastX = start.clientX
-    let lastY = start.clientY
+    const origin = this.#positions.get(id)
+    if (!origin) return
     this.#track(move => {
-      const p = this.#positions.get(id)
-      if (!p) return
-      this.#positions.set(id, { x: p.x + move.clientX - lastX, y: p.y + move.clientY - lastY })
-      lastX = move.clientX
-      lastY = move.clientY
+      this.#positions.set(id, {
+        x: origin.x + move.clientX - start.clientX,
+        y: origin.y + move.clientY - start.clientY,
+      })
       this.requestUpdate()
     })
   }
