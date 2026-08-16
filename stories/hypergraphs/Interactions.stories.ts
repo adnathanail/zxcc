@@ -138,5 +138,28 @@ export const HypergraphDotDrag: Story = {
     // reshaped are the two highlighted — a drag doesn't have to end for the
     // selection to happen, and never selects the blobs w6 merely sits inside.
     expect(selectedBlobsIn(root)).toEqual(['e1', 'e6'])
+
+    // Dragging w6 reshapes e6, one of the two blobs holding it, and e6 ends up
+    // swallowing part of w7 — a wire it does not hold. That is a *partial*
+    // trespass, which is what the red mark is for: it is clipped to the blob
+    // strayed into, so only the part of w7 actually inside e6 is painted.
+    // Asserted by sampling w7's rim against e6's rendered outline — the same
+    // `d` the mark is clipped to, so this is the shape on screen rather than a
+    // second calculation of it — and finding it partly in and partly out.
+    const mark = root.querySelector<SVGCircleElement>('g.overlap circle[data-wire="w7"]')
+    if (!mark) throw new Error('w7 is not marked as overlapping anything')
+    const intruded = root.querySelector<SVGPathElement>('g[data-hyperedge="e6"] path')
+    if (!intruded) throw new Error('blob e6 not mounted')
+
+    const cx = Number(mark.getAttribute('cx'))
+    const cy = Number(mark.getAttribute('cy'))
+    const r = Number(mark.getAttribute('r'))
+    const rim = Array.from({ length: 24 }, (_, i) => {
+      const angle = (i / 24) * 2 * Math.PI
+      return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) }
+    })
+    const inside = rim.filter(p => intruded.isPointInFill(p)).length
+    expect(inside).toBeGreaterThan(0)
+    expect(inside).toBeLessThan(rim.length)
   },
 }
