@@ -13,6 +13,7 @@ interface Args {
   hadamardOnEdge: boolean
   parallelEdges: number
   box: 'none' | 'stack' | 'compose'
+  viewAsHypergraph: boolean
   showLabels: boolean
   colorScheme: ColorSchemeName
   /** Left unset so the element derives it; the range control overrides. */
@@ -52,6 +53,7 @@ const meta: Meta<Args> = {
   render: args =>
     html`<zx-diagram
       .diagram=${buildDiagram(args)}
+      ?view-as-hypergraph=${args.viewAsHypergraph}
       show-labels=${args.showLabels ? '' : 'false'}
       color-scheme=${args.colorScheme}
       scale=${ifDefined(args.scale)}
@@ -65,6 +67,7 @@ const meta: Meta<Args> = {
     hadamardOnEdge: { control: 'boolean' },
     parallelEdges: { control: { type: 'range', min: 1, max: 4, step: 1 } },
     box: { control: 'inline-radio', options: ['none', 'stack', 'compose'] },
+    viewAsHypergraph: { control: 'boolean' },
     showLabels: { control: 'boolean' },
     colorScheme: { control: 'inline-radio', options: ['original', 'rgb', 'grayscale'] },
     scale: { control: { type: 'range', min: 10, max: 100, step: 5 } },
@@ -73,7 +76,7 @@ const meta: Meta<Args> = {
     docs: {
       description: {
         component:
-          'Two spiders wired input → left → right → output. Use the controls to change colours, phases, insert a Hadamard, add parallel edges, wrap the pair in a stack/compose box, toggle node-id labels, switch pyzx colour scheme, or pin the pixels-per-row scale.',
+          'Two spiders wired input → left → right → output. Use the controls to change colours, phases, insert a Hadamard, add parallel edges, wrap the pair in a stack/compose box, switch to the hypergraph dual, toggle node-id labels, switch pyzx colour scheme, or pin the pixels-per-row scale.',
       },
     },
   },
@@ -91,6 +94,7 @@ const baseArgs: Args = {
   hadamardOnEdge: false,
   parallelEdges: 1,
   box: 'none',
+  viewAsHypergraph: false,
   showLabels: true,
   colorScheme: 'original',
 }

@@ -186,6 +186,11 @@ Check whether you are on the `gitbutler/workspace` branch; if so, use the `but` 
   build; `tsconfig.stories.json` type-checks them (wired into `npm run lint`).
   `.storybook/preview.ts` imports `src/index` so the element registers before
   any story renders.
+- `stories/` mirrors the `src/` split: `stories/graphs/` and
+  `stories/hypergraphs/`, titled `Graphs/…` and `Hypergraphs/…` so Storybook
+  groups them, with the shared `diagrams.ts`/`interactionHelpers.ts` and the
+  `Playground` story (the only ungrouped one) at the top level. The sidebar
+  order is pinned by `storySort` in `.storybook/preview.ts`.
 
 ## Gotchas
 
