@@ -167,7 +167,9 @@ the design's own account differ *only* in `flex-direction`.
 
 ### 7. `HypergraphDot.label` is dead
 
-- [ ] Done
+- [x] **Done.** Field and its one construction site deleted. `dot.src`/`dot.tgt`
+      remain — they are what a selection is stated in — so the string is
+      recoverable if anything ever wants it.
 
 Built as `` `${wire.src}—${wire.tgt}` `` in `layoutHypergraph`
 (`hypergraph/layout.ts:181`), declared in `hypergraph/types.ts:87`, read

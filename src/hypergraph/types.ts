@@ -84,8 +84,6 @@ export interface HypergraphDot {
   edge: number
   src: number
   tgt: number
-  /** The ZX endpoints the wire joins, e.g. `0—2`. */
-  label: string
 }
 
 /** A hyperedge, drawn as a shape enclosing the dots of its wires. */

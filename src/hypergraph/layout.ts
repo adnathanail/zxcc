@@ -189,7 +189,6 @@ export function layoutHypergraph(diagram: DiagramData, scene: Scene): Hypergraph
         edge: i,
         src: wire.src,
         tgt: wire.tgt,
-        label: `${wire.src}—${wire.tgt}`,
       },
     })
   })
