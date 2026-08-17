@@ -34,7 +34,7 @@ like `Scene`.
 Stories live in `stories/Hypergraph.stories.ts`.
 
 A `formatHypergraph` used to dump the same data as text, which is what
-`view-as-hypergraph` showed before the drawing existed. It has been removed —
+the hypergraph view showed before the drawing existed. It has been removed —
 nothing in the package renders text any more, and a debug dump of a plain
 object is not worth an export.
 
@@ -71,7 +71,7 @@ stage, and `<zx-hypergraph-viewer>` paints it:
 Scene --layoutHypergraph()--> HypergraphScene --<zx-hypergraph-viewer>--> SVG
 ```
 
-`<zx-diagram view-as-hypergraph>` runs that on the `Scene` `layout()` gives it,
+`<zx-diagram view-mode="hypergraph">` runs that on the `Scene` `layout()` gives it,
 in place of handing the scene to `<zx-viewer>`, and gets the container,
 `show-labels` and the attribution badge for free.
 

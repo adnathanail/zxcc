@@ -91,6 +91,7 @@ only — graph structure always lives in `diagram`.
 | `show-labels` | `showLabels` | `true` | Draw each node's id above it. Set `show-labels="false"` to hide — a bare boolean attribute can't express "off" for a true-by-default property. |
 | `color-scheme` | `colorScheme` | `original` | One of `original`, `rgb`, `grayscale` — the palettes from `pyzx.utils`. |
 | `scale` | `scale` | derived | Pixels per row/qubit. When set, the derived 20–50 clamp is bypassed. |
+| `view-mode` | `viewMode` | `graph` | Which view to draw: `graph`, `hypergraph`, or `both` stacked. See [Hypergraph view](#hypergraph-view). |
 | — | `colors` | `null` | Full palette override (`Record<string, string>`), keyed as in `pyzx.utils.original_colors`. Wins over `color-scheme`. |
 
 ```html
@@ -105,19 +106,27 @@ import { ORIGINAL_COLORS, RGB_COLORS, GRAYSCALE_COLORS, COLOR_SCHEMES } from '@a
 
 ## Hypergraph view
 
-Set the `view-as-hypergraph` attribute (or the `viewAsHypergraph` property) to draw the diagram's
-hypergraph dual instead of the diagram — the roles of wires and spiders swap. Every ZX edge becomes
-a node (a *wire*), drawn as a dot; every non-boundary ZX node becomes a *hyperedge*, drawn as a blob
-enclosing the dots of the wires incident to it. Boundaries aren't hyperedges, they're just the loose
-end of a wire.
+Set `view-mode="hypergraph"` (or the `viewMode` property) to draw the diagram's hypergraph dual
+instead of the diagram — the roles of wires and spiders swap. Every ZX edge becomes a node (a
+*wire*), drawn as a dot; every non-boundary ZX node becomes a *hyperedge*, drawn as a blob enclosing
+the dots of the wires incident to it. Boundaries aren't hyperedges, they're just the loose end of a
+wire.
 
 ```html
-<zx-diagram id="d" view-as-hypergraph></zx-diagram>
+<zx-diagram id="d" view-mode="hypergraph"></zx-diagram>
 ```
 
-Each dot sits at the midpoint of the edge it came from, so the two views line up: toggling the
+Each dot sits at the midpoint of the edge it came from, so the two views line up: switching the
 attribute keeps everything in the same place. A blob's outline is the convex hull of its dots pushed
 outwards and rounded off, so it stays readable at any arity — one dot gives a circle, two a capsule.
+
+`view-mode="both"` draws the pair, the diagram above its dual, each in its own scroll container.
+They are drawn from the same layout, so a dot lines up with the wire above it, but they are
+otherwise independent: selecting or dragging in one view does not touch the other.
+
+```html
+<zx-diagram id="d" view-mode="both"></zx-diagram>
+```
 
 Blobs are filled with the same palette entry their spider would be — Z green, X red, H yellow — so
 `color-scheme` and `colors` apply to this view too, and a dot takes its edge's colour. Only spiders

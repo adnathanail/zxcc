@@ -23,4 +23,4 @@ export type {
   PauliKind,
   PauliWebLink,
 } from './types'
-export { ZxDiagramElement } from './zxDiagram'
+export { type ViewMode, ZxDiagramElement } from './zxDiagram'

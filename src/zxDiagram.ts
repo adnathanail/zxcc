@@ -1,12 +1,13 @@
 // `<zx-diagram>` — the public element. It lays a `DiagramData` out into a
-// `Scene`, hands that to `<zx-viewer>` to paint, and owns everything around
-// the drawing: the scroll container, the presentation properties that mirror
+// `Scene`, hands that to whichever painter `view-mode` asks for — `<zx-viewer>`,
+// `<zx-hypergraph-viewer>`, or both stacked — and owns everything around the
+// drawing: the scroll containers, the presentation properties that mirror
 // pyzx's `draw_d3` keyword arguments, the error state, and the attribution.
 //
 // It also carries the stylesheet for the whole shadow tree, the viewer's SVG
 // included, since the viewer renders into the light DOM.
 
-import { css, html, LitElement, nothing, type PropertyValues } from 'lit'
+import { css, html, LitElement, nothing, type PropertyValues, type SVGTemplateResult } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { attributionTemplate, placeAttribution } from './attribution'
 import { COLOR_SCHEMES, type ColorSchemeName } from './colors'
@@ -23,6 +24,10 @@ import './hypergraph/viewer'
 const defaultTrueBoolean = {
   fromAttribute: (value: string | null) => value !== null && value !== 'false',
 }
+
+/** Which of the two painters the element runs: the ZX diagram, its hypergraph
+ *  dual, or both stacked one above the other. */
+export type ViewMode = 'graph' | 'hypergraph' | 'both'
 
 @customElement('zx-diagram')
 export class ZxDiagramElement extends LitElement {
@@ -45,13 +50,15 @@ export class ZxDiagramElement extends LitElement {
   /** Pixels per row/qubit. Null derives it from the diagram's extent. */
   @property({ type: Number }) scale: number | null = null
 
-  /** Draw the diagram's hypergraph dual — wires as dots, spiders as blobs
-   *  enclosing the dots of their wires — instead of the ZX diagram. */
-  @property({ type: Boolean, attribute: 'view-as-hypergraph' }) viewAsHypergraph = false
+  /** Which view to draw: the ZX diagram (`graph`), its hypergraph dual —
+   *  wires as dots, spiders as blobs enclosing the dots of their wires —
+   *  (`hypergraph`), or `both`, stacked. An unrecognised value draws the
+   *  graph, as an unrecognised `color-scheme` falls back to the original. */
+  @property({ attribute: 'view-mode' }) viewMode: ViewMode = 'graph'
 
+  /** The laid-out views. Which are non-null follows `viewMode`, so in `both`
+   *  they are populated together and two painters are rendered. */
   @state() private scene: Scene | null = null
-  /** The laid-out hypergraph, when `viewAsHypergraph` is on. Mutually
-   *  exclusive with `scene`: only one of the two views is built per update. */
   @state() private hypergraph: HypergraphScene | null = null
   @state() private error: string | null = null
 
@@ -60,6 +67,9 @@ export class ZxDiagramElement extends LitElement {
   static styles = css`
     :host { display: block; }
     .container { overflow: auto; background-color: white; }
+    /* In both-view mode the two are separate pictures stacked, each scrolling
+       on its own; the gap is what stops them reading as one drawing. */
+    .container + .container { margin-top: 0.5rem; }
     zx-viewer, zx-hypergraph-viewer { display: block; }
     .container svg { display: block; background-color: rgb(252, 252, 253); }
     .error { font-family: monospace; }
@@ -84,15 +94,17 @@ export class ZxDiagramElement extends LitElement {
   private placementPending = false
 
   protected willUpdate(changed: PropertyValues<this>) {
-    if (changed.has('diagram') || changed.has('scale') || changed.has('viewAsHypergraph')) {
+    if (changed.has('diagram') || changed.has('scale') || changed.has('viewMode')) {
       this.relayout()
     }
   }
 
-  /** Whichever painter is in play. Both views are laid out to pixel bounds,
-   *  which is all the attribution needs to place itself. */
-  private get painted(): Scene | HypergraphScene | null {
-    return this.scene ?? this.hypergraph
+  /** The view the attribution badge is drawn into: the last one in the stack,
+   *  so a `both` pair carries one badge under the pair rather than one each.
+   *  Both views are laid out to pixel bounds, which is all the attribution
+   *  needs to place itself. */
+  private get badged(): Scene | HypergraphScene | null {
+    return this.hypergraph ?? this.scene
   }
 
   /** The palette both painters are handed: an explicit `colors` override wins
@@ -102,25 +114,29 @@ export class ZxDiagramElement extends LitElement {
     return this.colors ?? COLOR_SCHEMES[this.colorScheme] ?? COLOR_SCHEMES.original
   }
 
-  private get painter(): LitElement | null {
-    return this.renderRoot.querySelector<LitElement>('zx-viewer, zx-hypergraph-viewer')
+  private get painters(): LitElement[] {
+    return [...this.renderRoot.querySelectorAll<LitElement>('zx-viewer, zx-hypergraph-viewer')]
   }
 
-  /** The painter updates on its own cycle, so the SVG this element's template
-   *  asks for isn't in the DOM until the child has rendered too. */
+  private paintersComplete(): Promise<unknown> {
+    return Promise.all(this.painters.map(p => p.updateComplete))
+  }
+
+  /** A painter updates on its own cycle, so the SVG this element's template
+   *  asks for isn't in the DOM until the children have rendered too. */
   protected override async getUpdateComplete(): Promise<boolean> {
     const done = await super.getUpdateComplete()
-    await this.painter?.updateComplete
+    await this.paintersComplete()
     return done
   }
 
   protected async updated() {
-    const scene = this.painted
+    const scene = this.badged
     if (!this.placementPending || !scene) return
-    await this.painter?.updateComplete
+    await this.paintersComplete()
     // A relayout during that await leaves us holding a scene that is no longer
     // painted; whichever update cycle installed the new one places its badge.
-    if (this.painted !== scene) return
+    if (this.badged !== scene) return
     const group = this.renderRoot.querySelector<SVGGElement>('g.attribution')
     if (group && placeAttribution(group, scene.width, scene.height)) {
       this.placementPending = false
@@ -146,17 +162,31 @@ export class ZxDiagramElement extends LitElement {
     this.hypergraph = null
     try {
       // Both views start from the same `layout()`; the hypergraph is derived
-      // from that scene rather than laying the diagram out a second time.
+      // from that scene rather than laying the diagram out a second time. The
+      // two are built into locals first so a hypergraph that can't be
+      // converted leaves no half-painted pair behind for the error state.
       if (this.diagram) {
         const scene = layout(this.diagram, { scale: this.scale ?? undefined })
-        if (this.viewAsHypergraph) this.hypergraph = layoutHypergraph(this.diagram, scene)
-        else this.scene = scene
+        const hypergraph =
+          this.viewMode === 'hypergraph' || this.viewMode === 'both'
+            ? layoutHypergraph(this.diagram, scene)
+            : null
+        if (this.viewMode !== 'hypergraph') this.scene = scene
+        this.hypergraph = hypergraph
       }
       this.error = null
     } catch (e) {
+      this.scene = null
+      this.hypergraph = null
       this.error = e instanceof Error ? e.message : String(e)
     }
-    this.placementPending = this.painted !== null
+    this.placementPending = this.badged !== null
+  }
+
+  /** The badge goes to whichever view {@link badged} names, and only that one:
+   *  two badges in a stacked pair would read as two separate pictures. */
+  private overlayFor(scene: Scene | HypergraphScene): SVGTemplateResult | null {
+    return scene === this.badged ? attributionTemplate(scene.width, scene.height) : null
   }
 
   render() {
@@ -168,29 +198,37 @@ export class ZxDiagramElement extends LitElement {
         </div>
       `
     }
-    if (this.hypergraph !== null) {
-      return html`
-        <div class="container">
-          <zx-hypergraph-viewer
-            .scene=${this.hypergraph}
-            .colors=${this.palette}
-            .showLabels=${this.showLabels}
-            .overlay=${attributionTemplate(this.hypergraph.width, this.hypergraph.height)}
-          ></zx-hypergraph-viewer>
-        </div>
-      `
-    }
-    if (!this.scene) return nothing
+    if (!this.scene && !this.hypergraph) return nothing
 
     return html`
-      <div class="container">
-        <zx-viewer
-          .scene=${this.scene}
-          .colors=${this.palette}
-          .showLabels=${this.showLabels}
-          .overlay=${attributionTemplate(this.scene.width, this.scene.height)}
-        ></zx-viewer>
-      </div>
+      ${
+        this.scene === null
+          ? nothing
+          : html`
+            <div class="container">
+              <zx-viewer
+                .scene=${this.scene}
+                .colors=${this.palette}
+                .showLabels=${this.showLabels}
+                .overlay=${this.overlayFor(this.scene)}
+              ></zx-viewer>
+            </div>
+          `
+      }
+      ${
+        this.hypergraph === null
+          ? nothing
+          : html`
+            <div class="container">
+              <zx-hypergraph-viewer
+                .scene=${this.hypergraph}
+                .colors=${this.palette}
+                .showLabels=${this.showLabels}
+                .overlay=${this.overlayFor(this.hypergraph)}
+              ></zx-hypergraph-viewer>
+            </div>
+          `
+      }
     `
   }
 }

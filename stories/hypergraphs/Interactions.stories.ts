@@ -21,7 +21,7 @@ const meta: Meta<Args> = {
   render: ({ diagram }) =>
     html`<zx-diagram
       .diagram=${diagram}
-      view-as-hypergraph
+      view-mode="hypergraph"
       style="min-height: 160px"
     ></zx-diagram>`,
   parameters: {
