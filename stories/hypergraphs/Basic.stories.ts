@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
 import { expect, waitFor } from 'storybook/test'
-import type { ViewMode } from '../../src/index'
+import type { EdgeColors, ViewMode } from '../../src/index'
 import type { DiagramData } from '../../src/types'
 import { fourSpiderSquare, strongComplementarityOf } from '../diagrams'
 import { shadowRootOf, translateOf } from '../interactionHelpers'
@@ -11,11 +11,14 @@ interface Args {
   viewMode: ViewMode
   showLabels: boolean
   colorScheme: 'original' | 'rgb' | 'grayscale'
+  /** Omitted by most stories, which want the palette's wire colours. */
+  edgeColors?: EdgeColors
 }
 
-const renderDiagram = ({ diagram, viewMode, showLabels, colorScheme }: Args) =>
+const renderDiagram = ({ diagram, viewMode, showLabels, colorScheme, edgeColors }: Args) =>
   html`<zx-diagram
     .diagram=${diagram}
+    .edgeColors=${edgeColors ?? null}
     view-mode=${viewMode}
     show-labels=${showLabels ? 'true' : 'false'}
     color-scheme=${colorScheme}
@@ -377,5 +380,52 @@ export const UnsupportedNodeType: Story = {
         { src: 2, tgt: 3 },
       ],
     },
+  },
+}
+
+// `edgeColors` is folded into the palette rather than handed to a painter, so
+// there is one lookup behind both views: the dot standing for a wire cannot
+// come out a different colour from the wire itself.
+export const WireColors: Story = {
+  name: '10. Wire colour overrides',
+  parameters: {
+    docs: {
+      story: {
+        description:
+          'A colour per wire kind, keyed by the kinds the diagram is written in. Drawn in both views at once: the H-wire is pink in the diagram and its dot is the same pink in the dual.',
+      },
+    },
+  },
+  args: {
+    viewMode: 'both-vertical',
+    edgeColors: { hadamard: '#ff00aa' },
+    diagram: {
+      nodes: [
+        { id: 0, type: 'input', ioId: 0 },
+        { id: 1, type: 'spider', color: 'Z', phase: '0' },
+        { id: 2, type: 'spider', color: 'X', phase: '0' },
+        { id: 3, type: 'output', ioId: 0 },
+      ],
+      edges: [
+        { src: 0, tgt: 1 },
+        { src: 1, tgt: 2, kind: 'hadamard' },
+        { src: 2, tgt: 3 },
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    // w1 is the H-wire, the second edge.
+    const dot = () =>
+      root.querySelector<SVGCircleElement>('zx-hypergraph-viewer g[data-wire="w1"] circle')
+    await waitFor(() => expect(dot()).not.toBeNull())
+    const wire = root.querySelectorAll<SVGPathElement>('zx-viewer g.link path')[1]
+    expect(wire.getAttribute('stroke')).toBe('#ff00aa')
+    expect(dot()?.getAttribute('fill')).toBe(wire.getAttribute('stroke'))
+    // The wires that weren't named keep the palette's own colour, in both views.
+    expect(root.querySelectorAll('zx-viewer g.link path')[0].getAttribute('stroke')).toBe('#000000')
+    expect(
+      root.querySelector('zx-hypergraph-viewer g[data-wire="w0"] circle')?.getAttribute('fill'),
+    ).toBe('#000000')
   },
 }

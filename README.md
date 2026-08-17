@@ -93,6 +93,7 @@ only — graph structure always lives in `diagram`.
 | `scale` | `scale` | derived | Pixels per row/qubit. When set, the derived 20–50 clamp is bypassed. |
 | `view-mode` | `viewMode` | `graph` | Which view to draw: `graph`, `hypergraph`, or both — `both-vertical` (stacked) or `both-horizontal` (side by side). See [Hypergraph view](#hypergraph-view). |
 | — | `colors` | `null` | Full palette override (`Record<string, string>`), keyed as in `pyzx.utils.original_colors`. Wins over `color-scheme`. |
+| — | `edgeColors` | `null` | Wire colours by edge kind (`{ simple, hadamard, 'w-io' }`, all optional). Wins over both of the above, for the kinds named. |
 
 ```html
 <zx-diagram show-labels="false" color-scheme="grayscale" scale="40"></zx-diagram>
@@ -103,6 +104,17 @@ The palettes are exported too, if you want to build a variant:
 ```js
 import { ORIGINAL_COLORS, RGB_COLORS, GRAYSCALE_COLORS, COLOR_SCHEMES } from '@adnathanail/zxcc'
 ```
+
+To recolour wires alone, `edgeColors` takes a colour per edge kind — the kinds the diagram is
+written in, rather than pyzx's `edge` / `Hedge` / `Xedge` palette entries. Only the kinds you name
+move; the rest stay on whatever `color-scheme` or `colors` decided:
+
+```js
+document.getElementById('d').edgeColors = { hadamard: '#ff00aa', 'w-io': 'grey' }
+```
+
+It is folded into the palette, so the hypergraph view's dot for a wire always comes out the same
+colour as the wire itself.
 
 ## Hypergraph view
 

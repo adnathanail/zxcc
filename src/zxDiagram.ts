@@ -10,7 +10,13 @@
 import { css, html, LitElement, nothing, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { attributionTemplate, placeAttribution } from './attribution'
-import { CANVAS_FILL, COLOR_SCHEMES, type ColorSchemeName } from './colors'
+import {
+  CANVAS_FILL,
+  COLOR_SCHEMES,
+  type ColorSchemeName,
+  type EdgeColors,
+  withEdgeColors,
+} from './colors'
 import { ZOOM as HYPERGRAPH_ZOOM, layoutHypergraph } from './hypergraph/layout'
 import type { HypergraphScene } from './hypergraph/types'
 import { layout } from './layout'
@@ -54,6 +60,13 @@ export class ZxDiagramElement extends LitElement {
 
   /** Full palette override, keyed as in `pyzx.utils.original_colors`. */
   @property({ attribute: false }) colors: Record<string, string> | null = null
+
+  /** Wire colours by edge kind — `{ hadamard: '#f60', 'w-io': 'grey' }`. Wins
+   *  over both `colors` and `color-scheme`, and only for the kinds named, so
+   *  recolouring one kind of wire doesn't mean restating a palette. Keyed by
+   *  `DiagramEdge['kind']` rather than by pyzx's `Hedge`/`Xedge`/`edge` entry
+   *  names: the kinds are the vocabulary the diagram is written in. */
+  @property({ attribute: false }) edgeColors: EdgeColors | null = null
 
   /** Pixels per row/qubit. Null derives it from the diagram's extent. */
   @property({ type: Number }) scale: number | null = null
@@ -140,10 +153,11 @@ export class ZxDiagramElement extends LitElement {
   }
 
   /** The palette both painters are handed: an explicit `colors` override wins
-   *  over the named scheme, and an unknown scheme name falls back to pyzx's
-   *  original. */
+   *  over the named scheme, an unknown scheme name falls back to pyzx's
+   *  original, and `edgeColors` is folded in over whichever of those won. */
   private get palette(): Record<string, string> {
-    return this.colors ?? COLOR_SCHEMES[this.colorScheme] ?? COLOR_SCHEMES.original
+    const base = this.colors ?? COLOR_SCHEMES[this.colorScheme] ?? COLOR_SCHEMES.original
+    return withEdgeColors(base, this.edgeColors)
   }
 
   private get painters(): LitElement[] {

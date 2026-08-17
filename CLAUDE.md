@@ -55,6 +55,13 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   `color-scheme`. Those
   lookups are here rather than in either painter so a spider and the blob
   standing for the same spider cannot come out different colours.
+  `EDGE_KEY` is the one place the wire-kind → palette-entry mapping lives:
+  `edgeColor` reads it, and `withEdgeColors` — which folds `<zx-diagram>`'s
+  `edgeColors` overrides into a palette — writes through it, so an override
+  lands on exactly the entry the lookup will come back for. Overriding *into
+  the palette* rather than at each painter is what keeps a wire and the dot
+  standing for it the same colour; it is the same argument as the paragraph
+  above, applied to the public API.
 - `selection.ts` — `Selection`, what is picked out, and the `zx-selection`
   event a painter announces one with. A selection is held in the *diagram's*
   terms — ZX node ids and indices into `diagram.edges` — never in either
@@ -207,7 +214,8 @@ host. An unrecognised `view-mode` draws
 the graph, the way an unrecognised `color-scheme` falls back to the original.
 It owns the presentation properties that mirror
 pyzx's `draw_d3` keyword arguments (`show-labels`, `color-scheme`, `scale`,
-`colors`), resolves a scheme name to a palette, and passes the attribution
+`colors`) plus `edgeColors`, which has no pyzx counterpart; resolves a scheme
+name to a palette and folds the wire overrides into it; and passes the attribution
 badge down as each painter's `overlay` — one per view, placed against that
 view's own pixel bounds, since the badge is drawn inside the SVG so that it
 travels with the picture and each of a pair is copied on its own. It
@@ -285,7 +293,7 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
 - Lit decorators are on: `experimentalDecorators: true` and
   `useDefineForClassFields: false` in tsconfig. Use `@customElement`,
   `@property`, `@state`.
-- `diagram`, `scene`, `colors` and `selection` are `{ attribute: false }`
+- `diagram`, `scene`, `colors`, `edgeColors` and `selection` are `{ attribute: false }`
   properties, not HTML attributes — they carry arbitrary objects.
 - Templates use the `svg` tag for anything nested inside `<svg>`; only the
   root `<svg>` sits in an `html` template.
