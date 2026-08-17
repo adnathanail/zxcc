@@ -10,13 +10,7 @@
 import { css, html, LitElement, nothing, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { attributionTemplate, placeAttribution } from './attribution'
-import {
-  CANVAS_FILL,
-  COLOR_SCHEMES,
-  type ColorSchemeName,
-  type EdgeColors,
-  withEdgeColors,
-} from './colors'
+import { CANVAS_FILL, COLOR_SCHEMES, type ColorSchemeName, type EdgeColors } from './colors'
 import { ZOOM as HYPERGRAPH_ZOOM, layoutHypergraph } from './hypergraph/layout'
 import type { HypergraphScene } from './hypergraph/types'
 import { layout } from './layout'
@@ -61,11 +55,13 @@ export class ZxDiagramElement extends LitElement {
   /** Full palette override, keyed as in `pyzx.utils.original_colors`. */
   @property({ attribute: false }) colors: Record<string, string> | null = null
 
-  /** Wire colours by edge kind — `{ hadamard: '#f60', 'w-io': 'grey' }`. Wins
+  /** Wire colours by edge kind — `{ hadamard: '#f60', control: 'grey' }`. Wins
    *  over both `colors` and `color-scheme`, and only for the kinds named, so
    *  recolouring one kind of wire doesn't mean restating a palette. Keyed by
    *  `DiagramEdge['kind']` rather than by pyzx's `Hedge`/`Xedge`/`edge` entry
-   *  names: the kinds are the vocabulary the diagram is written in. */
+   *  names, which is what lets a diagram invent kinds: any string is a kind,
+   *  and this is where it gets a colour. One with no colour here draws like a
+   *  plain wire. */
   @property({ attribute: false }) edgeColors: EdgeColors | null = null
 
   /** Pixels per row/qubit. Null derives it from the diagram's extent. */
@@ -153,11 +149,11 @@ export class ZxDiagramElement extends LitElement {
   }
 
   /** The palette both painters are handed: an explicit `colors` override wins
-   *  over the named scheme, an unknown scheme name falls back to pyzx's
-   *  original, and `edgeColors` is folded in over whichever of those won. */
+   *  over the named scheme, and an unknown scheme name falls back to pyzx's
+   *  original. `edgeColors` rides alongside rather than being folded in — a
+   *  kind of your own has no pyzx entry to fold into. */
   private get palette(): Record<string, string> {
-    const base = this.colors ?? COLOR_SCHEMES[this.colorScheme] ?? COLOR_SCHEMES.original
-    return withEdgeColors(base, this.edgeColors)
+    return this.colors ?? COLOR_SCHEMES[this.colorScheme] ?? COLOR_SCHEMES.original
   }
 
   private get painters(): LitElement[] {
@@ -272,6 +268,7 @@ export class ZxDiagramElement extends LitElement {
               <zx-viewer
                 .scene=${this.scene}
                 .colors=${this.palette}
+                .edgeColors=${this.edgeColors}
                 .showLabels=${this.showLabels}
                 .selection=${this.selection}
                 @zx-selection=${this.onSelection}
@@ -288,6 +285,7 @@ export class ZxDiagramElement extends LitElement {
               <zx-hypergraph-viewer
                 .scene=${this.hypergraph}
                 .colors=${this.palette}
+                .edgeColors=${this.edgeColors}
                 .showLabels=${this.showLabels}
                 .selection=${this.selection}
                 @zx-selection=${this.onSelection}

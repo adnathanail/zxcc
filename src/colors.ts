@@ -104,46 +104,41 @@ export function nodeColor(kind: NodeKind, colors: Record<string, string>): strin
   }
 }
 
-/** A colour per wire kind, the shape `<zx-diagram>`'s `edgeColors` takes.
+/** A colour per wire kind — the built-in three, kinds of your own, or both.
  *  Partial, since naming one kind shouldn't mean restating the others. */
 export type EdgeColors = Partial<Record<DiagramEdgeKind, string>>
 
-/** Which palette entry each wire kind is painted with — the pyzx key names,
- *  which is why the override map is keyed by kind instead. This is the one
- *  place the mapping lives: `edgeColor` reads it and {@link withEdgeColors}
- *  writes through it, so an override lands on exactly the entry the lookup
- *  will come back for. */
-const EDGE_KEY: Record<DiagramEdgeKind, string> = {
+/** The palette entry each *built-in* wire kind falls back to. A custom kind has
+ *  no entry — the palettes are pyzx's and a kind of your own is not in them —
+ *  which is why `edgeColors` is consulted first and keyed by kind rather than
+ *  by these names. */
+const EDGE_KEY: Partial<Record<DiagramEdgeKind, string>> = {
   simple: 'edge',
   hadamard: 'Hedge',
   'w-io': 'Xedge',
 }
 
-/** Colour for an edge — the wire the graph view strokes, and the dot the
- *  hypergraph view draws in its place. */
-export function edgeColor(kind: DiagramEdgeKind, colors: Record<string, string>): string {
-  return colors[EDGE_KEY[kind]] ?? colors.edge
-}
-
 /**
- * A palette with per-kind wire colours folded in.
+ * Colour for an edge — the wire the graph view strokes, and the dot the
+ * hypergraph view draws in its place.
  *
- * The overrides go into the palette rather than to each painter, so they ride
- * the one `edgeColor` lookup both views already share: the wire in the diagram
- * and the dot standing for that same wire in the dual cannot come out
- * different colours. It is the reason these lookups live here at all.
+ * `edgeColors` wins, then the palette entry for a built-in kind, then the plain
+ * wire colour. That last step is what lets a diagram carry a kind nobody has
+ * given a colour to: it draws like an ordinary wire rather than failing or
+ * coming out undefined.
+ *
+ * Both painters call this rather than reading a colour off anything of their
+ * own, so a wire and the dot standing for that same wire cannot disagree.
  */
-export function withEdgeColors(
+export function edgeColor(
+  kind: DiagramEdgeKind,
   colors: Record<string, string>,
-  overrides: EdgeColors | null | undefined,
-): Record<string, string> {
-  if (!overrides) return colors
-  const merged = { ...colors }
-  for (const [kind, color] of Object.entries(overrides)) {
-    const key = EDGE_KEY[kind as DiagramEdgeKind]
-    if (key && color) merged[key] = color
-  }
-  return merged
+  edgeColors?: EdgeColors | null,
+): string {
+  const named = edgeColors?.[kind]
+  if (named) return named
+  const key = EDGE_KEY[kind]
+  return (key && colors[key]) || colors.edge
 }
 
 /** Pauli-web strand colour. `I` has no palette entry — pyzx draws identity

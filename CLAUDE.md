@@ -30,7 +30,11 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
 
 - `types.ts` — both data contracts. `Diagram*` is the public input shape
   consumers hand to `<zx-diagram>`; `Scene*` is the laid-out, pixel-space
-  result and is internal to the package.
+  result and is internal to the package. `DiagramNodeType` is closed — a node
+  type has a shape, and the package either draws it or doesn't —
+  but `DiagramEdgeKind` is open (`… | (string & {})`): an edge's kind is only
+  ever a colour, so a diagram can invent kinds and name them in `edgeColors`.
+  The literals stay in the union for autocomplete.
 - `layout.ts` — pure layout, producing that `Scene`. BFS from the inputs
   assigns col/qubit (skipped when the diagram arrives pre-positioned from the
   algebraic ZX walker), scales the grid to pixels, reserves the strip the
@@ -55,13 +59,16 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   `color-scheme`. Those
   lookups are here rather than in either painter so a spider and the blob
   standing for the same spider cannot come out different colours.
-  `EDGE_KEY` is the one place the wire-kind → palette-entry mapping lives:
-  `edgeColor` reads it, and `withEdgeColors` — which folds `<zx-diagram>`'s
-  `edgeColors` overrides into a palette — writes through it, so an override
-  lands on exactly the entry the lookup will come back for. Overriding *into
-  the palette* rather than at each painter is what keeps a wire and the dot
-  standing for it the same colour; it is the same argument as the paragraph
-  above, applied to the public API.
+  `edgeColor` takes a third argument, `<zx-diagram>`'s `edgeColors` map, and
+  tries it *before* the palette: `edgeColors[kind]`, then `EDGE_KEY[kind]`'s
+  palette entry for one of the three built-in kinds, then `colors.edge`. That
+  order is what makes `DiagramEdgeKind` open — any string is a kind, a kind is
+  only ever a colour (nothing in the layout or the geometry reads one), and a
+  kind nobody has given a colour draws like a plain wire rather than coming out
+  undefined. The overrides ride alongside the palette rather than being folded
+  into it because a kind of your own has no pyzx entry to fold into; both
+  painters call this one function, which is what stops a wire and the dot
+  standing for it disagreeing.
 - `selection.ts` — `Selection`, what is picked out, and the `zx-selection`
   event a painter announces one with. A selection is held in the *diagram's*
   terms — ZX node ids and indices into `diagram.edges` — never in either
@@ -215,7 +222,8 @@ the graph, the way an unrecognised `color-scheme` falls back to the original.
 It owns the presentation properties that mirror
 pyzx's `draw_d3` keyword arguments (`show-labels`, `color-scheme`, `scale`,
 `colors`) plus `edgeColors`, which has no pyzx counterpart; resolves a scheme
-name to a palette and folds the wire overrides into it; and passes the attribution
+name to a palette and hands both it and the wire-kind map to each painter; and
+passes the attribution
 badge down as each painter's `overlay` — one per view, placed against that
 view's own pixel bounds, since the badge is drawn inside the SVG so that it
 travels with the picture and each of a pair is copied on its own. It

@@ -135,40 +135,53 @@ export const HadamardEdge: Story = {
   },
 }
 
-// `edgeColors` recolours wires by kind, without restating a palette. It is
-// keyed by the kinds the diagram is written in — `simple`, `hadamard`, `w-io`
-// — rather than by pyzx's `edge`/`Hedge`/`Xedge` entry names, and only the
-// kinds named move: everything else stays on whatever `color-scheme` or
-// `colors` decided.
+// A wire's `kind` is only ever a colour — nothing in the layout or the geometry
+// reads it — so a diagram may use kinds of its own, and `edgeColors` is where
+// they get their colour. The built-in three are in that same map, so overriding
+// pyzx's own H-edge blue and inventing a `control` wire are the same gesture.
 export const WireColorOverrides: Story = {
-  name: 'Wire colour overrides',
+  name: 'Custom wire kinds',
   parameters: {
     docs: {
       story: {
         description:
-          "A colour per wire kind, folded into the palette over the top of `color-scheme`. Because it goes into the palette rather than to the painter, the hypergraph view's dot for a wire takes the same colour the wire does.",
+          "`edgeColors` maps wire kinds to colours, keyed by the kinds the diagram is written in rather than by pyzx's `edge`/`Hedge`/`Xedge` palette entries. Any string is a kind: `hadamard` here is a built-in being overridden, `control` and `classical` are this diagram's own. A kind with no colour given falls back to the plain wire colour, so `unnamed` draws black.",
       },
     },
   },
   args: {
-    diagram: paletteShowcase,
-    colorScheme: 'grayscale',
-    edgeColors: { hadamard: '#ff00aa', 'w-io': '#00aa55' },
+    edgeColors: { hadamard: '#ff00aa', control: '#00aa55', classical: '#ffaa00' },
+    diagram: {
+      nodes: [
+        { id: 0, type: 'input', ioId: 0 },
+        { id: 1, type: 'spider', color: 'Z', phase: '0' },
+        { id: 2, type: 'spider', color: 'X', phase: '0' },
+        { id: 3, type: 'spider', color: 'Z', phase: '0' },
+        { id: 4, type: 'spider', color: 'X', phase: '0' },
+        { id: 5, type: 'output', ioId: 0 },
+      ],
+      edges: [
+        { src: 0, tgt: 1 },
+        { src: 1, tgt: 2, kind: 'hadamard' },
+        { src: 2, tgt: 3, kind: 'control' },
+        { src: 3, tgt: 4, kind: 'classical' },
+        { src: 4, tgt: 5, kind: 'unnamed' },
+      ],
+    },
   },
   play: async ({ canvasElement }) => {
     const root = await shadowRootOf(canvasElement)
-    // paletteShowcase's edges in order: the H-edge is the second and the W-io
-    // the seventh. Both take the override; every plain wire is still the
-    // grayscale palette's `edge`, since `simple` wasn't named.
     expect(strokesIn(root, 'link')).toEqual([
-      GRAYSCALE_COLORS.edge,
+      // No kind: the palette's plain wire.
+      ORIGINAL_COLORS.edge,
+      // A built-in kind, overridden — pyzx's Hedge blue doesn't get a look in.
       '#ff00aa',
-      GRAYSCALE_COLORS.edge,
-      GRAYSCALE_COLORS.edge,
-      GRAYSCALE_COLORS.edge,
-      GRAYSCALE_COLORS.edge,
+      // Two kinds of the diagram's own.
       '#00aa55',
-      GRAYSCALE_COLORS.edge,
+      '#ffaa00',
+      // A kind nobody gave a colour: drawn like a plain wire rather than
+      // failing or coming out undefined.
+      ORIGINAL_COLORS.edge,
     ])
   },
 }

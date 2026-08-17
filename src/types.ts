@@ -38,16 +38,29 @@ export interface DiagramNode {
   vdata?: [string, unknown][]
 }
 
-/** Edge kinds, mirroring pyzx's `EdgeType`. `w-io` is the connector between
- *  a `w-input`/`w-output` pair and renders gray. */
-export type DiagramEdgeKind = 'simple' | 'hadamard' | 'w-io'
+/**
+ * Edge kinds. The three named ones mirror pyzx's `EdgeType` and have a palette
+ * colour each — `w-io` is the connector between a `w-input`/`w-output` pair and
+ * renders gray.
+ *
+ * Any other string is a kind of your own. A kind is only ever a *colour*: it
+ * picks which entry of `edgeColors` the wire (and the dot standing for it in
+ * the hypergraph view) is painted with, and nothing in the layout or the
+ * geometry reads it. So a custom kind needs no support here beyond a colour,
+ * and one with no colour given simply draws like a plain wire. The literals are
+ * kept in the union for autocomplete; `string & {}` is what stops TypeScript
+ * collapsing the whole thing to `string` and losing them.
+ */
+export type DiagramEdgeKind = 'simple' | 'hadamard' | 'w-io' | (string & {})
 
 export interface DiagramEdge {
   src: number
   tgt: number
   /** Render kind. A `hadamard` edge is semantically equivalent to inserting
    *  a `hadamard` node on the wire, but drawn as a coloured edge with no
-   *  extra vertex. Defaults to `simple`. */
+   *  extra vertex. Defaults to `simple`. Any string is allowed — see
+   *  {@link DiagramEdgeKind} — and colours come from `<zx-diagram>`'s
+   *  `edgeColors`. */
   kind?: DiagramEdgeKind
 }
 
