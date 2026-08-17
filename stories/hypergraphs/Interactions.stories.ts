@@ -336,5 +336,10 @@ export const LinkedSelection: StoryObj<Args> = {
     expect(wire.getAttribute('stroke')).toBe('#000000')
     expect(casing?.getAttribute('d')).toBe(wire.getAttribute('d'))
     expect(casing?.getAttribute('stroke')).toBe('#00f')
+    // …and it stands off the wire: a band of canvas over the middle of the
+    // casing is what leaves blue on either side rather than under.
+    const gap = root.querySelector<SVGPathElement>('zx-viewer g.casing path.gap')
+    expect(gap?.getAttribute('stroke')).toBe('#fcfcfd')
+    expect(gap?.getAttribute('d')).toBe(wire.getAttribute('d'))
   },
 }

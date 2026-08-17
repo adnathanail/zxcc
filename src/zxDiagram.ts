@@ -7,10 +7,10 @@
 // It also carries the stylesheet for the whole shadow tree, the viewer's SVG
 // included, since the viewer renders into the light DOM.
 
-import { css, html, LitElement, nothing, type PropertyValues } from 'lit'
+import { css, html, LitElement, nothing, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { attributionTemplate, placeAttribution } from './attribution'
-import { COLOR_SCHEMES, type ColorSchemeName } from './colors'
+import { CANVAS_FILL, COLOR_SCHEMES, type ColorSchemeName } from './colors'
 import { ZOOM as HYPERGRAPH_ZOOM, layoutHypergraph } from './hypergraph/layout'
 import type { HypergraphScene } from './hypergraph/types'
 import { layout } from './layout'
@@ -85,7 +85,7 @@ export class ZxDiagramElement extends LitElement {
        on its own; the gap is what stops them reading as one drawing. */
     .container + .container { margin-top: 0.5rem; }
     zx-viewer, zx-hypergraph-viewer { display: block; }
-    .container svg { display: block; background-color: rgb(252, 252, 253); }
+    .container svg { display: block; background-color: ${unsafeCSS(CANVAS_FILL)}; }
     .error { font-family: monospace; }
     .error pre { color: red; white-space: pre-wrap; word-break: break-word; margin: 0; }
     .error button { cursor: pointer; }
