@@ -152,7 +152,18 @@ export function layoutHypergraph(diagram: DiagramData, scene: Scene): Hypergraph
   // from being pinned to the top-left placeholder.
   const topology = new Topology(scene)
   const base = new Map<number, Point>(scene.nodes.map(n => [n.id, { x: n.x, y: n.y }]))
-  const pos = topology.resolve(base, topology.initialLineParams())
+  const resolved = topology.resolve(base, topology.initialLineParams())
+
+  // Zoomed before the curves are built, not after they are evaluated: a
+  // self-loop's arc is a fixed number of pixels above its node rather than a
+  // fraction of anything, so the loop drawn around a node at `p` is not the loop
+  // drawn around one at `p * ZOOM` scaled up. Building from these positions is
+  // what puts a self-loop's dot on the loop `<zx-viewer>` paints. Every other
+  // curve shape is proportional to the gap it spans and comes out identical
+  // either way.
+  const pos = new Map<number, Point>(
+    [...resolved].map(([id, p]) => [id, { x: p.x * ZOOM, y: p.y * ZOOM }]),
+  )
 
   const scale = scene.scale
   const blobRadius = BLOB_RADIUS * scale
@@ -183,13 +194,7 @@ export function layoutHypergraph(diagram: DiagramData, scene: Scene): Hypergraph
     })
   })
 
-  // The curve is in the ZX layout's own coordinates — a self-loop's arc is
-  // sized in pixels, so building it from zoomed endpoints would draw a
-  // different loop — and the zoom is applied to the point that comes off it.
-  const at = (rider: Rider): Point => {
-    const p = curvePointAt(rider.curve, rider.t)
-    return { x: p.x * ZOOM, y: p.y * ZOOM }
-  }
+  const at = (rider: Rider): Point => curvePointAt(rider.curve, rider.t)
 
   spreadCoincident(riders, TIE_GAP * dotSize, at)
 
