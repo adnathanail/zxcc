@@ -140,9 +140,9 @@ function speed(rider: Rider, at: (rider: Rider) => Point): number {
  * result of `layout(diagram)`, which the caller supplies so that both views
  * are drawn from one and the same layout.
  *
- * Throws by way of `toHypergraph` on a node that has no blob shape — only
- * spiders and Hadamards do — so everything from here on has a shape and a
- * colour to be drawn with.
+ * Throws by way of `toHypergraph` on a node that has no blob shape — spiders,
+ * Hadamards and boundaries have one — so everything from here on has a shape
+ * and a colour to be drawn with.
  */
 export function layoutHypergraph(diagram: DiagramData, scene: Scene): HypergraphScene {
   const hg = toHypergraph(diagram)

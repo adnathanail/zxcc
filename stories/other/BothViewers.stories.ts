@@ -181,9 +181,15 @@ export const LabelsShown: Story = {
       expect(labels.map(t => t.textContent)).toEqual(['0', '1', '2', '3', '4'])
     })
     // The dual: the Z and X spiders wear their names and the parens around the
-    // phase, and the default-π Hadamard — nothing to say with labels off —
-    // shows up as the bare name.
-    expect(blobCaptionsIn(root)).toEqual([['Z(', 'π/2', ')'], ['H'], ['X(', '0', ')']])
+    // phase, the default-π Hadamard — nothing to say with labels off — shows up
+    // as the bare name, and each boundary says which end of the diagram it is.
+    expect(blobCaptionsIn(root)).toEqual([
+      ['in'],
+      ['Z(', 'π/2', ')'],
+      ['H'],
+      ['X(', '0', ')'],
+      ['out'],
+    ])
     // The phases are blue in both views, and they are the same two phases.
     const blueIn = (tag: string) =>
       [...root.querySelectorAll(`${tag} tspan[fill="#00d"], ${tag} text[fill="#00d"]`)].map(

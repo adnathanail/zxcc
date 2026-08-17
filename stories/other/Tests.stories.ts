@@ -91,9 +91,8 @@ export const ErrorStates: Story = {
     // diagram draws fine in `graph`, which is what makes naming the view worth
     // it.
     expect(await messageOf('no-blob')).toBe(
-      "Hypergraph view: node 2 is a 'z-box', only 'spider' and 'hadamard' nodes " +
-        "can be drawn as hyperedges. ('input' and 'output' are fine: they are " +
-        'wires, not hyperedges.)',
+      "Hypergraph view: node 2 is a 'z-box', only 'spider', 'hadamard', 'input' " +
+        "and 'output' nodes can be drawn as hyperedges.",
     )
 
     // 3. `both` is the plausible typo — there are two `both` modes and neither

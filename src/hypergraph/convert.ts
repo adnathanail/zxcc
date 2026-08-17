@@ -1,10 +1,11 @@
 // The hypergraph view of a ZX diagram: the roles of wires and spiders swap.
-// Every ZX edge becomes a hypergraph *node* (a wire), and every non-boundary
-// ZX node becomes a *hyperedge* — the set of wires incident to it.
+// Every ZX edge becomes a hypergraph *node* (a wire), and every ZX node becomes
+// a *hyperedge* — the set of wires incident to it.
 //
-// Boundaries (`input`/`output`) are not hyperedges: they are just the loose
-// end of a wire, so a boundary edge shows up as a wire that only one (or no)
-// hyperedge contains.
+// A boundary (`input`/`output`) is incident to one wire, so its hyperedge holds
+// a single dot and draws as a circle around it. Every dot is therefore in two
+// blobs, one per end of the wire it stands for — except a self-loop's, whose
+// two ends are the same node and which is in one.
 //
 // Pure and DOM-free, and the counterpart of `src/layout.ts` in this half of
 // the package: `./layout.ts` is what gives the result coordinates.
@@ -19,21 +20,28 @@ import type { HyperedgeKind, HypergraphData, HypergraphEdge, HypergraphWire } fr
 function blobKind(n: DiagramNode): HyperedgeKind {
   if (n.type === 'spider') return n.color === 'X' ? 'x-spider' : 'z-spider'
   if (n.type === 'hadamard') return 'hadamard'
+  if (n.type === 'input' || n.type === 'output') return 'boundary'
   throw new Error(
-    `Hypergraph view: node ${n.id} is a '${n.type}', only 'spider' and ` +
-      `'hadamard' nodes can be drawn as hyperedges. ` +
-      `('input' and 'output' are fine: they are wires, not hyperedges.)`,
+    `Hypergraph view: node ${n.id} is a '${n.type}', only 'spider', ` +
+      `'hadamard', 'input' and 'output' nodes can be drawn as hyperedges.`,
   )
 }
 
-/** What the node is, without its phase — `Z`, `X`, `H`. Kept apart from the
- *  phase because the two are drawn differently: the viewer paints the name grey
- *  and the phase in the same blue `<zx-viewer>` uses, and drops the name alone
- *  when labels are off. */
-const NAMES: Record<HyperedgeKind, string> = {
-  'z-spider': 'Z',
-  'x-spider': 'X',
-  hadamard: 'H',
+/** What the node is, without its phase — `Z`, `X`, `H`, or which end of the
+ *  diagram a boundary is. Kept apart from the phase because the two are drawn
+ *  differently: the viewer paints the name grey and the phase in the same blue
+ *  `<zx-viewer>` uses, and drops the name alone when labels are off. */
+function nameFor(n: DiagramNode, kind: HyperedgeKind): string {
+  switch (kind) {
+    case 'z-spider':
+      return 'Z'
+    case 'x-spider':
+      return 'X'
+    case 'hadamard':
+      return 'H'
+    default:
+      return n.type === 'output' ? 'out' : 'in'
+  }
 }
 
 /** The two joined back up, `Z(π/2)` — the one-string form, for a caller of
@@ -55,8 +63,8 @@ function phaseFor(n: DiagramNode, kind: HyperedgeKind, phaseOverride?: string): 
 }
 
 /** Convert a ZX diagram to its hypergraph dual. Throws the same way `layout`
- *  does on a malformed diagram (missing `nodes`/`edges`), and on a non-boundary
- *  node that is neither a spider nor a Hadamard — see {@link blobKind}. */
+ *  does on a malformed diagram (missing `nodes`/`edges`), and on a node that has
+ *  no blob shape — see {@link blobKind}. */
 export function toHypergraph(diagram: DiagramData): HypergraphData {
   const labels = new Map<number, string>(diagram.labels ?? [])
   const byId = new Map<number, DiagramNode>()
@@ -64,9 +72,8 @@ export function toHypergraph(diagram: DiagramData): HypergraphData {
 
   const hyperedges = new Map<number, HypergraphEdge>()
   for (const n of diagram.nodes) {
-    if (n.type === 'input' || n.type === 'output') continue
     const kind = blobKind(n)
-    const name = NAMES[kind]
+    const name = nameFor(n, kind)
     const phase = phaseFor(n, kind, labels.get(n.id))
     hyperedges.set(n.id, {
       id: `e${n.id}`,

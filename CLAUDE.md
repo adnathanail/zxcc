@@ -103,7 +103,7 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   `Hypergraph{Wire,Edge,Data}` for the conversion, `Hypergraph{Dot,Blob,Scene}`
   for the laid-out result.
 - `convert.ts` — `toHypergraph`, turning a `DiagramData` into wires (one per
-  ZX edge) and hyperedges (one per non-boundary ZX node). A hyperedge carries
+  ZX edge) and hyperedges (one per ZX node, boundaries included). A hyperedge carries
   its `name` (`Z`) and `phase` (`π/2`) as separate fields, plus the joined
   `label` (`Z(π/2)`) for a caller that wants one string: `show-labels` drops
   the name and keeps the phase, and the viewer paints the phase in
@@ -114,6 +114,18 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   anything that hasn't got one, so a W, Z-box or `wire` node throws with a
   message naming it. Everything downstream reads the hyperedge's `kind` and so
   never has to consider a node type it can't draw.
+
+  A boundary is a hyperedge holding one wire, so its blob is the hull of a
+  single dot — a circle around it. That is what tells a boundary leg apart from
+  a self-loop in the dual: both are one dot hanging off one spider, and without
+  a boundary blob both come out as a dot held by exactly one blob. With it, the
+  count reads directly off the drawing — every dot is in two blobs, one per end
+  of its wire, and a self-loop is the only dot in one, since its two ends are
+  the same node. An identity wire (input straight to output) is in two as well,
+  where before it was in none. `Hypergraphs/Basic` → `7. Boundaries as
+  hyperedges` holds the shape — that a one-wire hyperedge draws as a circle —
+  and `Hypergraphs/Interactions` → `4. Boundary legs and self-loops` holds the
+  count, since reading which blobs hold a wire means pressing its dot.
 - `geometry.ts` — `wireCurve` (the curve a wire's dot rides), `convexHull`/`blobPath`
   (the outline enclosing a set of dots), `blobContains` (the same shape as a
   hit test), and `blobOutline`/`blobLabelAnchor`/`blobCentre` over a live
@@ -154,18 +166,16 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   is that edge. The blobs holding a pressed dot are still outlined, but they are
   derived from the selected edge (`#picked`) rather than named by it — which is
   why pressing a dot lights up a wire over in the diagram and not the spiders at
-  its ends. `#picked` is also where a *boundary* is answered: an input or output
-  is no hyperedge and so has no blob, and the only thing standing for it here is
-  the dot of the wire it hangs off, which is ringed on its own.
+  its ends.
   `#picked` returns not just *what* is picked out but *how*: `named` for what
   the selection says outright — the blob for a selected node, the dot for a
   selected edge — and `implied` for what follows from it. Named is drawn solid
   and implied dashed, since a press reaches things it didn't point at and in
-  one weight they read as equally certain. A boundary's dot is `implied`: the
-  selection names the boundary, and the dot is the nearest thing this view has
-  to it rather than the thing itself. The dash patterns differ between a blob's
-  hull and a dot's ring, since one pattern across both reads as coarse on the
-  small shape or as solid on the large one.
+  one weight they read as equally certain. `#picked` has no case for boundaries:
+  a boundary is a hyperedge like any other, so selecting one names its blob and
+  implies its one dot, exactly as selecting a spider does. The dash patterns
+  differ between a blob's hull and a dot's ring, since one pattern across both
+  reads as coarse on the small shape or as solid on the large one.
   How far a press reaches is deliberately short. A press on a dot marks the dot
   and the blobs holding it, and stops: the other wires *those* blobs hold are a
   step further out again, and one dot pressed lighting up five is more than was

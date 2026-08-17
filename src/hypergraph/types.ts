@@ -30,22 +30,23 @@ export interface HypergraphWire {
   boundaries: { nodeId: number; kind: 'input' | 'output'; ioId?: number }[]
 }
 
-/** The ZX nodes that have a blob shape. A diagram carrying any other
- *  non-boundary node can't be drawn as a hypergraph yet, and `toHypergraph`
- *  says so rather than picking a colour for it — so nothing downstream of the
- *  conversion has to consider the other node types at all. */
-export type HyperedgeKind = Extract<NodeKind, 'z-spider' | 'x-spider' | 'hadamard'>
+/** The ZX nodes that have a blob shape. A diagram carrying any other node
+ *  can't be drawn as a hypergraph yet, and `toHypergraph` says so rather than
+ *  picking a colour for it — so nothing downstream of the conversion has to
+ *  consider the other node types at all. */
+export type HyperedgeKind = Extract<NodeKind, 'z-spider' | 'x-spider' | 'hadamard' | 'boundary'>
 
-/** A non-boundary ZX node, as the set of wires incident to it. */
+/** A ZX node, as the set of wires incident to it. */
 export interface HypergraphEdge {
   /** Stable id, `e<node id>`. */
   id: string
-  /** The ZX node (spider or H-box) this hyperedge came from. */
+  /** The ZX node this hyperedge came from. */
   nodeId: number
   /** What the node is, and so which palette entry its blob is painted with —
    *  the same one the node itself would be. */
   kind: HyperedgeKind
-  /** What the node is, without its phase: `Z`, `X`, `H`. */
+  /** What the node is, without its phase: `Z`, `X`, `H`, or `in`/`out` for a
+   *  boundary. */
   name: string
   /** The phase on its own, e.g. `π/2`, and empty for a node that carries
    *  none. Kept apart from the name because the two are drawn differently —
@@ -56,7 +57,7 @@ export interface HypergraphEdge {
    *  caller that wants a label rather than the pieces. */
   label: string
   /** Incident wire ids, in edge order. A self-loop appears twice — the
-   *  spider's arity counts both of its legs. */
+   *  spider's arity counts both of its legs. A boundary has exactly one. */
   wires: string[]
 }
 
@@ -94,8 +95,8 @@ export interface HypergraphBlob {
   /** The ZX node it stands for — what a selection of this blob names in the
    *  diagram's own terms. */
   nodeId: number
-  /** What the node is, without its phase: `Z`, `X`, `H`. This is the half
-   *  `show-labels` governs. */
+  /** What the node is, without its phase: `Z`, `X`, `H`, or `in`/`out` for a
+   *  boundary. This is the half `show-labels` governs. */
   name: string
   /** The phase on its own, e.g. `π/2` — drawn in the diagram view's blue, and
    *  drawn whether labels are on or off. Empty when the node has no phase to
@@ -105,7 +106,9 @@ export interface HypergraphBlob {
    *  with — the same one that node itself would be. */
   kind: HyperedgeKind
   /** Ids of the dots it encloses. Deduplicated, unlike the hyperedge's wire
-   *  list — a self-loop is one dot, drawn once. */
+   *  list — a self-loop is one dot, drawn once, which is why a self-loop's blob
+   *  count is the one that differs from every other wire's. A boundary encloses
+   *  a single dot, so its outline is a circle. */
   dots: string[]
 }
 

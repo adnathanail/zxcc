@@ -38,7 +38,7 @@ const meta: Meta<Args> = {
     docs: {
       description: {
         component:
-          'With `view-mode="hypergraph"`, the element draws the diagram\'s hypergraph dual: every ZX edge becomes a dot, and every non-boundary ZX node becomes a blob enclosing the dots of its incident wires. Dots sit at the midpoint of the edge they came from, so the two views line up — switch the control to `both-vertical` or `both-horizontal` to see them together and compare. A blob is filled with the same palette entry its spider would be, so `color-scheme` applies to both views.',
+          'With `view-mode="hypergraph"`, the element draws the diagram\'s hypergraph dual: every ZX edge becomes a dot, and every ZX node becomes a blob enclosing the dots of its incident wires — a boundary holds one wire, so its blob is a circle around a single dot. Dots sit at the midpoint of the edge they came from, so the two views line up — switch the control to `both-vertical` or `both-horizontal` to see them together and compare. A blob is filled with the same palette entry its spider would be, so `color-scheme` applies to both views.',
       },
     },
   },
