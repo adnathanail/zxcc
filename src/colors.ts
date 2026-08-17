@@ -77,6 +77,12 @@ export const LABEL_FILL = '#999'
  */
 export const SELECTED_STROKE = '#00f'
 
+/** The canvas the drawing sits on: `<zx-diagram>` paints the SVG with it, and
+ *  `<zx-viewer>` strokes with it to knock a gap between a selected edge and
+ *  its casing. Shared so those two cannot drift apart — a gap in any other
+ *  colour would be a stripe rather than a gap. */
+export const CANVAS_FILL = '#fcfcfd'
+
 /** Fill for a node — and for the hypergraph blob standing for that same node,
  *  which is why this is shared rather than private to `<zx-viewer>`. */
 export function nodeColor(kind: NodeKind, colors: Record<string, string>): string {

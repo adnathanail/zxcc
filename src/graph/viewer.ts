@@ -16,6 +16,7 @@
 import { html, LitElement, nothing, type PropertyValues, type SVGTemplateResult, svg } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 import {
+  CANVAS_FILL,
   edgeColor,
   LABEL_FILL,
   nodeColor,
@@ -46,10 +47,20 @@ const LINK_WIDTH = 1.5
  *  palette, which taking the selection blue over the top would be all but
  *  indistinguishable from. So the blue goes round it instead, which is the
  *  same move the other two marks make: a node keeps its fill and takes a blue
- *  stroke, a dot keeps its fill and takes a blue ring standing off it. */
-const CASING_WIDTH = 5
+ *  stroke, a dot keeps its fill and takes a blue ring standing off it.
+ *
+ *  The casing stands *off* the wire rather than touching it, again as the
+ *  dot's ring does: a band of canvas between the two is what keeps the blue
+ *  reading as a surround at any edge colour, and it is the H-edge — light blue
+ *  inside dark blue — that needs it most. The band is opaque, so it knocks out
+ *  whatever is painted below along that stretch; the layer sits above the
+ *  boxes and webs rather than below them so the highlight isn't itself buried,
+ *  and that is the cost of the gap. */
+const CASING_WIDTH = 4
+const CASING_GAP_WIDTH = 1
 const LINK_STYLE = `stroke-width: ${LINK_WIDTH}px`
 const CASING_STYLE = `stroke-width: ${CASING_WIDTH}px; stroke-linecap: round; pointer-events: none`
+const CASING_GAP_STYLE = `stroke-width: ${CASING_GAP_WIDTH}px; stroke-linecap: round; pointer-events: none`
 
 const BOX_STYLE: Record<BoxKind, { fill: string; stroke: string; dash: string }> = {
   stack: { fill: 'rgba(255,165,80,0.10)', stroke: 'rgba(220,130,30,0.65)', dash: '4 3' },
@@ -336,6 +347,11 @@ export class ZxViewerElement extends LitElement {
     if (!scene || !this.#topology) return nothing
     const pos = this.#positions()
     const pad = 0.4 * scene.scale + scene.nodeSize
+    // `scene.links` is built from `diagram.edges` in order, so the index here
+    // is the edge index a selection names.
+    const cased = scene.links
+      .map((link, i) => ({ link, i }))
+      .filter(({ i }) => this.selection.edges.has(i))
 
     return html`
       <svg width=${scene.width} height=${scene.height} style="max-width: none; max-height: none">
@@ -366,13 +382,19 @@ export class ZxViewerElement extends LitElement {
              *under* every wire rather than under their own: inside g.link a
              casing would be painted over whichever edges come after it, and
              cover the ones that cross it. Down here it reads as a highlight
-             on the canvas that the whole diagram is drawn over. -->
+             on the canvas that the whole diagram is drawn over.
+
+             Every blue is painted before every gap, so that two selected edges
+             crossing don't knock holes in each other's casing — within one
+             edge the gap has to come second, but across edges it must not. -->
         <g class="casing">
-          ${scene.links.map((link, i) =>
-            this.selection.edges.has(i)
-              ? svg`<path class="selected" data-link=${i} d=${linkPath(link, pos)}
-                  stroke=${SELECTED_STROKE} fill="transparent" style=${CASING_STYLE} />`
-              : nothing,
+          ${cased.map(
+            ({ link, i }) => svg`<path class="selected" data-link=${i} d=${linkPath(link, pos)}
+              stroke=${SELECTED_STROKE} fill="transparent" style=${CASING_STYLE} />`,
+          )}
+          ${cased.map(
+            ({ link }) => svg`<path class="gap" d=${linkPath(link, pos)}
+              stroke=${CANVAS_FILL} fill="transparent" style=${CASING_GAP_STYLE} />`,
           )}
         </g>
 

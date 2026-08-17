@@ -214,10 +214,16 @@ recoloured: the same path painted underneath in the selection blue, wide enough
 to show either side of the wire. An edge's colour is what it *is* — an H-edge is
 `Hedge`, `#0088ff` in the original palette, which taking `#00f` over the top
 would be all but indistinguishable from — so the blue goes round it, the same
-move a node's blue outline and a dot's blue ring make. The casings are their own
-layer under *every* wire rather than under their own: inside `g.link` a casing
-would be painted over by whichever edges come after it and would cover the ones
-crossing it.
+move a node's blue outline and a dot's blue ring make. And it *stands off* the
+wire, again as the dot's ring does: a band of `CANVAS_FILL` between the two,
+which is what makes the blue read as a surround rather than as a thicker wire,
+and is what the light-blue-inside-dark-blue H-edge needs. `CANVAS_FILL` is in
+`colors.ts` because `<zx-diagram>` paints the SVG background with it too, and a
+band in any other colour would be a stripe rather than a gap. The casings are
+their own layer under *every* wire rather than under their own: inside `g.link`
+a casing would be painted over by whichever edges come after it and would cover
+the ones crossing it. Every blue is painted before every gap, so two selected
+edges crossing don't knock holes in each other.
 
 Because a painter updates on its own cycle, anything that needs the SVG in the
 DOM has to await it: `<zx-diagram>` overrides `getUpdateComplete()` and awaits
@@ -309,6 +315,14 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
 
 ## Gotchas
 
+- The gap in a selected edge's casing is an opaque band, so it knocks out
+  whatever is painted under that stretch of wire. In practice that means a
+  **Pauli-web strand disappears under a selected edge** — the strands run along
+  the edges and are wider than the casing. Painting the casings below the webs
+  instead would bury the highlight rather than the strand, and a translucent
+  band doesn't rescue it (the strands are pale enough that 20% of one is
+  invisible). Skipping the gap on edges that carry a strand is the fix if it
+  starts to matter.
 - `phase` strings are pre-formatted (`π/2`, `-π/4`, `0`) — no parsing in
   `layout.ts`. Consumers do their own formatting.
 - Default H-box phase is `π`, which renders no text (pyzx convention).
