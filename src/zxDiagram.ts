@@ -21,13 +21,6 @@ import type { DiagramData, Scene } from './types'
 import './graph/viewer'
 import './hypergraph/viewer'
 
-// A plain `{type: Boolean}` attribute can't express "off" for a property that
-// defaults to true — absence and `="false"` would both have to mean false.
-// This treats an explicit "false" as off and presence/""/"true" as on.
-const defaultTrueBoolean = {
-  fromAttribute: (value: string | null) => value !== null && value !== 'false',
-}
-
 /** Which of the two painters the element runs: the ZX diagram, its hypergraph
  *  dual, or both — one above the other, or beside each other. The two `both`
  *  modes differ only in how the pair is arranged; each paints the same thing. */
@@ -44,10 +37,12 @@ export class ZxDiagramElement extends LitElement {
    *  {@link refresh} is the escape hatch if you must mutate in place. */
   @property({ attribute: false }) diagram: DiagramData | null = null
 
-  /** Draw each node's id above it (pyzx's `draw_d3(labels=...)`). Defaults on,
-   *  unlike pyzx — turning it off is a visual change for existing consumers. */
-  @property({ attribute: 'show-labels', converter: defaultTrueBoolean })
-  showLabels = true
+  /** Draw each node's id above it (pyzx's `draw_d3(labels=...)`). Off by
+   *  default, as in pyzx: an id is a fact about the data structure rather than
+   *  about the diagram, so it is worth asking for rather than assuming. A bare
+   *  `show-labels` attribute turns it on. */
+  @property({ attribute: 'show-labels', type: Boolean })
+  showLabels = false
 
   /** Named pyzx palette. Ignored when `colors` is set. */
   @property({ attribute: 'color-scheme' }) colorScheme: ColorSchemeName = 'original'

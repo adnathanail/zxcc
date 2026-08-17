@@ -85,7 +85,7 @@ export class ZxViewerElement extends LitElement {
    *  way a kind the palettes have never heard of gets a colour. */
   @property({ attribute: false }) edgeColors: EdgeColors | null = null
   /** Draw each node's id above it (pyzx's `draw_d3(labels=...)`). */
-  @property({ attribute: false }) showLabels = true
+  @property({ attribute: false }) showLabels = false
   /** Extra SVG painted on top of the diagram, in its coordinate space. The
    *  host uses it for the attribution badge; the viewer just renders it. */
   @property({ attribute: false }) overlay: SVGTemplateResult | null = null

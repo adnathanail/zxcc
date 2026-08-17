@@ -16,14 +16,19 @@ import {
 
 interface Args {
   diagram: DiagramData
+  /** Off by default, as the element has it. Only the story about captions and
+   *  their leaders turns it on: these spiders carry no phase, so with labels
+   *  off their blobs have nothing to caption and nothing to lead a line from. */
+  showLabels?: boolean
 }
 
 const meta: Meta<Args> = {
   title: 'Hypergraphs/Interactions',
-  render: ({ diagram }) =>
+  render: ({ diagram, showLabels }) =>
     html`<zx-diagram
       .diagram=${diagram}
       view-mode="hypergraph"
+      ?show-labels=${showLabels === true}
       style="min-height: 160px"
     ></zx-diagram>`,
   parameters: {
@@ -46,7 +51,7 @@ type Story = StoryObj<Args>
 // exactly that reason.
 export const HypergraphBlobSelection: Story = {
   name: '1. Blob selection',
-  args: { diagram: strongComplementarityOf(2, 2) },
+  args: { diagram: strongComplementarityOf(2, 2), showLabels: true },
   play: async ({ canvasElement }) => {
     const root = await shadowRootOf(canvasElement)
     const svg = await waitFor(() => {

@@ -101,7 +101,7 @@ export class ZxHypergraphViewerElement extends LitElement {
   @property({ attribute: false }) edgeColors: EdgeColors | null = null
   /** Draw each dot's wire id and each blob's name. With it off a blob still
    *  shows its phase, if it has one. */
-  @property({ attribute: false }) showLabels = true
+  @property({ attribute: false }) showLabels = false
   /** Extra SVG painted on top, in the scene's coordinate space. */
   @property({ attribute: false }) overlay: SVGTemplateResult | null = null
   /** What is picked out, in the diagram's own terms — see `src/selection.ts`.

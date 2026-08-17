@@ -54,7 +54,7 @@ const meta: Meta<Args> = {
     html`<zx-diagram
       .diagram=${buildDiagram(args)}
       view-mode=${args.viewMode}
-      show-labels=${args.showLabels ? '' : 'false'}
+      ?show-labels=${args.showLabels}
       color-scheme=${args.colorScheme}
       scale=${ifDefined(args.scale)}
       style="min-height: 160px"
@@ -98,7 +98,7 @@ const baseArgs: Args = {
   parallelEdges: 1,
   box: 'none',
   viewMode: 'graph',
-  showLabels: true,
+  showLabels: false,
   colorScheme: 'original',
 }
 
@@ -106,8 +106,9 @@ export const Interactive: Story = {
   args: baseArgs,
   play: async ({ canvasElement }) => {
     const root = await shadowRootOf(canvasElement)
-    // Node-id labels are the grey texts above each node.
-    const labels = root.querySelectorAll('svg g.node text[fill="#999"]')
-    expect(labels.length).toBeGreaterThan(0)
+    // The four nodes are drawn, and none of them carries a grey id label: the
+    // element defaults them off, and the control is what turns them on.
+    expect(root.querySelectorAll('svg g.node > g[data-node]').length).toBe(4)
+    expect(root.querySelectorAll('svg g.node text[fill="#999"]').length).toBe(0)
   },
 }

@@ -49,8 +49,8 @@ export interface HypergraphEdge {
   name: string
   /** The phase on its own, e.g. `π/2`, and empty for a node that carries
    *  none. Kept apart from the name because the two are drawn differently —
-   *  the name is what `show-labels` hides, and the phase is painted in the
-   *  diagram view's blue. */
+   *  the name is what `show-labels` adds, and the phase is painted in the
+   *  diagram view's blue whether labels are on or not. */
   phase: string
   /** The two joined, e.g. `Z(π/2)`, `X(0)`, `H` — the one-string form, for a
    *  caller that wants a label rather than the pieces. */
@@ -98,7 +98,8 @@ export interface HypergraphBlob {
    *  `show-labels` governs. */
   name: string
   /** The phase on its own, e.g. `π/2` — drawn in the diagram view's blue, and
-   *  kept when labels are off. Empty when the node has no phase to show. */
+   *  drawn whether labels are on or off. Empty when the node has no phase to
+   *  show. */
   phase: string
   /** Which node it stands for, and so which palette entry it is painted
    *  with — the same one that node itself would be. */
