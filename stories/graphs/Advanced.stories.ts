@@ -138,7 +138,7 @@ export const WireColorOverrides: Story = {
     docs: {
       story: {
         description:
-          "`edgeColors` maps wire kinds to colours, keyed by the kinds the diagram is written in rather than by pyzx's `edge`/`Hedge`/`Xedge` palette entries. Any string is a kind: `hadamard` here is a built-in being overridden, `control` and `classical` are this diagram's own. A kind with no colour given falls back to the plain wire colour, so `unnamed` draws black.",
+          "`edgeColors` maps wire kinds to colours, keyed by the kinds the diagram is written in rather than by pyzx's `edge`/`Hedge`/`Xedge` palette entries. Any string is a kind: `hadamard` here is a built-in being overridden, `control` and `classical` are this diagram's own. A kind with no colour given falls back to the plain wire colour, so `unnamed` and `toString` both draw black.",
       },
     },
   },
@@ -151,7 +151,8 @@ export const WireColorOverrides: Story = {
         { id: 2, type: 'spider', color: 'X', phase: '0' },
         { id: 3, type: 'spider', color: 'Z', phase: '0' },
         { id: 4, type: 'spider', color: 'X', phase: '0' },
-        { id: 5, type: 'output', ioId: 0 },
+        { id: 5, type: 'spider', color: 'Z', phase: '0' },
+        { id: 6, type: 'output', ioId: 0 },
       ],
       edges: [
         { src: 0, tgt: 1 },
@@ -159,6 +160,7 @@ export const WireColorOverrides: Story = {
         { src: 2, tgt: 3, kind: 'control' },
         { src: 3, tgt: 4, kind: 'classical' },
         { src: 4, tgt: 5, kind: 'unnamed' },
+        { src: 5, tgt: 6, kind: 'toString' },
       ],
     },
   },
@@ -174,6 +176,10 @@ export const WireColorOverrides: Story = {
       '#ffaa00',
       // A kind nobody gave a colour: drawn like a plain wire rather than
       // failing or coming out undefined.
+      ORIGINAL_COLORS.edge,
+      // Same again, for a kind that names something every plain object
+      // inherits. Looked up by anything other than own key, this one comes
+      // back as `Object.prototype.toString` and gets painted with.
       ORIGINAL_COLORS.edge,
     ])
   },

@@ -112,11 +112,11 @@ export type EdgeColors = Partial<Record<DiagramEdgeKind, string>>
  *  no entry — the palettes are pyzx's and a kind of your own is not in them —
  *  which is why `edgeColors` is consulted first and keyed by kind rather than
  *  by these names. */
-const EDGE_KEY: Partial<Record<DiagramEdgeKind, string>> = {
-  simple: 'edge',
-  hadamard: 'Hedge',
-  'w-io': 'Xedge',
-}
+const EDGE_KEY = new Map<DiagramEdgeKind, string>([
+  ['simple', 'edge'],
+  ['hadamard', 'Hedge'],
+  ['w-io', 'Xedge'],
+])
 
 /**
  * Colour for an edge — the wire the graph view strokes, and the dot the
@@ -129,15 +129,20 @@ const EDGE_KEY: Partial<Record<DiagramEdgeKind, string>> = {
  *
  * Both painters call this rather than reading a colour off anything of their
  * own, so a wire and the dot standing for that same wire cannot disagree.
+ *
+ * A kind is any string, so both lookups have to be by *own* key: `kind:
+ * 'toString'` reaches `Object.prototype` through a plain object and comes back
+ * as a function to paint with. Hence `Object.hasOwn` for `edgeColors`, whose
+ * shape is the caller's, and a `Map` for `EDGE_KEY`, which is ours.
  */
 export function edgeColor(
   kind: DiagramEdgeKind,
   colors: Record<string, string>,
   edgeColors?: EdgeColors | null,
 ): string {
-  const named = edgeColors?.[kind]
+  const named = edgeColors && Object.hasOwn(edgeColors, kind) ? edgeColors[kind] : undefined
   if (named) return named
-  const key = EDGE_KEY[kind]
+  const key = EDGE_KEY.get(kind)
   return (key && colors[key]) || colors.edge
 }
 

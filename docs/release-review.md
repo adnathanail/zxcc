@@ -198,7 +198,12 @@ threaded through `blobOutline` / `blobContains` / `#trespasses`.
 
 ### 9. `edgeColors` and `EDGE_KEY` are plain objects indexed by user strings
 
-- [ ] Done
+- [x] **Done.** `EDGE_KEY` is a `Map` — it is ours, so the safe structure is
+      free — and `edgeColors` is read through `Object.hasOwn`, since its shape
+      is the caller's and has to stay a plain object. `Graphs/Advanced` →
+      `Custom wire kinds` now carries a `toString` wire: before the fix its
+      `stroke` was the source text of `Object.prototype.toString`, an invalid
+      colour the browser quietly ignores.
 
 `src/colors.ts:115-141`. Now that `DiagramEdgeKind` is open,
 `kind: 'toString'` returns the inherited function and `if (named) return named`
