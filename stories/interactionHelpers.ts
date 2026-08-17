@@ -14,11 +14,17 @@ export function translateOf(g: SVGGElement): [number, number] {
   return parseTranslate(g.getAttribute('transform') ?? '')
 }
 
-export async function shadowRootOf(canvasElement: HTMLElement): Promise<ShadowRoot> {
+/** The shadow root of the story's `<zx-diagram>`. Pass a selector when a story
+ *  renders more than one of them — combining several cases into one story is
+ *  how the error stories avoid a Chromatic snapshot each. */
+export async function shadowRootOf(
+  canvasElement: HTMLElement,
+  selector = 'zx-diagram',
+): Promise<ShadowRoot> {
   await customElements.whenDefined('zx-diagram')
-  const el = canvasElement.querySelector<ZxDiagramElement>('zx-diagram')
-  if (!el) throw new Error('zx-diagram not found')
-  if (!el.shadowRoot) throw new Error('zx-diagram has no shadow root')
+  const el = canvasElement.querySelector<ZxDiagramElement>(selector)
+  if (!el) throw new Error(`${selector} not found`)
+  if (!el.shadowRoot) throw new Error(`${selector} has no shadow root`)
   return el.shadowRoot
 }
 
@@ -117,6 +123,14 @@ export function ringedDotsIn(root: ShadowRoot, pick?: 'named' | 'implied'): stri
   return [...root.querySelectorAll<SVGGElement>('svg g.dot g[data-wire]')]
     .filter(g => g.querySelector(selector))
     .map(g => g.getAttribute('data-wire') ?? '')
+}
+
+/** Each blob's caption, split into its `<tspan>` pieces — `Z(`, the phase, `)`
+ *  — so an assertion can tell the grey name from the blue phase. */
+export function blobCaptionsIn(root: ParentNode): (string | null)[][] {
+  return [...root.querySelectorAll('svg g.blob text')].map(t =>
+    [...t.querySelectorAll('tspan')].map(s => s.textContent),
+  )
 }
 
 /** The `fill` of every circular or rectangular node shape — spiders,

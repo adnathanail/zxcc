@@ -10,6 +10,8 @@ export default {
           ['Basic', 'Algebraic', 'Advanced', 'Interactions'],
           'Hypergraphs',
           ['Basic', 'Interactions'],
+          'Other',
+          ['Both viewers', 'Tests']
         ],
       },
     },

@@ -21,10 +21,14 @@ import type { DiagramData, Scene } from './types'
 import './graph/viewer'
 import './hypergraph/viewer'
 
-/** Which of the two painters the element runs: the ZX diagram, its hypergraph
- *  dual, or both — one above the other, or beside each other. The two `both`
- *  modes differ only in how the pair is arranged; each paints the same thing. */
-export type ViewMode = 'graph' | 'hypergraph' | 'both-vertical' | 'both-horizontal'
+export const VIEW_MODES = ['graph', 'hypergraph', 'both-vertical', 'both-horizontal'] as const
+export type ViewMode = (typeof VIEW_MODES)[number]
+
+/** `view-mode` is a plain string attribute, so the value that arrives is
+ *  whatever was typed — the type above says nothing about it at runtime. */
+function isViewMode(mode: string): mode is ViewMode {
+  return (VIEW_MODES as readonly string[]).includes(mode)
+}
 
 /** Whether a mode runs both painters — the one question most of this file asks
  *  of `viewMode`, since the arrangement only matters at the point it is drawn. */
@@ -62,11 +66,9 @@ export class ZxDiagramElement extends LitElement {
   /** Pixels per row/qubit. Null derives it from the diagram's extent. */
   @property({ type: Number }) scale: number | null = null
 
-  /** Which view to draw: the ZX diagram (`graph`), its hypergraph dual —
-   *  wires as dots, spiders as blobs enclosing the dots of their wires —
-   *  (`hypergraph`), or both, the diagram above its dual (`both-vertical`) or
-   *  to the left of it (`both-horizontal`). An unrecognised value draws the
-   *  graph, as an unrecognised `color-scheme` falls back to the original. */
+  /** Which view to draw: ZX diagram (`graph`), hypergraph dual (`hypergraph`),
+   *  or both (`both-vertical` / `both-horizontal`).
+   *  Throws if given invalid value. */
   @property({ attribute: 'view-mode' }) viewMode: ViewMode = 'graph'
 
   /** The laid-out views. Which are non-null follows `viewMode`, so in either
@@ -207,6 +209,12 @@ export class ZxDiagramElement extends LitElement {
     // may not even be in it.
     this.selection = EMPTY_SELECTION
     try {
+      // Check if viewMode is valid
+      if (!isViewMode(this.viewMode)) {
+        throw new Error(
+          `Unknown view-mode '${this.viewMode}'. Expected one of: ${VIEW_MODES.join(', ')}.`,
+        )
+      }
       // Both views start from the same `layout()`; the hypergraph is derived
       // from that scene rather than laying the diagram out a second time. The
       // two are built into locals first so a hypergraph that can't be
@@ -216,17 +224,10 @@ export class ZxDiagramElement extends LitElement {
         const both = isBoth(this.viewMode)
         const hypergraph =
           this.viewMode === 'hypergraph' || both ? layoutHypergraph(this.diagram, scene) : null
-        // The hypergraph is drawn `ZOOM` times roomier than the diagram it came
-        // from, so a pair off one layout would be two different sizes. Laying
-        // the graph out again at the zoomed scale is what matches them: every
-        // pixel position `layout()` produces is proportional to `scale`, so the
-        // two come out the same size and a dot lands on the same coordinates as
-        // the midpoint of the wire it stands for — under it when the pair is
-        // stacked, level with it when the pair is side by side. Scaling the
-        // painted SVG instead would have blown the labels up with it.
-        if (this.viewMode === 'graph') this.scene = scene
-        else if (both) {
-          this.scene = layout(this.diagram, { scale: scene.scale * HYPERGRAPH_ZOOM })
+        // Render graph scene (unless only rendering hypergraph)
+        if (this.viewMode !== 'hypergraph') {
+          // If rendering graph and hypergraph, scale graph scene to match hypergraph's larger default size
+          this.scene = both ? layout(this.diagram, { scale: scene.scale * HYPERGRAPH_ZOOM }) : scene
         }
         this.hypergraph = hypergraph
       }

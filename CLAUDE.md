@@ -4,6 +4,14 @@ Framework-agnostic `<zx-diagram>` web component for rendering ZX-calculus
 diagrams. Built with Lit, no runtime dependencies. See README.md for
 user-facing usage.
 
+## Writing style
+
+When writing comments, or user facing text, write from the context of someone coming into the context cold.
+Don't write as though someone has heard the conversation.
+People don't need to know that something hasn't happened.
+
+If that sort of design decision context is important, put it in CLAUDE.md
+
 ## Layout of `src/`
 
 ```
@@ -217,8 +225,15 @@ it (`@state selection`, cleared on every relayout), passes it to both painters,
 and takes a new one from whichever painter announces `zx-selection`. That is the
 whole of the linkage; the mapping between the two pictures is each painter's own
 reading of the same node ids and edge indices, not a translation step in the
-host. An unrecognised `view-mode` draws
-the graph, the way an unrecognised `color-scheme` falls back to the original.
+host. An unrecognised `view-mode` is an
+error and goes to the error state, named in the message alongside the four modes
+there are — unlike an unrecognised `color-scheme`, which falls back to the
+original. The asymmetry is deliberate: a scheme has an obvious thing to fall
+back *to* and the picture is still the right picture in the wrong colours,
+whereas picking one of four modes on the author's behalf means guessing which
+drawing they meant, and a typo that quietly drew something else is only found by
+noticing the picture is wrong. `VIEW_MODES` is the array both the check and the
+`ViewMode` type derive from, so the two cannot drift.
 It owns the presentation properties that mirror
 pyzx's `draw_d3` keyword arguments (`show-labels`, `color-scheme`, `scale`,
 `colors`) plus `edgeColors`, which has no pyzx counterpart; resolves a scheme
@@ -351,9 +366,32 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
   any story renders.
 - `stories/` mirrors the `src/` split: `stories/graphs/` and
   `stories/hypergraphs/`, titled `Graphs/…` and `Hypergraphs/…` so Storybook
-  groups them, with the shared `diagrams.ts`/`interactionHelpers.ts` and the
-  `Playground` story (the only ungrouped one) at the top level. The sidebar
-  order is pinned by `storySort` in `.storybook/preview.ts`.
+  groups them, plus `stories/other/` (`Other/…`) for what belongs to neither
+  view. The shared `diagrams.ts`/`interactionHelpers.ts` and the `Playground`
+  story sit at the top level. The sidebar order is pinned by `storySort` in
+  `.storybook/preview.ts`.
+- `Other/Both viewers` is the pair drawn together: the two arrangements, and the
+  properties that do different work in each view — `show-labels` (node ids over
+  there, blob names and wire ids here), `scale`, and a wire kind's colour (which
+  has to come out the same on a wire and on the dot standing for it). Each runs
+  `both-vertical`, since one view would check half of what the property does.
+- `Other/Tests` is the group whose stories exist for their play function rather
+  than their picture, and the whole group carries
+  `chromatic: { disableSnapshot: true }` on its `meta`. It holds `Error states`:
+  all three failure cases — malformed diagram, a node the dual has no shape for,
+  an unknown `view-mode` — in one story, since the UI is the same grey `<pre>`
+  and Retry button whatever caused it and the *message* is the whole of what is
+  being tested, so three stories would be three snapshots of one box.
+- `color-scheme` is the one presentation property *not* under `Other/Both
+  viewers`, and the reason is the palette: `Zalt`, `W` and `Walt` belong to node
+  types the dual has no blob shape for, so a both-view colour story would have
+  to run on a diagram missing exactly the entries worth checking (that a Z-*box*
+  sits out the rgb scheme's Y/Z swap, say). The three scheme stories therefore
+  stay on the full `paletteShowcase` under `Graphs/Advanced`, the one view that
+  draws every entry. Nothing asserts that a scheme reaches the *dual* — the
+  shared `nodeColor`/`edgeColor` lookups in `colors.ts` are what make that true
+  by construction, and `Hypergraphs/Basic` carries a `color-scheme` control to
+  see it by eye.
 
 ## Gotchas
 
