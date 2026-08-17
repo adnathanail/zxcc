@@ -1,6 +1,7 @@
 export {
   COLOR_SCHEMES,
   type ColorSchemeName,
+  type EdgeColors,
   GRAYSCALE_COLORS,
   ORIGINAL_COLORS,
   RGB_COLORS,

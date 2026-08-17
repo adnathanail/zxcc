@@ -5,6 +5,7 @@ import { expect } from 'storybook/test'
 import {
   type ColorSchemeName,
   type DiagramData,
+  type EdgeColors,
   GRAYSCALE_COLORS,
   ORIGINAL_COLORS,
   RGB_COLORS,
@@ -22,6 +23,8 @@ interface Args {
   diagram: DiagramData
   /** Omitted by most stories, which want the default palette. */
   colorScheme?: ColorSchemeName
+  /** Omitted by most stories, which want the palette's wire colours. */
+  edgeColors?: EdgeColors
   /** Omitted by most stories, which want the derived scale. */
   scale?: number
   /** Omitted by most stories, which want pyzx's node-id labels on. */
@@ -30,9 +33,10 @@ interface Args {
 
 const meta: Meta<Args> = {
   title: 'Graphs/Advanced',
-  render: ({ diagram, colorScheme, scale, showLabels }) =>
+  render: ({ diagram, colorScheme, edgeColors, scale, showLabels }) =>
     html`<zx-diagram
       .diagram=${diagram}
+      .edgeColors=${edgeColors ?? null}
       color-scheme=${colorScheme ?? 'original'}
       scale=${ifDefined(scale)}
       show-labels=${showLabels === false ? 'false' : ''}
@@ -127,6 +131,44 @@ export const HadamardEdge: Story = {
       ORIGINAL_COLORS.edge,
       ORIGINAL_COLORS.Hedge,
       ORIGINAL_COLORS.edge,
+    ])
+  },
+}
+
+// `edgeColors` recolours wires by kind, without restating a palette. It is
+// keyed by the kinds the diagram is written in — `simple`, `hadamard`, `w-io`
+// — rather than by pyzx's `edge`/`Hedge`/`Xedge` entry names, and only the
+// kinds named move: everything else stays on whatever `color-scheme` or
+// `colors` decided.
+export const WireColorOverrides: Story = {
+  name: 'Wire colour overrides',
+  parameters: {
+    docs: {
+      story: {
+        description:
+          "A colour per wire kind, folded into the palette over the top of `color-scheme`. Because it goes into the palette rather than to the painter, the hypergraph view's dot for a wire takes the same colour the wire does.",
+      },
+    },
+  },
+  args: {
+    diagram: paletteShowcase,
+    colorScheme: 'grayscale',
+    edgeColors: { hadamard: '#ff00aa', 'w-io': '#00aa55' },
+  },
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    // paletteShowcase's edges in order: the H-edge is the second and the W-io
+    // the seventh. Both take the override; every plain wire is still the
+    // grayscale palette's `edge`, since `simple` wasn't named.
+    expect(strokesIn(root, 'link')).toEqual([
+      GRAYSCALE_COLORS.edge,
+      '#ff00aa',
+      GRAYSCALE_COLORS.edge,
+      GRAYSCALE_COLORS.edge,
+      GRAYSCALE_COLORS.edge,
+      GRAYSCALE_COLORS.edge,
+      '#00aa55',
+      GRAYSCALE_COLORS.edge,
     ])
   },
 }

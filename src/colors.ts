@@ -104,17 +104,46 @@ export function nodeColor(kind: NodeKind, colors: Record<string, string>): strin
   }
 }
 
+/** A colour per wire kind, the shape `<zx-diagram>`'s `edgeColors` takes.
+ *  Partial, since naming one kind shouldn't mean restating the others. */
+export type EdgeColors = Partial<Record<DiagramEdgeKind, string>>
+
+/** Which palette entry each wire kind is painted with — the pyzx key names,
+ *  which is why the override map is keyed by kind instead. This is the one
+ *  place the mapping lives: `edgeColor` reads it and {@link withEdgeColors}
+ *  writes through it, so an override lands on exactly the entry the lookup
+ *  will come back for. */
+const EDGE_KEY: Record<DiagramEdgeKind, string> = {
+  simple: 'edge',
+  hadamard: 'Hedge',
+  'w-io': 'Xedge',
+}
+
 /** Colour for an edge — the wire the graph view strokes, and the dot the
  *  hypergraph view draws in its place. */
 export function edgeColor(kind: DiagramEdgeKind, colors: Record<string, string>): string {
-  switch (kind) {
-    case 'hadamard':
-      return colors.Hedge
-    case 'w-io':
-      return colors.Xedge
-    default:
-      return colors.edge
+  return colors[EDGE_KEY[kind]] ?? colors.edge
+}
+
+/**
+ * A palette with per-kind wire colours folded in.
+ *
+ * The overrides go into the palette rather than to each painter, so they ride
+ * the one `edgeColor` lookup both views already share: the wire in the diagram
+ * and the dot standing for that same wire in the dual cannot come out
+ * different colours. It is the reason these lookups live here at all.
+ */
+export function withEdgeColors(
+  colors: Record<string, string>,
+  overrides: EdgeColors | null | undefined,
+): Record<string, string> {
+  if (!overrides) return colors
+  const merged = { ...colors }
+  for (const [kind, color] of Object.entries(overrides)) {
+    const key = EDGE_KEY[kind as DiagramEdgeKind]
+    if (key && color) merged[key] = color
   }
+  return merged
 }
 
 /** Pauli-web strand colour. `I` has no palette entry — pyzx draws identity
