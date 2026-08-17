@@ -157,9 +157,10 @@ the graph, the way an unrecognised `color-scheme` falls back to the original.
 It owns the presentation properties that mirror
 pyzx's `draw_d3` keyword arguments (`show-labels`, `color-scheme`, `scale`,
 `colors`), resolves a scheme name to a palette, and passes the attribution
-badge down as a painter's `overlay` — to exactly one of them (`badged`, the
-lower of a stacked pair), since two badges would read as two pictures rather
-than one stack. It carries the stylesheet for the whole
+badge down as each painter's `overlay` — one per view, placed against that
+view's own pixel bounds, since the badge is drawn inside the SVG so that it
+travels with the picture and each of a stacked pair is copied on its own. It
+carries the stylesheet for the whole
 shadow tree, the painters' SVG included.
 
 Both painters render into the **light DOM** (`createRenderRoot() { return
@@ -179,7 +180,9 @@ paired with an explicit `requestUpdate()`.
 
 Because a painter updates on its own cycle, anything that needs the SVG in the
 DOM has to await it: `<zx-diagram>` overrides `getUpdateComplete()` and awaits
-every mounted child before measuring the attribution.
+every mounted child before measuring the attributions. A measuring pass only
+counts as done once *every* badge has been placed — one view can be measurable
+while the other is not yet.
 
 `<zx-hypergraph-viewer>` keeps two, the same way — the selection and the
 dragged dot positions — and derives every blob outline, dot ring and trespass
@@ -203,6 +206,7 @@ mark from them in `render()`.
 
 Sometimes this repository is managed with GitButler.
 Check whether you are on the `gitbutler/workspace` branch; if so, use the `but` CLI to interact with it.
+Make changes in new commits, as opposed to modifying existing commits, unless explicitly told to.
 
 **Do not add attributions to yourself in commit messages**
 

@@ -7,7 +7,7 @@
 // It also carries the stylesheet for the whole shadow tree, the viewer's SVG
 // included, since the viewer renders into the light DOM.
 
-import { css, html, LitElement, nothing, type PropertyValues, type SVGTemplateResult } from 'lit'
+import { css, html, LitElement, nothing, type PropertyValues } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { attributionTemplate, placeAttribution } from './attribution'
 import { COLOR_SCHEMES, type ColorSchemeName } from './colors'
@@ -99,12 +99,15 @@ export class ZxDiagramElement extends LitElement {
     }
   }
 
-  /** The view the attribution badge is drawn into: the last one in the stack,
-   *  so a `both` pair carries one badge under the pair rather than one each.
-   *  Both views are laid out to pixel bounds, which is all the attribution
-   *  needs to place itself. */
-  private get badged(): Scene | HypergraphScene | null {
-    return this.hypergraph ?? this.scene
+  /** The views being painted, each with the tag of the painter drawing it, in
+   *  stack order. Every one carries its own attribution badge, placed against
+   *  its own pixel bounds — the badge belongs to the picture, not to the
+   *  element, so a copied SVG takes it along whichever of the pair it is. */
+  private get painted(): Array<[string, Scene | HypergraphScene]> {
+    const views: Array<[string, Scene | HypergraphScene]> = []
+    if (this.scene) views.push(['zx-viewer', this.scene])
+    if (this.hypergraph) views.push(['zx-hypergraph-viewer', this.hypergraph])
+    return views
   }
 
   /** The palette both painters are handed: an explicit `colors` override wins
@@ -131,16 +134,22 @@ export class ZxDiagramElement extends LitElement {
   }
 
   protected async updated() {
-    const scene = this.badged
-    if (!this.placementPending || !scene) return
+    const views = this.painted
+    if (!this.placementPending || views.length === 0) return
+    const [scene, hypergraph] = [this.scene, this.hypergraph]
     await this.paintersComplete()
-    // A relayout during that await leaves us holding a scene that is no longer
-    // painted; whichever update cycle installed the new one places its badge.
-    if (this.badged !== scene) return
-    const group = this.renderRoot.querySelector<SVGGElement>('g.attribution')
-    if (group && placeAttribution(group, scene.width, scene.height)) {
-      this.placementPending = false
-    }
+    // A relayout during that await leaves us holding views that are no longer
+    // painted; whichever update cycle installed the new ones places their
+    // badges.
+    if (this.scene !== scene || this.hypergraph !== hypergraph) return
+    // Each badge is measured against its own painter's box, and the pass only
+    // counts as done once every one of them has been placed — one view can be
+    // measurable while the other still isn't.
+    const placed = views.map(([tag, view]) => {
+      const group = this.renderRoot.querySelector<SVGGElement>(`${tag} g.attribution`)
+      return group !== null && placeAttribution(group, view.width, view.height)
+    })
+    if (placed.every(Boolean)) this.placementPending = false
   }
 
   /**
@@ -180,13 +189,7 @@ export class ZxDiagramElement extends LitElement {
       this.hypergraph = null
       this.error = e instanceof Error ? e.message : String(e)
     }
-    this.placementPending = this.badged !== null
-  }
-
-  /** The badge goes to whichever view {@link badged} names, and only that one:
-   *  two badges in a stacked pair would read as two separate pictures. */
-  private overlayFor(scene: Scene | HypergraphScene): SVGTemplateResult | null {
-    return scene === this.badged ? attributionTemplate(scene.width, scene.height) : null
+    this.placementPending = this.painted.length > 0
   }
 
   render() {
@@ -210,7 +213,7 @@ export class ZxDiagramElement extends LitElement {
                 .scene=${this.scene}
                 .colors=${this.palette}
                 .showLabels=${this.showLabels}
-                .overlay=${this.overlayFor(this.scene)}
+                .overlay=${attributionTemplate(this.scene.width, this.scene.height)}
               ></zx-viewer>
             </div>
           `
@@ -224,7 +227,7 @@ export class ZxDiagramElement extends LitElement {
                 .scene=${this.hypergraph}
                 .colors=${this.palette}
                 .showLabels=${this.showLabels}
-                .overlay=${this.overlayFor(this.hypergraph)}
+                .overlay=${attributionTemplate(this.hypergraph.width, this.hypergraph.height)}
               ></zx-hypergraph-viewer>
             </div>
           `
