@@ -1,6 +1,6 @@
 // `<zx-diagram>` — the public element. It lays a `DiagramData` out into a
 // `Scene`, hands that to whichever painter `view-mode` asks for — `<zx-viewer>`,
-// `<zx-hypergraph-viewer>`, or both stacked — and owns everything around the
+// `<zx-hypergraph-viewer>`, or both, stacked or side by side — and owns everything around the
 // drawing: the scroll containers, the presentation properties that mirror
 // pyzx's `draw_d3` keyword arguments, the error state, and the attribution.
 //
@@ -29,8 +29,13 @@ const defaultTrueBoolean = {
 }
 
 /** Which of the two painters the element runs: the ZX diagram, its hypergraph
- *  dual, or both stacked one above the other. */
-export type ViewMode = 'graph' | 'hypergraph' | 'both'
+ *  dual, or both — one above the other, or beside each other. The two `both`
+ *  modes differ only in how the pair is arranged; each paints the same thing. */
+export type ViewMode = 'graph' | 'hypergraph' | 'both-vertical' | 'both-horizontal'
+
+/** Whether a mode runs both painters — the one question most of this file asks
+ *  of `viewMode`, since the arrangement only matters at the point it is drawn. */
+const isBoth = (mode: ViewMode) => mode === 'both-vertical' || mode === 'both-horizontal'
 
 @customElement('zx-diagram')
 export class ZxDiagramElement extends LitElement {
@@ -55,12 +60,13 @@ export class ZxDiagramElement extends LitElement {
 
   /** Which view to draw: the ZX diagram (`graph`), its hypergraph dual —
    *  wires as dots, spiders as blobs enclosing the dots of their wires —
-   *  (`hypergraph`), or `both`, stacked. An unrecognised value draws the
+   *  (`hypergraph`), or both, the diagram above its dual (`both-vertical`) or
+   *  to the left of it (`both-horizontal`). An unrecognised value draws the
    *  graph, as an unrecognised `color-scheme` falls back to the original. */
   @property({ attribute: 'view-mode' }) viewMode: ViewMode = 'graph'
 
-  /** The laid-out views. Which are non-null follows `viewMode`, so in `both`
-   *  they are populated together and two painters are rendered. */
+  /** The laid-out views. Which are non-null follows `viewMode`, so in either
+   *  `both` mode they are populated together and two painters are rendered. */
   @state() private scene: Scene | null = null
   @state() private hypergraph: HypergraphScene | null = null
   @state() private error: string | null = null
@@ -81,9 +87,18 @@ export class ZxDiagramElement extends LitElement {
   static styles = css`
     :host { display: block; }
     .container { overflow: auto; background-color: white; }
-    /* In both-view mode the two are separate pictures stacked, each scrolling
-       on its own; the gap is what stops them reading as one drawing. */
-    .container + .container { margin-top: 0.5rem; }
+    /* In a both-view mode the two are separate pictures, each scrolling on its
+       own; the gap is what stops them reading as one drawing. The view mode
+       picks which way the pair runs, the only thing that differs between the
+       two. */
+    .views { display: flex; gap: 0.5rem; }
+    .views.vertical { flex-direction: column; }
+    .views.horizontal { flex-direction: row; align-items: flex-start; }
+    /* Side by side the two split the width evenly rather than sizing to their
+       drawings, so neither is squeezed out by a wide neighbour; the zero
+       min-width is what makes a picture wider than its half scroll instead of
+       stretching the box. */
+    .views.horizontal > .container { flex: 1 1 0; min-width: 0; }
     zx-viewer, zx-hypergraph-viewer { display: block; }
     .container svg { display: block; background-color: ${unsafeCSS(CANVAS_FILL)}; }
     .error { font-family: monospace; }
@@ -193,19 +208,19 @@ export class ZxDiagramElement extends LitElement {
       // converted leaves no half-painted pair behind for the error state.
       if (this.diagram) {
         const scene = layout(this.diagram, { scale: this.scale ?? undefined })
+        const both = isBoth(this.viewMode)
         const hypergraph =
-          this.viewMode === 'hypergraph' || this.viewMode === 'both'
-            ? layoutHypergraph(this.diagram, scene)
-            : null
+          this.viewMode === 'hypergraph' || both ? layoutHypergraph(this.diagram, scene) : null
         // The hypergraph is drawn `ZOOM` times roomier than the diagram it came
-        // from, so a stacked pair off one layout would be two different sizes.
-        // Laying the graph out again at the zoomed scale is what matches them:
-        // every pixel position `layout()` produces is proportional to `scale`,
-        // so the graph comes out the same width as the dual and each dot lands
-        // under the wire it stands for. Scaling the painted SVG instead would
-        // have blown the labels up with it.
+        // from, so a pair off one layout would be two different sizes. Laying
+        // the graph out again at the zoomed scale is what matches them: every
+        // pixel position `layout()` produces is proportional to `scale`, so the
+        // two come out the same size and a dot lands on the same coordinates as
+        // the midpoint of the wire it stands for — under it when the pair is
+        // stacked, level with it when the pair is side by side. Scaling the
+        // painted SVG instead would have blown the labels up with it.
         if (this.viewMode === 'graph') this.scene = scene
-        else if (this.viewMode === 'both') {
+        else if (both) {
           this.scene = layout(this.diagram, { scale: scene.scale * HYPERGRAPH_ZOOM })
         }
         this.hypergraph = hypergraph
@@ -230,7 +245,11 @@ export class ZxDiagramElement extends LitElement {
     }
     if (!this.scene && !this.hypergraph) return nothing
 
+    // Only `both-horizontal` runs the pair across; every other mode stacks,
+    // which for a lone painter is the same box either way.
+    const direction = this.viewMode === 'both-horizontal' ? 'horizontal' : 'vertical'
     return html`
+      <div class="views ${direction}">
       ${
         this.scene === null
           ? nothing
@@ -263,6 +282,7 @@ export class ZxDiagramElement extends LitElement {
             </div>
           `
       }
+      </div>
     `
   }
 }

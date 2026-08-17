@@ -26,7 +26,10 @@ const meta: Meta<Args> = {
   title: 'Hypergraphs/Basic',
   render: renderDiagram,
   argTypes: {
-    viewMode: { control: 'inline-radio', options: ['graph', 'hypergraph', 'both'] },
+    viewMode: {
+      control: 'inline-radio',
+      options: ['graph', 'hypergraph', 'both-vertical', 'both-horizontal'],
+    },
     showLabels: { control: 'boolean' },
     colorScheme: { control: 'select', options: ['original', 'rgb', 'grayscale'] },
   },
@@ -35,7 +38,7 @@ const meta: Meta<Args> = {
     docs: {
       description: {
         component:
-          'With `view-mode="hypergraph"`, the element draws the diagram\'s hypergraph dual: every ZX edge becomes a dot, and every non-boundary ZX node becomes a blob enclosing the dots of its incident wires. Dots sit at the midpoint of the edge they came from, so the two views line up — switch the control to `both` to see them stacked and compare. A blob is filled with the same palette entry its spider would be, so `color-scheme` applies to both views.',
+          'With `view-mode="hypergraph"`, the element draws the diagram\'s hypergraph dual: every ZX edge becomes a dot, and every non-boundary ZX node becomes a blob enclosing the dots of its incident wires. Dots sit at the midpoint of the edge they came from, so the two views line up — switch the control to `both-vertical` or `both-horizontal` to see them together and compare. A blob is filled with the same palette entry its spider would be, so `color-scheme` applies to both views.',
       },
     },
   },
@@ -216,54 +219,99 @@ export const LargeStrongComplementarity: StoryObj<SizedArgs> = {
     renderDiagram({ ...rest, diagram: strongComplementarityOf(zCount, xCount) }),
 }
 
-export const BothViews: Story = {
+/** Everything the two `both` modes share: which painters ran, that the pair is
+ *  drawn at one scale, and that each badge was measured against its own view.
+ *  Only the arrangement differs between them, so only that is asserted per
+ *  story. */
+const expectPairDrawn = async (root: ParentNode) => {
+  // A painter each, and a badge in each of the two.
+  await waitFor(() => expect(root.querySelectorAll('zx-viewer svg').length).toBe(1))
+  expect(root.querySelectorAll('zx-hypergraph-viewer svg').length).toBe(1)
+  expect(root.querySelectorAll('g.attribution').length).toBe(2)
+
+  // The graph is laid out at the dual's zoomed scale, so the pair is one
+  // width — a diagram with no blob overhanging its box comes out exact.
+  const widthOf = (tag: string) =>
+    Number(root.querySelector<SVGSVGElement>(`${tag} svg`)?.getAttribute('width'))
+  expect(widthOf('zx-viewer')).toBeCloseTo(widthOf('zx-hypergraph-viewer'), 6)
+
+  // One scale means the two line up: wire w0 is the first edge, 0—2, and its
+  // dot sits at the midpoint of those two nodes as the graph draws them — the
+  // same numbers, not merely the same proportions, whichever way the pair is
+  // arranged.
+  const at = (selector: string) => {
+    const g = root.querySelector<SVGGElement>(selector)
+    if (!g) throw new Error(`${selector} not mounted`)
+    return translateOf(g)
+  }
+  const [ax, ay] = at('zx-viewer g[data-node="0"]')
+  const [bx, by] = at('zx-viewer g[data-node="2"]')
+  const [dx, dy] = at('g.dot g[data-wire="w0"]')
+  expect(dx).toBeCloseTo((ax + bx) / 2, 6)
+  expect(dy).toBeCloseTo((ay + by) / 2, 6)
+  // Each badge is measured against its own painter's box rather than sharing
+  // one measurement: its chip's right edge lands on that SVG's own width.
+  for (const tag of ['zx-viewer', 'zx-hypergraph-viewer']) {
+    const svg = root.querySelector<SVGSVGElement>(`${tag} svg`)
+    const badge = root.querySelector<SVGGElement>(`${tag} g.attribution`)
+    const chip = badge?.querySelector('rect')
+    if (!svg || !badge || !chip) throw new Error(`${tag} badge not rendered`)
+    const right =
+      translateOf(badge)[0] + Number(chip.getAttribute('x')) + Number(chip.getAttribute('width'))
+    expect(right).toBeCloseTo(Number(svg.getAttribute('width')), 6)
+  }
+}
+
+/** The pair's two scroll containers on screen, in DOM order — the diagram's
+ *  then the dual's. The arrangement is a fact about the boxes rather than the
+ *  drawings, so this is the only place it can be read. */
+const containerBoxes = (root: ParentNode) =>
+  [...root.querySelectorAll('.container')].map(el => el.getBoundingClientRect())
+
+export const BothViewsStacked: Story = {
   name: '7. Both views stacked',
   parameters: {
     docs: {
       story: {
         description:
-          '`view-mode="both"` runs both painters, the diagram above its dual, each scrolling in its own container. The dual is drawn 1.6× roomier than the diagram it comes from, so in this mode the graph is laid out again at that same scale: the two come out the same width, and a dot sits on the midpoint of the wire drawn directly above it. The two are independent otherwise — selecting or dragging in one does nothing to the other — and each carries its own attribution badge, since the badge belongs to the picture and travels with whichever SVG is copied.',
+          '`view-mode="both-vertical"` runs both painters, the diagram above its dual, each scrolling in its own container. The dual is drawn 1.6× roomier than the diagram it comes from, so in this mode the graph is laid out again at that same scale: the two come out the same width, and a dot sits on the midpoint of the wire drawn directly above it. The two are independent otherwise — selecting or dragging in one does nothing to the other — and each carries its own attribution badge, since the badge belongs to the picture and travels with whichever SVG is copied.',
       },
     },
   },
-  args: { diagram: fourSpiderSquare, viewMode: 'both' },
+  args: { diagram: fourSpiderSquare, viewMode: 'both-vertical' },
   play: async ({ canvasElement }) => {
     const root = await shadowRootOf(canvasElement)
-    // A painter each, in stack order, and a badge in each of the two.
-    await waitFor(() => expect(root.querySelectorAll('zx-viewer svg').length).toBe(1))
-    expect(root.querySelectorAll('zx-hypergraph-viewer svg').length).toBe(1)
-    expect(root.querySelectorAll('g.attribution').length).toBe(2)
+    await expectPairDrawn(root)
+    // Stacked: the dual starts below the diagram, and the two share a left edge
+    // — which is what puts a dot under the wire it stands for on the page and
+    // not merely at matching coordinates inside two SVGs.
+    const [graph, dual] = containerBoxes(root)
+    expect(dual.top).toBeGreaterThanOrEqual(graph.bottom)
+    expect(dual.left).toBeCloseTo(graph.left, 1)
+  },
+}
 
-    // The graph is laid out at the dual's zoomed scale, so the pair is one
-    // width — a diagram with no blob overhanging its box comes out exact.
-    const widthOf = (tag: string) =>
-      Number(root.querySelector<SVGSVGElement>(`${tag} svg`)?.getAttribute('width'))
-    expect(widthOf('zx-viewer')).toBeCloseTo(widthOf('zx-hypergraph-viewer'), 6)
-
-    // One scale means the two line up: wire w0 is the first edge, 0—2, and its
-    // dot sits at the midpoint of those two nodes as the graph above draws
-    // them — the same numbers, not merely the same proportions.
-    const at = (selector: string) => {
-      const g = root.querySelector<SVGGElement>(selector)
-      if (!g) throw new Error(`${selector} not mounted`)
-      return translateOf(g)
-    }
-    const [ax, ay] = at('zx-viewer g[data-node="0"]')
-    const [bx, by] = at('zx-viewer g[data-node="2"]')
-    const [dx, dy] = at('g.dot g[data-wire="w0"]')
-    expect(dx).toBeCloseTo((ax + bx) / 2, 6)
-    expect(dy).toBeCloseTo((ay + by) / 2, 6)
-    // Each badge is measured against its own painter's box rather than sharing
-    // one measurement: its chip's right edge lands on that SVG's own width.
-    for (const tag of ['zx-viewer', 'zx-hypergraph-viewer']) {
-      const svg = root.querySelector<SVGSVGElement>(`${tag} svg`)
-      const badge = root.querySelector<SVGGElement>(`${tag} g.attribution`)
-      const chip = badge?.querySelector('rect')
-      if (!svg || !badge || !chip) throw new Error(`${tag} badge not rendered`)
-      const right =
-        translateOf(badge)[0] + Number(chip.getAttribute('x')) + Number(chip.getAttribute('width'))
-      expect(right).toBeCloseTo(Number(svg.getAttribute('width')), 6)
-    }
+export const BothViewsSideBySide: Story = {
+  name: '8. Both views side by side',
+  parameters: {
+    docs: {
+      story: {
+        description:
+          '`view-mode="both-horizontal"` draws the same pair across instead of down, the diagram to the left of its dual. The pair is matched the same way — one scale, so a dot lands level with the wire it stands for — and the two split the width evenly, each scrolling its own picture rather than sizing to it. Stacked reads best on a diagram that is wider than it is tall, side by side on a tall one; nothing else changes between the two.',
+      },
+    },
+  },
+  args: { diagram: fourSpiderSquare, viewMode: 'both-horizontal' },
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    await expectPairDrawn(root)
+    // Side by side: the dual starts to the right of the diagram, the two share
+    // a top edge, and neither has been squeezed out — they take a half each,
+    // whatever the drawings inside them measure.
+    const [graph, dual] = containerBoxes(root)
+    expect(dual.left).toBeGreaterThanOrEqual(graph.right)
+    expect(dual.top).toBeCloseTo(graph.top, 1)
+    expect(dual.width).toBeCloseTo(graph.width, 1)
   },
 }
 
@@ -272,7 +320,7 @@ export const BothViews: Story = {
 // text altogether. This mirrors `<zx-viewer>`, where `show-labels` only ever
 // governed the grey id text and the phase was always painted.
 export const LabelsHidden: Story = {
-  name: '8. Labels hidden',
+  name: '9. Labels hidden',
   args: {
     showLabels: false,
     diagram: {
@@ -306,7 +354,7 @@ export const LabelsHidden: Story = {
 }
 
 export const UnsupportedNodeType: Story = {
-  name: '9. Node type with no blob',
+  name: '10. Node type with no blob',
   parameters: {
     docs: {
       story: {

@@ -180,14 +180,22 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
 `<zx-diagram>` runs `layout()` in `willUpdate()` into `@state` (`scene` /
 `hypergraph` / `error`), then renders a painter per non-null state, each inside
 its own scroll container — `<zx-viewer>` and/or `<zx-hypergraph-viewer>`.
-`view-mode` picks which: `graph` (the default), `hypergraph`, or `both`, the
-diagram stacked above its dual. `both` is the only mode that builds two, and it
+`view-mode` picks which: `graph` (the default), `hypergraph`, or both — the
+diagram above its dual (`both-vertical`) or to the left of it
+(`both-horizontal`). The two `both` modes differ in one thing only, the
+`flex-direction` of the box holding the two containers; everything laid out or
+painted is the same, which is why the code asks `isBoth(viewMode)` almost
+everywhere and reads the mode itself only in `render()`. Side by side the pair
+splits the width evenly (`flex: 1 1 0`) rather than sizing to the drawings, so a
+wide picture scrolls in its half instead of crowding the other out. A `both`
+mode is the only one that builds two views, and
 is the one place `layout()` runs twice: the hypergraph is derived from the
 scene at the diagram's own scale, and the graph is then laid out *again* at
 `scale * ZOOM` — the hypergraph's zoom, exported from `hypergraph/layout.ts`
 for exactly this. Every pixel position `layout()` produces is proportional to
-`scale`, so that second layout brings the pair out the same width and puts each
-dot on the midpoint of the wire drawn above it, at the same coordinates. The
+`scale`, so that second layout brings the pair out the same size and puts each
+dot on the same coordinates as the midpoint of the wire it stands for — under
+that wire when the pair is stacked, level with it when it is side by side. The
 alternative — scaling the painted SVG to fit — would have blown the 12px labels
 up with it. A drag stays each view's own — pulling a dot about reshapes blobs
 here and nothing there — but the **selection is shared**: `<zx-diagram>` holds
@@ -202,7 +210,7 @@ pyzx's `draw_d3` keyword arguments (`show-labels`, `color-scheme`, `scale`,
 `colors`), resolves a scheme name to a palette, and passes the attribution
 badge down as each painter's `overlay` — one per view, placed against that
 view's own pixel bounds, since the badge is drawn inside the SVG so that it
-travels with the picture and each of a stacked pair is copied on its own. It
+travels with the picture and each of a pair is copied on its own. It
 carries the stylesheet for the whole
 shadow tree, the painters' SVG included.
 
@@ -304,7 +312,7 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
   a selected node marked by `#00f` in its shape's `style` and a selected edge
   by its casing — `g.casing > path[data-link]`, carrying the edge's index, with
   the wire in `g.link` left untouched — and `g.attribution` carrying a `rect`
-  chip. In `both` mode the
+  chip. In a `both` mode the
   two views share one tree, so anything ambiguous is scoped by painter tag
   (`zx-viewer …` / `zx-hypergraph-viewer …`). The hypergraph view has its own:
   `g.blob` wrapping per-hyperedge `<g data-hyperedge>`, `g.dot` wrapping
