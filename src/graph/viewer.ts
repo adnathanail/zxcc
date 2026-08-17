@@ -57,8 +57,8 @@ const LINK_WIDTH = 1.5
  *  whatever is painted below along that stretch; the layer sits above the
  *  boxes and webs rather than below them so the highlight isn't itself buried,
  *  and that is the cost of the gap. */
-const CASING_WIDTH = 4
-const CASING_GAP_WIDTH = 1
+const CASING_GAP_WIDTH = 0
+const CASING_WIDTH = 3
 const LINK_STYLE = `stroke-width: ${LINK_WIDTH}px`
 const CASING_STYLE = `stroke-width: ${CASING_WIDTH}px; stroke-linecap: round; pointer-events: none`
 const CASING_GAP_STYLE = `stroke-width: ${CASING_GAP_WIDTH}px; stroke-linecap: round; pointer-events: none`
