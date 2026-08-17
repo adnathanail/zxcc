@@ -149,9 +149,15 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
 `hypergraph` / `error`), then renders a painter per non-null state, each inside
 its own scroll container — `<zx-viewer>` and/or `<zx-hypergraph-viewer>`.
 `view-mode` picks which: `graph` (the default), `hypergraph`, or `both`, the
-diagram stacked above its dual. `both` is the only mode that builds two, and
-the two are drawn from the *same* `layout()`, so a dot sits on the midpoint of
-the wire drawn above it. They share nothing else — no selection, no drag — so
+diagram stacked above its dual. `both` is the only mode that builds two, and it
+is the one place `layout()` runs twice: the hypergraph is derived from the
+scene at the diagram's own scale, and the graph is then laid out *again* at
+`scale * ZOOM` — the hypergraph's zoom, exported from `hypergraph/layout.ts`
+for exactly this. Every pixel position `layout()` produces is proportional to
+`scale`, so that second layout brings the pair out the same width and puts each
+dot on the midpoint of the wire drawn above it, at the same coordinates. The
+alternative — scaling the painted SVG to fit — would have blown the 12px labels
+up with it. They share nothing else — no selection, no drag — so
 each is the same view it would be on its own. An unrecognised `view-mode` draws
 the graph, the way an unrecognised `color-scheme` falls back to the original.
 It owns the presentation properties that mirror

@@ -11,7 +11,7 @@ import { css, html, LitElement, nothing, type PropertyValues } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { attributionTemplate, placeAttribution } from './attribution'
 import { COLOR_SCHEMES, type ColorSchemeName } from './colors'
-import { layoutHypergraph } from './hypergraph/layout'
+import { ZOOM as HYPERGRAPH_ZOOM, layoutHypergraph } from './hypergraph/layout'
 import type { HypergraphScene } from './hypergraph/types'
 import { layout } from './layout'
 import type { DiagramData, Scene } from './types'
@@ -180,7 +180,17 @@ export class ZxDiagramElement extends LitElement {
           this.viewMode === 'hypergraph' || this.viewMode === 'both'
             ? layoutHypergraph(this.diagram, scene)
             : null
-        if (this.viewMode !== 'hypergraph') this.scene = scene
+        // The hypergraph is drawn `ZOOM` times roomier than the diagram it came
+        // from, so a stacked pair off one layout would be two different sizes.
+        // Laying the graph out again at the zoomed scale is what matches them:
+        // every pixel position `layout()` produces is proportional to `scale`,
+        // so the graph comes out the same width as the dual and each dot lands
+        // under the wire it stands for. Scaling the painted SVG instead would
+        // have blown the labels up with it.
+        if (this.viewMode === 'graph') this.scene = scene
+        else if (this.viewMode === 'both') {
+          this.scene = layout(this.diagram, { scale: scene.scale * HYPERGRAPH_ZOOM })
+        }
         this.hypergraph = hypergraph
       }
       this.error = null

@@ -28,8 +28,12 @@ const DOT_RADIUS = 0.12
 /** How much roomier the hypergraph is drawn than the diagram it came from.
  *  Dots land on edge midpoints, so consecutive dots sit half a scale apart —
  *  half the ZX spacing for twice the marks. Zooming the positions (and not the
- *  blobs) spreads them back out and keeps neighbouring blobs apart. */
-const ZOOM = 1.6
+ *  blobs) spreads them back out and keeps neighbouring blobs apart.
+ *
+ *  Exported because it is the factor between the two views' pixel sizes:
+ *  `<zx-diagram>` lays the graph out at `scale * ZOOM` when it draws both, so
+ *  the pair comes out the same width and a dot lands under its own wire. */
+export const ZOOM = 1.6
 
 /** How far apart two dots have to sit to read as two marks rather than one
  *  blot, centre to centre, in dot radii. In dots rather than in fractions of

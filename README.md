@@ -121,8 +121,10 @@ attribute keeps everything in the same place. A blob's outline is the convex hul
 outwards and rounded off, so it stays readable at any arity — one dot gives a circle, two a capsule.
 
 `view-mode="both"` draws the pair, the diagram above its dual, each in its own scroll container.
-They are drawn from the same layout, so a dot lines up with the wire above it, but they are
-otherwise independent: selecting or dragging in one view does not touch the other.
+The dual is drawn 1.6× roomier than the diagram it comes from — it has twice the marks at half the
+spacing — so in this mode the diagram is laid out at that same scale, and the two come out the same
+width with each dot directly under the wire it stands for. They are otherwise independent:
+selecting or dragging in one view does not touch the other.
 
 ```html
 <zx-diagram id="d" view-mode="both"></zx-diagram>
