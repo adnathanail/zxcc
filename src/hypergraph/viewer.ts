@@ -31,7 +31,7 @@ import {
   type Selection,
   selectionEvent,
 } from '../selection'
-import { blobCentre, blobContains, blobLabelAnchor, blobOutline } from './geometry'
+import { blobCentre, blobHull, blobLabelAnchor, hullContains, hullPath } from './geometry'
 import type { HypergraphBlob, HypergraphScene } from './types'
 
 /** A blob is filled with its node's own palette colour and outlined in black,
@@ -242,7 +242,9 @@ export class ZxHypergraphViewerElement extends LitElement {
     // Every blob the point is inside, not just the topmost one — the blobs
     // overlap by construction, and seeing which ones share a spot is the point.
     // On bare canvas that set is empty, which is how a selection is dropped.
-    const hit = scene.blobs.filter(b => blobContains(b, this.#positions, scene.blobRadius, point))
+    const hit = scene.blobs.filter(b =>
+      hullContains(blobHull(b, this.#positions), scene.blobRadius, point),
+    )
     this.dispatchEvent(selectionEvent(nodeSelection(hit.map(b => b.nodeId))))
   }
 
@@ -308,7 +310,7 @@ export class ZxHypergraphViewerElement extends LitElement {
   #renderBlob(
     scene: HypergraphScene,
     blob: HypergraphBlob,
-    pos: Map<string, Point>,
+    outline: string,
     picked: Pick | undefined,
   ) {
     const caption = this.#blobCaption(blob)
@@ -316,7 +318,7 @@ export class ZxHypergraphViewerElement extends LitElement {
     return svg`
       <g data-hyperedge=${blob.id}>
         <path class=${picked === 'implied' ? 'implied' : nothing}
-          d=${blobOutline(blob, pos, scene.blobRadius)}
+          d=${outline}
           fill=${nodeColor(blob.kind, this.colors)} fill-opacity=${BLOB_FILL_OPACITY}
           stroke-linejoin="round"
           style=${picked === undefined ? BLOB_STYLE : picked === 'named' ? SELECTED_STYLE : IMPLIED_STYLE} />
@@ -335,17 +337,24 @@ export class ZxHypergraphViewerElement extends LitElement {
    * strayed into.
    *
    * A dot's circle meets a blob's outline exactly when its centre is within
-   * `blobRadius + dotSize` of the blob's hull, which is `blobContains` asked
-   * with a fattened radius — the same predicate the outline is drawn with, so
-   * a dot cannot be marked as overlapping something it visibly clears.
+   * `blobRadius + dotSize` of the blob's hull, which is {@link hullContains}
+   * asked with a fattened radius — the same predicate the outline is drawn
+   * with, so a dot cannot be marked as overlapping something it visibly clears.
+   *
+   * This asks every dot about every blob, so it is the reason the hulls are
+   * computed once by the caller: derived per call it would be a hull per pair.
    */
-  #trespasses(scene: HypergraphScene, pos: Map<string, Point>) {
+  #trespasses(
+    scene: HypergraphScene,
+    pos: Map<string, Point>,
+    hullOf: (blob: HypergraphBlob) => Point[],
+  ) {
     const reach = scene.blobRadius + scene.dotSize
     return scene.dots
       .map(dot => {
         const centre = pos.get(dot.id) ?? { x: dot.x, y: dot.y }
         const blobs = scene.blobs.filter(
-          b => !b.dots.includes(dot.id) && blobContains(b, pos, reach, centre),
+          b => !b.dots.includes(dot.id) && hullContains(hullOf(b), reach, centre),
         )
         return { dot, centre, blobs }
       })
@@ -398,6 +407,15 @@ export class ZxHypergraphViewerElement extends LitElement {
     // are *in* them. Ringing the dots states that membership directly, and is
     // what makes the hyperedge's actual extent legible where the hulls overlap.
     const picked = this.#picked(scene)
+    // Each blob's hull and the outline drawn from it, computed once and shared
+    // by everything below. Three things want them — the painted outline, the
+    // clip path a trespassing dot is masked to, and the trespass test itself,
+    // which asks every dot about every blob — and deriving the hull inside each
+    // would make that last one a sort per pair.
+    const hulls = new Map(scene.blobs.map(b => [b.id, blobHull(b, pos)]))
+    const hullOf = (blob: HypergraphBlob) => hulls.get(blob.id) ?? []
+    const outlines = new Map(scene.blobs.map(b => [b.id, hullPath(hullOf(b), scene.blobRadius)]))
+    const outlineOf = (blob: HypergraphBlob) => outlines.get(blob.id) ?? ''
     // Picked blobs paint last so their outline isn't buried under a
     // neighbour's fill — with this much overlap that is the difference
     // between seeing the highlighted shape and guessing at it — and the named
@@ -405,7 +423,7 @@ export class ZxHypergraphViewerElement extends LitElement {
     const depth = (blob: HypergraphBlob) =>
       picked.blobs.get(blob.id) === 'named' ? 2 : picked.blobs.has(blob.id) ? 1 : 0
     const blobs = [...scene.blobs].sort((a, b) => depth(a) - depth(b))
-    const trespasses = this.#trespasses(scene, pos)
+    const trespasses = this.#trespasses(scene, pos, hullOf)
 
     return html`
       <svg width=${scene.width} height=${scene.height}
@@ -418,13 +436,15 @@ export class ZxHypergraphViewerElement extends LitElement {
           ${trespasses.map(
             ({ dot, blobs: wrong }) => svg`
               <clipPath id=${`${this.#uid}-${dot.id}`} clipPathUnits="userSpaceOnUse">
-                ${wrong.map(b => svg`<path d=${blobOutline(b, pos, scene.blobRadius)} />`)}
+                ${wrong.map(b => svg`<path d=${outlineOf(b)} />`)}
               </clipPath>`,
           )}
         </defs>
 
         <g class="blob">
-          ${blobs.map(blob => this.#renderBlob(scene, blob, pos, picked.blobs.get(blob.id)))}
+          ${blobs.map(blob =>
+            this.#renderBlob(scene, blob, outlineOf(blob), picked.blobs.get(blob.id)),
+          )}
         </g>
 
         <!-- Leaders are a layer of their own, above every blob: inside a blob's
