@@ -42,7 +42,12 @@ still draws `zx-viewer`.
 
 ### 2. The selected-edge casing gap is a no-op
 
-- [ ] Done
+- [x] **Done** in `bf9a0dd`. Gap restored at 5px, with
+      `CASING_WIDTH = 3 + CASING_GAP_WIDTH` so the blue stays 1.5px either side
+      whatever the gap is set to. The story assertion now compares the three
+      stroke widths (`wire < gap < casing`) rather than only their colours, so a
+      gap that strokes nothing can't pass again. The Pauli-web gotcha in
+      CLAUDE.md is accurate once more: a 5px opaque band over a 7px strand.
 
 `src/graph/viewer.ts:60` — `CASING_GAP_WIDTH = 0`, set in `7e1d075` ("Tweak wire
 select widths"). The entire `path.gap` layer strokes nothing.
@@ -203,6 +208,12 @@ hands it back as the colour.
   and the hypergraph reserves a scalar strip it never draws in
 
 ---
+
+### 11. Update hypergraph-plan
+
+- [ ] 
+
+Chop out unnecessary context. Give short clear design decisions. Outline potential next steps
 
 ## Checked and fine
 
