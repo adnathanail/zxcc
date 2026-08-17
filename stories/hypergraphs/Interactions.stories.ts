@@ -77,10 +77,11 @@ export const HypergraphBlobSelection: Story = {
     expect(root.querySelectorAll('line.leader').length).toBe(0)
     expect(ringedDotsIn(root)).toEqual([])
 
-    // w0 is the top-left boundary leg, which only the first Z spider (node 2)
-    // holds.
+    // w0 is the top-left boundary leg. Two blobs hold it: the input it hangs
+    // off (a one-dot hyperedge, so a circle around this very dot) and the first
+    // Z spider, node 2.
     clickDot('w0')
-    await waitFor(() => expect(selectedBlobsIn(root)).toEqual(['e2']))
+    await waitFor(() => expect(selectedBlobsIn(root)).toEqual(['e0', 'e2']))
     // Selecting a blob rings every dot it holds: the outline says which shapes
     // are picked out, but a hull encloses dots it doesn't hold, so on its own it
     // doesn't say which wires are in them. e2 is the first Z spider — its
@@ -90,7 +91,7 @@ export const HypergraphBlobSelection: Story = {
     // solid; the dots only follow from it, and are drawn dashed. One press
     // reaches a whole neighbourhood, and this is what keeps the thing pointed
     // at from being lost in it.
-    expect(selectedBlobsIn(root, 'named')).toEqual(['e2'])
+    expect(selectedBlobsIn(root, 'named')).toEqual(['e0', 'e2'])
     expect(ringedDotsIn(root, 'named')).toEqual([])
     expect(ringedDotsIn(root, 'implied')).toEqual(['w0', 'w4', 'w5'])
     // The selected blob gets a line from its caption down to its own outline —
@@ -313,15 +314,16 @@ export const LinkedSelection: StoryObj<Args> = {
     expect(selectedBlobsIn(root, 'named')).toEqual(['e2'])
     expect(ringedDotsIn(root, 'implied')).toEqual(['w0', 'w2', 'w3'])
 
-    // Input 0 is a boundary, so it is no hyperedge and has no blob: nothing is
-    // outlined. What it does have over there is the dot for the wire it hangs
-    // off, and that alone is ringed.
+    // Input 0 is a hyperedge like any other, holding the one wire it hangs off.
+    // Its blob is the hull of that single dot — a circle around it — and it is
+    // picked out the same way a spider's is.
     pressNode(0)
-    await waitFor(() => expect(ringedDotsIn(root)).toEqual(['w0']))
-    expect(selectedBlobsIn(root)).toEqual([])
+    await waitFor(() => expect(selectedBlobsIn(root)).toEqual(['e0']))
+    expect(ringedDotsIn(root)).toEqual(['w0'])
     expect(selectedNodesIn(root)).toEqual([0])
-    // Dashed, not solid: the selection names the boundary, and the dot is the
-    // nearest thing this view has to it rather than the thing itself.
+    // The blob is what the selection names, so it is solid; the dot follows
+    // from it and is dashed, as a spider's legs are.
+    expect(selectedBlobsIn(root, 'named')).toEqual(['e0'])
     expect(ringedDotsIn(root, 'named')).toEqual([])
 
     // Back the other way. A press on the hypergraph canvas selects by geometry
@@ -352,12 +354,13 @@ export const LinkedSelection: StoryObj<Args> = {
     press(dotFor('w0'), box.left + ax, box.top + ay)
     await waitFor(() => expect(selectedLinksIn(root)).toEqual([0]))
     expect(selectedNodesIn(root)).toEqual([])
-    expect(selectedBlobsIn(root)).toEqual(['e2'])
-    // …and the dot pressed is the only one ringed, solid, with the blob it
+    // Both ends of the wire: the input it hangs off and the spider it runs to.
+    expect(selectedBlobsIn(root)).toEqual(['e0', 'e2'])
+    // …and the dot pressed is the only one ringed, solid, with the blobs it
     // reached dashed around it.
     expect(ringedDotsIn(root)).toEqual(['w0'])
     expect(ringedDotsIn(root, 'named')).toEqual(['w0'])
-    expect(selectedBlobsIn(root, 'implied')).toEqual(['e2'])
+    expect(selectedBlobsIn(root, 'implied')).toEqual(['e0', 'e2'])
     // The edge is *cased*, not recoloured: the blue goes underneath, on its own
     // path, and the wire keeps the colour that says what kind of edge it is.
     const wire = root.querySelectorAll<SVGPathElement>('zx-viewer g.link path')[0]
@@ -377,5 +380,62 @@ export const LinkedSelection: StoryObj<Args> = {
       Number(/stroke-width:\s*([\d.]+)px/.exec(path?.getAttribute('style') ?? '')?.[1])
     expect(widthOf(wire)).toBeLessThan(widthOf(gap))
     expect(widthOf(gap)).toBeLessThan(widthOf(casing))
+  },
+}
+
+// Pressing a dot picks out the blobs that *hold* that wire, so the number of
+// blobs it outlines is the number of ends the wire has — two, one per ZX node,
+// with a self-loop the exception because its two ends are the same node.
+export const BoundaryLegsAndSelfLoops: Story = {
+  name: '4. Boundary legs and self-loops',
+  parameters: {
+    docs: {
+      story: {
+        description:
+          'A boundary leg and a self-loop both hang one dot off one spider, and pressing the dot is what separates them: a boundary leg reaches two blobs, the spider and the circle standing for the boundary, while a self-loop reaches one. The spider here carries an input, an output and a loop, so all three cases sit in one drawing.',
+      },
+    },
+  },
+  args: {
+    diagram: {
+      nodes: [
+        { id: 0, type: 'input', ioId: 0 },
+        { id: 1, type: 'spider', color: 'Z', phase: '0' },
+        { id: 2, type: 'output', ioId: 0 },
+      ],
+      edges: [
+        { src: 0, tgt: 1 },
+        { src: 1, tgt: 1 },
+        { src: 1, tgt: 2 },
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    const svg = await waitFor(() => {
+      const el = root.querySelector<SVGSVGElement>('svg')
+      if (!el) throw new Error('hypergraph svg not mounted')
+      return el
+    })
+    const box = svg.getBoundingClientRect()
+    // Press the dot and read back the blobs the press reached. The press is
+    // aimed at the dot's own group, so it selects by membership rather than by
+    // which hulls happen to cover the point.
+    const held = async (wire: string) => {
+      const dot = root.querySelector<SVGGElement>(`g[data-wire="${wire}"]`)
+      if (!dot) throw new Error(`dot ${wire} not mounted`)
+      const [x, y] = translateOf(dot)
+      fireMouse('mousedown', dot, box.left + x, box.top + y)
+      fireMouse('mouseup', window, box.left + x, box.top + y)
+      await waitFor(() => expect(ringedDotsIn(root, 'named')).toEqual([wire]))
+      return selectedBlobsIn(root)
+    }
+
+    // The input leg reaches the input's circle and the spider; the output leg
+    // the spider and the output's circle.
+    expect(await held('w0')).toEqual(['e0', 'e1'])
+    expect(await held('w2')).toEqual(['e1', 'e2'])
+    // The self-loop reaches one, which is the whole of the difference.
+    expect(await held('w1')).toEqual(['e1'])
   },
 }

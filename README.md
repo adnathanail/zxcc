@@ -133,10 +133,9 @@ lookup, so the hypergraph view's dot for a wire always comes out the colour of t
 ## Hypergraph view
 
 Set `view-mode="hypergraph"` (or the `viewMode` property) to draw the diagram's hypergraph dual
-instead of the diagram — the roles of wires and spiders swap. Every ZX edge becomes a node (a
-*wire*), drawn as a dot; every non-boundary ZX node becomes a *hyperedge*, drawn as a blob enclosing
-the dots of the wires incident to it. Boundaries aren't hyperedges, they're just the loose end of a
-wire.
+instead of the diagram — the roles of wires and spiders swap. Every ZX wire becomes a node/dot;
+every ZX spider becomes a *hyperedge*, drawn as a blob enclosing the dots of the wires incident
+to it. An input/output is incident to one wire, so its blob is a circle around that one dot.
 
 ```html
 <zx-diagram id="d" view-mode="hypergraph"></zx-diagram>
@@ -153,7 +152,7 @@ to a view, but the **selection is shared**, since the same thing has a counterpa
 | Select this | …and this comes out selected |
 | --- | --- |
 | a spider or Hadamard in the diagram | the blob standing for it, with every dot it holds ringed |
-| an input or output in the diagram | the dot of the wire it hangs off — a boundary is no hyperedge, so it has no blob |
+| an input or output in the diagram | the circle blob around the dot of the wire it hangs off |
 | a blob in the dual (by clicking the blob) | the spider it stands for |
 | a dot in the dual | the edge it stands for, cased in the selection colour — the wire keeps its own, so an H-edge still reads as one |
 

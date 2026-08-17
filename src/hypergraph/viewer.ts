@@ -160,11 +160,8 @@ export class ZxHypergraphViewerElement extends LitElement {
    * more than was asked, and it buries the dot you pressed in its own answer.
    *
    * A dot is implied when the selection names either of the ZX nodes it runs
-   * between: a selected spider's own legs, which is the same set as the dots of
-   * the blob standing for it, and — the case that needs stating separately — a
-   * selected *boundary's* one leg. An input or output is no hyperedge, so it
-   * has no blob to outline, and the only thing here standing for it is the dot
-   * of the wire it dangles from.
+   * between — a selected node's own legs, which is the same set as the dots of
+   * the blob standing for it.
    */
   #picked(scene: HypergraphScene): { blobs: Map<string, Pick>; dots: Map<string, Pick> } {
     const { nodes, edges } = this.selection
