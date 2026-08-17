@@ -366,9 +366,16 @@ export const LinkedSelection: StoryObj<Args> = {
     expect(casing?.getAttribute('d')).toBe(wire.getAttribute('d'))
     expect(casing?.getAttribute('stroke')).toBe('#00f')
     // …and it stands off the wire: a band of canvas over the middle of the
-    // casing is what leaves blue on either side rather than under.
+    // casing leaves blue either side of it rather than under. Three strokes on
+    // one path, so what shows is the difference between their widths — the gap
+    // has to be wider than the wire and narrower than the casing for any of the
+    // three to be visible at all.
     const gap = root.querySelector<SVGPathElement>('zx-viewer g.casing path.gap')
     expect(gap?.getAttribute('stroke')).toBe('#fcfcfd')
     expect(gap?.getAttribute('d')).toBe(wire.getAttribute('d'))
+    const widthOf = (path: SVGPathElement | null | undefined) =>
+      Number(/stroke-width:\s*([\d.]+)px/.exec(path?.getAttribute('style') ?? '')?.[1])
+    expect(widthOf(wire)).toBeLessThan(widthOf(gap))
+    expect(widthOf(gap)).toBeLessThan(widthOf(casing))
   },
 }
