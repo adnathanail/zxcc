@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
 import { expect, waitFor } from 'storybook/test'
 import type { DiagramData } from '../../src/types'
-import { fourSpiderSquare, strongComplementarity, strongComplementarityOf } from '../diagrams'
+import { fourSpiderSquare, strongComplementarityOf } from '../diagrams'
 import { shadowRootOf } from '../interactionHelpers'
 
 interface Args {
@@ -12,16 +12,18 @@ interface Args {
   colorScheme: 'original' | 'rgb' | 'grayscale'
 }
 
+const renderDiagram = ({ diagram, viewAsHypergraph, showLabels, colorScheme }: Args) =>
+  html`<zx-diagram
+    .diagram=${diagram}
+    ?view-as-hypergraph=${viewAsHypergraph}
+    show-labels=${showLabels ? 'true' : 'false'}
+    color-scheme=${colorScheme}
+    style="min-height: 160px"
+  ></zx-diagram>`
+
 const meta: Meta<Args> = {
   title: 'Hypergraphs/Basic',
-  render: ({ diagram, viewAsHypergraph, showLabels, colorScheme }) =>
-    html`<zx-diagram
-      .diagram=${diagram}
-      ?view-as-hypergraph=${viewAsHypergraph}
-      show-labels=${showLabels ? 'true' : 'false'}
-      color-scheme=${colorScheme}
-      style="min-height: 160px"
-    ></zx-diagram>`,
+  render: renderDiagram,
   argTypes: {
     viewAsHypergraph: { control: 'boolean' },
     showLabels: { control: 'boolean' },
@@ -165,15 +167,15 @@ export const StrongComplementarity: Story = {
       },
     },
   },
-  args: { diagram: strongComplementarity },
+  args: { diagram: strongComplementarityOf(2, 2) },
   play: async ({ canvasElement }) => {
     const root = await shadowRootOf(canvasElement)
     const flagged = () =>
       [...root.querySelectorAll('svg g.overlap circle')].map(c => c.getAttribute('data-wire'))
 
-    // w6 (1—6) and w7 (2—5) are the crossing wires. Each is held by two blobs
+    // w5 (2—5) and w6 (3—4) are the crossing wires. Each is held by two blobs
     // and sits inside the other two; every other dot is where it belongs.
-    await waitFor(() => expect(flagged()).toEqual(['w6', 'w7']))
+    await waitFor(() => expect(flagged()).toEqual(['w5', 'w6']))
 
     // The red is clipped to the blobs strayed into — both of the two that don't
     // hold w6 — so only the part of the dot actually inside them is painted,
@@ -189,12 +191,36 @@ export const StrongComplementarity: Story = {
   },
 }
 
+/** The n-to-m story builds its diagram from the two ranks' sizes rather than
+ *  taking a fixed one, so the view can be pushed at any n and m from the
+ *  controls panel. `diagram` is therefore not an arg of this story. */
+type SizedArgs = Omit<Args, 'diagram'> & { zCount: number; xCount: number }
+
+export const LargeStrongComplementarity: StoryObj<SizedArgs> = {
+  name: '6. Strong complementarity, n to m',
+  parameters: {
+    docs: {
+      story: {
+        description:
+          'The same shape at n-by-m: every one of the n×m crossing wires lands in the one column between the two ranks, and every blob has to reach across it. The worst case the view has to survive — set the two ranks from the controls to push it further.',
+      },
+    },
+  },
+  argTypes: {
+    zCount: { control: { type: 'number', min: 1, max: 12, step: 1 } },
+    xCount: { control: { type: 'number', min: 1, max: 12, step: 1 } },
+  },
+  args: { zCount: 4, xCount: 5 },
+  render: ({ zCount, xCount, ...rest }) =>
+    renderDiagram({ ...rest, diagram: strongComplementarityOf(zCount, xCount) }),
+}
+
 // Labels off hides the names, not the phases: a blob's `Z(π/2)` drops to
 // `π/2`, and a node with no phase to show — a default-π Hadamard — loses its
 // text altogether. This mirrors `<zx-viewer>`, where `show-labels` only ever
 // governed the grey id text and the phase was always painted.
 export const LabelsHidden: Story = {
-  name: '6. Labels hidden',
+  name: '8. Labels hidden',
   args: {
     showLabels: false,
     diagram: {
@@ -228,7 +254,7 @@ export const LabelsHidden: Story = {
 }
 
 export const UnsupportedNodeType: Story = {
-  name: '7. Node type with no blob',
+  name: '9. Node type with no blob',
   parameters: {
     docs: {
       story: {
@@ -252,17 +278,4 @@ export const UnsupportedNodeType: Story = {
       ],
     },
   },
-}
-
-export const LargeStrongComplementarity: Story = {
-  name: '7. Strong complementarity, 4 to 4',
-  parameters: {
-    docs: {
-      story: {
-        description:
-          'The same shape at four-by-four: sixteen crossing wires whose dots all land in the one column between the two ranks, and eight blobs each having to reach across it. The worst case the view has to survive — `strongComplementarityOf(z, x)` in `stories/diagrams.ts` builds it at any size.',
-      },
-    },
-  },
-  args: { diagram: strongComplementarityOf(4, 4) },
 }

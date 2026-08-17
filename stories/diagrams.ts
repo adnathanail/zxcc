@@ -194,34 +194,6 @@ export const paletteShowcase: DiagramData = {
   ],
 }
 
-// The characteristic 2-to-2 strong complementarity diagram: two Z spiders and
-// two X spiders, each Z joined to each X. Pre-positioned, and the crossing
-// edges make it the hardest case for the hypergraph view's hulls.
-export const strongComplementarity: DiagramData = {
-  nodes: [
-    { id: 0, qubit: 0, col: 0, type: 'input', ioId: 0 },
-    { id: 1, qubit: 0, col: 1, type: 'spider', color: 'Z' },
-    { id: 2, qubit: 0, col: 2, type: 'spider', color: 'X' },
-    { id: 3, qubit: 0, col: 3, type: 'output', ioId: 1 },
-    { id: 4, qubit: 1, col: 0, type: 'input', ioId: 2 },
-    { id: 5, qubit: 1, col: 1, type: 'spider', color: 'Z' },
-    { id: 6, qubit: 1, col: 2, type: 'spider', color: 'X' },
-    { id: 7, qubit: 1, col: 3, type: 'output', ioId: 3 },
-  ],
-  edges: [
-    { src: 0, tgt: 1 },
-    { src: 1, tgt: 2 },
-    { src: 2, tgt: 3 },
-
-    { src: 4, tgt: 5 },
-    { src: 5, tgt: 6 },
-    { src: 6, tgt: 7 },
-
-    { src: 1, tgt: 6 },
-    { src: 2, tgt: 5 },
-  ],
-}
-
 // Four Z spiders in a square, each corner also carrying a boundary leg: eight
 // wires, four hyperedges, and every dot shared by two of them.
 export const fourSpiderSquare: DiagramData = {
