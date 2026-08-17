@@ -222,7 +222,7 @@ export const BothViews: Story = {
     docs: {
       story: {
         description:
-          '`view-mode="both"` runs both painters, the diagram above its dual, each scrolling in its own container. Both are drawn from the one `layout()`, so a dot sits on the midpoint of the wire drawn directly above it. The two are independent otherwise — selecting or dragging in one does nothing to the other — and each carries its own attribution badge, since the badge belongs to the picture and travels with whichever SVG is copied.',
+          '`view-mode="both"` runs both painters, the diagram above its dual, each scrolling in its own container. The dual is drawn 1.6× roomier than the diagram it comes from, so in this mode the graph is laid out again at that same scale: the two come out the same width, and a dot sits on the midpoint of the wire drawn directly above it. The two are independent otherwise — selecting or dragging in one does nothing to the other — and each carries its own attribution badge, since the badge belongs to the picture and travels with whichever SVG is copied.',
       },
     },
   },
@@ -233,6 +233,26 @@ export const BothViews: Story = {
     await waitFor(() => expect(root.querySelectorAll('zx-viewer svg').length).toBe(1))
     expect(root.querySelectorAll('zx-hypergraph-viewer svg').length).toBe(1)
     expect(root.querySelectorAll('g.attribution').length).toBe(2)
+
+    // The graph is laid out at the dual's zoomed scale, so the pair is one
+    // width — a diagram with no blob overhanging its box comes out exact.
+    const widthOf = (tag: string) =>
+      Number(root.querySelector<SVGSVGElement>(`${tag} svg`)?.getAttribute('width'))
+    expect(widthOf('zx-viewer')).toBeCloseTo(widthOf('zx-hypergraph-viewer'), 6)
+
+    // One scale means the two line up: wire w0 is the first edge, 0—2, and its
+    // dot sits at the midpoint of those two nodes as the graph above draws
+    // them — the same numbers, not merely the same proportions.
+    const at = (selector: string) => {
+      const g = root.querySelector<SVGGElement>(selector)
+      if (!g) throw new Error(`${selector} not mounted`)
+      return translateOf(g)
+    }
+    const [ax, ay] = at('zx-viewer g[data-node="0"]')
+    const [bx, by] = at('zx-viewer g[data-node="2"]')
+    const [dx, dy] = at('g.dot g[data-wire="w0"]')
+    expect(dx).toBeCloseTo((ax + bx) / 2, 6)
+    expect(dy).toBeCloseTo((ay + by) / 2, 6)
     // Each badge is measured against its own painter's box rather than sharing
     // one measurement: its chip's right edge lands on that SVG's own width.
     for (const tag of ['zx-viewer', 'zx-hypergraph-viewer']) {
