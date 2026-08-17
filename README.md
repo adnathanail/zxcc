@@ -116,10 +116,6 @@ wire.
 <zx-diagram id="d" view-mode="hypergraph"></zx-diagram>
 ```
 
-Each dot sits at the midpoint of the edge it came from, so the two views line up: switching the
-attribute keeps everything in the same place. A blob's outline is the convex hull of its dots pushed
-outwards and rounded off, so it stays readable at any arity — one dot gives a circle, two a capsule.
-
 `view-mode="both"` draws the pair, the diagram above its dual, each in its own scroll container.
 The dual is drawn 1.6× roomier than the diagram it comes from — it has twice the marks at half the
 spacing — so in this mode the diagram is laid out at that same scale, and the two come out the same
@@ -130,11 +126,7 @@ selecting or dragging in one view does not touch the other.
 <zx-diagram id="d" view-mode="both"></zx-diagram>
 ```
 
-Blobs are filled with the same palette entry their spider would be — Z green, X red, H yellow — so
-`color-scheme` and `colors` apply to this view too, and a dot takes its edge's colour. Only spiders
-and Hadamards have a blob shape so far: a diagram containing a W, Z-box or `wire` node is rejected by
-the conversion, which throws with a message naming the node. Inputs and outputs are always fine —
-they're wires, not hyperedges.
+Only Z/X spiders, I/O, and Hadamards are supported in this view, other node types will be rejected.
 
 The conversion is also available standalone:
 
@@ -143,15 +135,6 @@ import { toHypergraph } from '@adnathanail/zxcc'
 
 const hg = toHypergraph(diagram)  // { wires, hyperedges }
 ```
-
-For the diagram in the usage example above, `toHypergraph` gives two wires — `w0` joining node 0 to
-node 1 and carrying input 0, `w1` joining 1 to 2 and carrying output 0 — and the one hyperedge
-`e1  Z(π/2)  {w0, w1}`.
-
-A self-loop appears twice in its spider's wire list, since both of the spider's legs land on it.
-Parallel edges stay distinct wires. An edge's `kind` rides along on the wire, so a `hadamard` edge
-stays a single wire rather than becoming a hyperedge of its own — but an explicit `hadamard` *node*
-does become one.
 
 ## Development
 
