@@ -143,16 +143,13 @@ export const HypergraphBlobSelection: Story = {
     const [x, y] = translateOf(dot)
     fireMouse('mousedown', dot, box.left + x, box.top + y)
     await waitFor(() => expect(selectedBlobsIn(root)).toEqual(['e3', 'e4']))
-    // Pressing a dot is how you ask what shares a hyperedge with a wire: the
-    // rings are on every wire of the two spiders w6 joins — w6 itself, the
-    // other Z leg and the other X leg of each — and on nothing else.
-    expect(ringedDotsIn(root)).toEqual(['w1', 'w2', 'w4', 'w6', 'w7'])
-    // Here the press named the *dot*, so w6 alone is solid and everything the
-    // question dragged in with it — the two blobs, and the four other wires
-    // they hold — is dashed. The answer to "what shares a hyperedge with w6"
-    // stays distinguishable from w6 itself.
+    // The answer stops at the hyperedges. w6 itself is ringed, solid, and the
+    // two blobs holding it are dashed — but the four other wires *those* hold
+    // are a step further out and get nothing: a press on one dot lighting up
+    // five is more than was asked, and it buries the dot pressed in its own
+    // answer.
+    expect(ringedDotsIn(root)).toEqual(['w6'])
     expect(ringedDotsIn(root, 'named')).toEqual(['w6'])
-    expect(ringedDotsIn(root, 'implied')).toEqual(['w1', 'w2', 'w4', 'w7'])
     expect(selectedBlobsIn(root, 'named')).toEqual([])
     expect(selectedBlobsIn(root, 'implied')).toEqual(['e3', 'e4'])
     fireMouse('mouseup', window, box.left + x, box.top + y)
@@ -351,7 +348,9 @@ export const LinkedSelection: StoryObj<Args> = {
     await waitFor(() => expect(selectedLinksIn(root)).toEqual([0]))
     expect(selectedNodesIn(root)).toEqual([])
     expect(selectedBlobsIn(root)).toEqual(['e2'])
-    // …and the dot pressed is the solid one, with the blob it reached dashed.
+    // …and the dot pressed is the only one ringed, solid, with the blob it
+    // reached dashed around it.
+    expect(ringedDotsIn(root)).toEqual(['w0'])
     expect(ringedDotsIn(root, 'named')).toEqual(['w0'])
     expect(selectedBlobsIn(root, 'implied')).toEqual(['e2'])
     // The edge is *cased*, not recoloured: the blue goes underneath, on its own
