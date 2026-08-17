@@ -2,12 +2,14 @@ import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
 import { expect, waitFor } from 'storybook/test'
 import type { DiagramData } from '../../src/index'
-import { strongComplementarityOf } from '../diagrams'
+import { fourSpiderSquare, strongComplementarityOf } from '../diagrams'
 import {
   fireMouse,
   performDrag,
   ringedDotsIn,
   selectedBlobsIn,
+  selectedLinksIn,
+  selectedNodesIn,
   shadowRootOf,
   translateOf,
 } from '../interactionHelpers'
@@ -235,5 +237,97 @@ export const HypergraphDotDrag: Story = {
     const marks = root.querySelectorAll('g.overlap circle[data-wire]').length
     expect(tally?.text).toBe(`${marks} trespassing node${marks === 1 ? '' : 's'}`)
     expect(tally?.at).toEqual(tallyBefore.at)
+  },
+}
+
+/**
+ * With both views up, a selection is one thing seen twice: `<zx-diagram>` holds
+ * it in the diagram's own terms — ZX node ids and edge indices — and each
+ * painter draws whatever that means in its picture. So a press in either view
+ * lands in both, and the pairs it draws are what the dual *is*.
+ *
+ * The four cases, one per press below: a spider is a blob; a boundary is no
+ * hyperedge at all, so all it has over there is the dot of the wire it hangs
+ * off; a blob is a spider; and a dot is an edge.
+ */
+export const LinkedSelection: StoryObj<Args> = {
+  name: '3. Selection across both views',
+  args: { diagram: fourSpiderSquare },
+  render: ({ diagram }) =>
+    html`<zx-diagram .diagram=${diagram} view-mode="both" style="min-height: 160px"></zx-diagram>`,
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    const svg = await waitFor(() => {
+      const el = root.querySelector<SVGSVGElement>('zx-hypergraph-viewer svg')
+      if (!el) throw new Error('hypergraph svg not mounted')
+      return el
+    })
+    const nodeFor = (id: number) => {
+      const g = root.querySelector<SVGGElement>(`zx-viewer g[data-node="${id}"]`)
+      if (!g) throw new Error(`node ${id} not mounted`)
+      return g
+    }
+    const dotFor = (wire: string) => {
+      const g = root.querySelector<SVGGElement>(`zx-hypergraph-viewer g[data-wire="${wire}"]`)
+      if (!g) throw new Error(`dot ${wire} not mounted`)
+      return g
+    }
+    // A press is enough to select; the release ends the drag the viewers start
+    // on the way in, so it can't run on into the next case.
+    const press = (target: Element, x: number, y: number) => {
+      fireMouse('mousedown', target, x, y)
+      fireMouse('mouseup', window, x, y)
+    }
+    const pressNode = (id: number) => {
+      const [x, y] = translateOf(nodeFor(id))
+      press(nodeFor(id), x, y)
+    }
+
+    // Spider 2 in the diagram picks out the blob standing for it, and rings
+    // every dot that blob holds — the wires incident to that spider, which is
+    // what the hyperedge *is*. Its own boundary leg w0 and its two wires into
+    // the square.
+    pressNode(2)
+    await waitFor(() => expect(selectedBlobsIn(root)).toEqual(['e2']))
+    expect(ringedDotsIn(root)).toEqual(['w0', 'w2', 'w3'])
+    expect(selectedNodesIn(root)).toEqual([2])
+
+    // Input 0 is a boundary, so it is no hyperedge and has no blob: nothing is
+    // outlined. What it does have over there is the dot for the wire it hangs
+    // off, and that alone is ringed.
+    pressNode(0)
+    await waitFor(() => expect(ringedDotsIn(root)).toEqual(['w0']))
+    expect(selectedBlobsIn(root)).toEqual([])
+    expect(selectedNodesIn(root)).toEqual([0])
+
+    // Back the other way. A press on the hypergraph canvas selects by geometry
+    // — every blob the point falls inside — and each of those names its spider,
+    // so the diagram picks out exactly the nodes those blobs stand for. The
+    // point is the midpoint of two of e2's dots, which is inside its hull and
+    // clear of both.
+    const box = svg.getBoundingClientRect()
+    const [ax, ay] = translateOf(dotFor('w0'))
+    const [bx, by] = translateOf(dotFor('w2'))
+    press(svg, box.left + (ax + bx) / 2, box.top + (ay + by) / 2)
+    await waitFor(() => expect(selectedBlobsIn(root)).toContain('e2'))
+    // Whatever the point hit, the diagram's selection is those blobs' nodes —
+    // asserted against what came out rather than a fixed list, since which
+    // hulls overlap a spot is a fact about the drawing.
+    expect(selectedNodesIn(root)).toEqual(
+      selectedBlobsIn(root)
+        .map(id => Number(id.slice(1)))
+        .sort((a, b) => a - b),
+    )
+
+    // A press on a *dot* names the edge instead: the dot is that edge, so what
+    // lights up in the diagram is the wire, not the spiders at its ends. w0 is
+    // the first edge, 0—2. The blobs holding it are still outlined here — that
+    // is the question this view answers about a wire — but they are derived
+    // from the edge rather than named by it, which is why no spider is picked
+    // out over there.
+    press(dotFor('w0'), box.left + ax, box.top + ay)
+    await waitFor(() => expect(selectedLinksIn(root)).toEqual([0]))
+    expect(selectedNodesIn(root)).toEqual([])
+    expect(selectedBlobsIn(root)).toEqual(['e2'])
   },
 }

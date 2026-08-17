@@ -7,9 +7,10 @@
 //
 // Blob outlines are derived in `render()` from the dot positions rather than
 // stored, so a drag only has to move a dot for every blob holding it to
-// reshape. There are two pieces of interaction state — the selected blobs and
-// the dragged dot positions — and everything else on screen, the ringed dots
-// included, is derived from them.
+// reshape. There is one piece of interaction state of its own — the dragged dot
+// positions — plus the selection, which belongs to `<zx-diagram>` so that this
+// view and the diagram view can share one. Everything else on screen, the
+// outlined blobs and the ringed dots included, is derived from those two.
 
 import { html, LitElement, nothing, type PropertyValues, type SVGTemplateResult, svg } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
@@ -22,6 +23,13 @@ import {
   SELECTED_STROKE,
 } from '../colors'
 import type { Point } from '../curves'
+import {
+  EMPTY_SELECTION,
+  edgeSelection,
+  nodeSelection,
+  type Selection,
+  selectionEvent,
+} from '../selection'
 import { blobCentre, blobContains, blobLabelAnchor, blobOutline } from './geometry'
 import type { HypergraphBlob, HypergraphScene } from './types'
 
@@ -71,12 +79,17 @@ export class ZxHypergraphViewerElement extends LitElement {
   @property({ attribute: false }) showLabels = true
   /** Extra SVG painted on top, in the scene's coordinate space. */
   @property({ attribute: false }) overlay: SVGTemplateResult | null = null
+  /** What is picked out, in the diagram's own terms — see `src/selection.ts`.
+   *  The viewer is *controlled*: a press announces the selection it makes and
+   *  draws whatever the host hands back, which is what lets the diagram view
+   *  and this one track each other. Which blobs are outlined and which dots are
+   *  ringed are both derived from it on every render. */
+  @property({ attribute: false }) selection: Selection = EMPTY_SELECTION
 
-  /** Ids of the blobs under the last click, and where the dots have been
-   *  dragged to. Plain fields paired with an explicit `requestUpdate()`, as in
-   *  `<zx-viewer>`: they are mutated in place during a gesture rather than
-   *  reallocated on every mousemove just to trip Lit's identity check. */
-  #selected = new Set<string>()
+  /** Where the dots have been dragged to. A plain field paired with an explicit
+   *  `requestUpdate()`, as in `<zx-viewer>`: it is mutated in place during a
+   *  gesture rather than reallocated on every mousemove just to trip Lit's
+   *  identity check. */
   #positions = new Map<string, Point>()
   /** Tears down the in-flight drag, if any. */
   #endGesture: (() => void) | null = null
@@ -100,8 +113,42 @@ export class ZxHypergraphViewerElement extends LitElement {
 
   #adoptScene() {
     this.#endGesture?.()
-    this.#selected = new Set()
     this.#positions = new Map(this.scene?.dots.map(d => [d.id, { x: d.x, y: d.y }]) ?? [])
+  }
+
+  /**
+   * What the current selection picks out here: the blobs to outline, and the
+   * dots to ring.
+   *
+   * Both are derived rather than stored, so the same selection reads the same
+   * whether it was made in this view or in the diagram beside it.
+   *
+   * A blob is outlined when the selection names its node — a spider picked out
+   * in the diagram view is the blob standing for it — or when it holds a
+   * selected wire, which is what a press on a dot makes: the question that
+   * press asks is which hyperedges the wire is part of.
+   *
+   * A dot is ringed when a blob holding it is outlined (so pressing a dot
+   * picks out everything sharing a hyperedge with it), when the selection names
+   * its edge, or when the selection names either of the ZX nodes it runs
+   * between. That last case is what a *boundary* selects: an input or an output
+   * is no hyperedge, so it has no blob to outline, and the only thing in this
+   * view that stands for it is the dot of the wire it dangles from.
+   */
+  #picked(scene: HypergraphScene): { blobs: Set<string>; dots: Set<string> } {
+    const { nodes, edges } = this.selection
+    const selectedWires = new Set(scene.dots.filter(d => edges.has(d.edge)).map(d => d.id))
+    const blobs = new Set(
+      scene.blobs
+        .filter(b => nodes.has(b.nodeId) || b.dots.some(id => selectedWires.has(id)))
+        .map(b => b.id),
+    )
+    const dots = new Set([
+      ...scene.blobs.filter(b => blobs.has(b.id)).flatMap(b => b.dots),
+      ...selectedWires,
+      ...scene.dots.filter(d => nodes.has(d.src) || nodes.has(d.tgt)).map(d => d.id),
+    ])
+    return { blobs, dots }
   }
 
   /** Run `onMove` for the rest of this gesture. Window-level listeners keep the
@@ -131,9 +178,14 @@ export class ZxHypergraphViewerElement extends LitElement {
    * crowded; highlighting that blob would be answering with an accident of the
    * layout.
    *
-   * Either way what is selected is a set of *blobs*; the dots those blobs hold
-   * are ringed as part of drawing them (see `render`), so pressing a dot picks
-   * out the wires that share a hyperedge with it.
+   * What each press *names*, though, differs, and that is what the diagram
+   * beside it reads. A press on canvas names the ZX nodes the blobs it hit
+   * stand for, so those spiders come out selected in the diagram view. A press
+   * on a dot names the ZX edge — the dot is that edge — so the wire is what
+   * gets picked out over there, not the spiders at its ends. The blobs holding
+   * it are still outlined here, because that is the question this view answers
+   * about a wire; they are derived from the selected edge rather than named by
+   * it (see `#picked`).
    *
    * Dragging is what makes the view explorable: the blobs are derived from the
    * dot positions on every render, so pulling a dot about reshapes every blob
@@ -148,7 +200,8 @@ export class ZxHypergraphViewerElement extends LitElement {
 
     const dragged = (e.target as Element).closest('[data-wire]')?.getAttribute('data-wire')
     if (dragged) {
-      this.#select(scene.blobs.filter(blob => blob.dots.includes(dragged)))
+      const dot = scene.dots.find(d => d.id === dragged)
+      if (dot) this.dispatchEvent(selectionEvent(edgeSelection([dot.edge])))
       this.#dragDot(dragged, e)
       return
     }
@@ -158,12 +211,8 @@ export class ZxHypergraphViewerElement extends LitElement {
     // Every blob the point is inside, not just the topmost one — the blobs
     // overlap by construction, and seeing which ones share a spot is the point.
     // On bare canvas that set is empty, which is how a selection is dropped.
-    this.#select(scene.blobs.filter(b => blobContains(b, this.#positions, scene.blobRadius, point)))
-  }
-
-  #select(blobs: HypergraphBlob[]) {
-    this.#selected = new Set(blobs.map(blob => blob.id))
-    this.requestUpdate()
+    const hit = scene.blobs.filter(b => blobContains(b, this.#positions, scene.blobRadius, point))
+    this.dispatchEvent(selectionEvent(nodeSelection(hit.map(b => b.nodeId))))
   }
 
   /** Drag one dot. The dot follows the pointer from where it was pressed rather
@@ -225,10 +274,14 @@ export class ZxHypergraphViewerElement extends LitElement {
       x1=${anchor.x} y1=${anchor.y + LEADER_GAP} x2=${end.x} y2=${end.y} style=${LEADER_STYLE} />`
   }
 
-  #renderBlob(scene: HypergraphScene, blob: HypergraphBlob, pos: Map<string, Point>) {
+  #renderBlob(
+    scene: HypergraphScene,
+    blob: HypergraphBlob,
+    pos: Map<string, Point>,
+    selected: boolean,
+  ) {
     const caption = this.#blobCaption(blob)
     const anchor = this.#captionAnchor(scene, blob)
-    const selected = this.#selected.has(blob.id)
     return svg`
       <g data-hyperedge=${blob.id}>
         <path d=${blobOutline(blob, pos, scene.blobRadius)}
@@ -306,19 +359,18 @@ export class ZxHypergraphViewerElement extends LitElement {
     const scene = this.scene
     if (!scene) return nothing
     const pos = this.#positions
+    // An outline says which shapes are picked out, but a blob's hull is a
+    // drawing decision — it is drawn round the dots it holds and will happily
+    // enclose ones it doesn't — so the outline alone doesn't say which wires
+    // are *in* them. Ringing the dots states that membership directly, and is
+    // what makes the hyperedge's actual extent legible where the hulls overlap.
+    const picked = this.#picked(scene)
     // Selected blobs paint last so their outline isn't buried under a
     // neighbour's fill — with this much overlap that is the difference
     // between seeing the highlighted shape and guessing at it.
     const blobs = [...scene.blobs].sort(
-      (a, b) => Number(this.#selected.has(a.id)) - Number(this.#selected.has(b.id)),
+      (a, b) => Number(picked.blobs.has(a.id)) - Number(picked.blobs.has(b.id)),
     )
-    // Every wire the selected blobs hold, ringed along with them. An outline
-    // says which shapes are picked out, but a blob's hull is a drawing decision
-    // — it is drawn round the dots it holds and will happily enclose ones it
-    // doesn't — so the outline alone doesn't say which wires are *in* them.
-    // Ringing the dots states that membership directly, and is what makes the
-    // hyperedge's actual extent legible where the hulls overlap.
-    const ringed = new Set(scene.blobs.filter(b => this.#selected.has(b.id)).flatMap(b => b.dots))
     const trespasses = this.#trespasses(scene, pos)
 
     return html`
@@ -337,14 +389,16 @@ export class ZxHypergraphViewerElement extends LitElement {
           )}
         </defs>
 
-        <g class="blob">${blobs.map(blob => this.#renderBlob(scene, blob, pos))}</g>
+        <g class="blob">
+          ${blobs.map(blob => this.#renderBlob(scene, blob, pos, picked.blobs.has(blob.id)))}
+        </g>
 
         <!-- Leaders are a layer of their own, above every blob: inside a blob's
              group each one would be painted over by whichever blobs come after
              it, and a half-covered line joining a caption to a shape is worse
              than no line. -->
         <g class="leader">
-          ${blobs.filter(b => this.#selected.has(b.id)).map(b => this.#renderLeader(scene, b))}
+          ${blobs.filter(b => picked.blobs.has(b.id)).map(b => this.#renderLeader(scene, b))}
         </g>
 
         <g class="dot">
@@ -355,7 +409,7 @@ export class ZxHypergraphViewerElement extends LitElement {
               })">
                 <circle r=${scene.dotSize} fill=${edgeColor(dot.kind, this.colors)} />
                 ${
-                  ringed.has(dot.id)
+                  picked.dots.has(dot.id)
                     ? svg`<circle class="selected" r=${scene.dotSize + DOT_HALO}
                         style=${DOT_SELECTED_STYLE} />`
                     : nothing

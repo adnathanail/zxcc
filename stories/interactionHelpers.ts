@@ -73,6 +73,30 @@ export function selectedBlobsIn(root: ShadowRoot): string[] {
     .map(g => g.getAttribute('data-hyperedge') ?? '')
 }
 
+/** Ids of the nodes drawn as selected in the diagram view, in document order.
+ *  `<zx-viewer>` marks one with the same blue stroke the hypergraph view uses,
+ *  set in the shape's `style`. Scoped to the painter, since in `both` mode the
+ *  two views are in one tree. */
+export function selectedNodesIn(root: ShadowRoot): number[] {
+  return [...root.querySelectorAll<SVGGElement>('zx-viewer g.node g[data-node]')]
+    .filter(g =>
+      [...g.querySelectorAll('circle, rect, path')].some(shape =>
+        (shape.getAttribute('style') ?? '').includes('#00f'),
+      ),
+    )
+    .map(g => Number(g.getAttribute('data-node')))
+}
+
+/** Indices of the edges drawn as selected in the diagram view. An edge has no
+ *  selected *style* — it is repainted in the selection blue outright — so the
+ *  stroke is the marker. The index is the edge's index in `diagram.edges`,
+ *  which is the order `g.link` paints them in. */
+export function selectedLinksIn(root: ShadowRoot): number[] {
+  return [...root.querySelectorAll<SVGPathElement>('zx-viewer g.link path')]
+    .map((path, i) => (path.getAttribute('stroke') === '#00f' ? i : -1))
+    .filter(i => i >= 0)
+}
+
 /** Ids of the wires whose dots are ringed as belonging to a selected blob, in
  *  document order. */
 export function ringedDotsIn(root: ShadowRoot): string[] {

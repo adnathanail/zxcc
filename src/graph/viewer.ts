@@ -5,7 +5,9 @@
 // state: dragged positions, H-box line parameters, the selection, and the
 // live brush rect. Nothing else is stored — H-box positions, box bounds and
 // edge paths are all recomputed from those in `render()`, which is why
-// there is no imperative "sync the DOM to the model" pass.
+// there is no imperative "sync the DOM to the model" pass. Three of the four
+// are the viewer's own; the selection is the host's, so that the two views can
+// share one (see `src/selection.ts`).
 //
 // Internal to the package: it renders into the light DOM so it shares
 // `<zx-diagram>`'s stylesheet and leaves the SVG reachable from the host's
@@ -23,6 +25,7 @@ import {
   webColor,
 } from '../colors'
 import type { Point } from '../curves'
+import { EMPTY_SELECTION, nodeSelection, type Selection, selectionEvent } from '../selection'
 import { Topology } from '../topology'
 import type { BoxKind, NodeKind, Scene, SceneNode } from '../types'
 import {
@@ -36,6 +39,12 @@ import {
 
 const SELECTED_STYLE = `stroke-width: 2px; stroke: ${SELECTED_STROKE}`
 const NODE_STYLE = 'stroke-width: 1.5px'
+const LINK_STYLE = 'stroke-width: 1.5px'
+/** A selected edge is repainted in the selection blue and thickened. Taking
+ *  the colour over means an H-edge stops reading as an H-edge while it is
+ *  picked out — a marker that keeps the edge's own colour is the better
+ *  answer, and is what this should become. */
+const SELECTED_LINK_STYLE = 'stroke-width: 2.5px'
 
 const BOX_STYLE: Record<BoxKind, { fill: string; stroke: string; dash: string }> = {
   stack: { fill: 'rgba(255,165,80,0.10)', stroke: 'rgba(220,130,30,0.65)', dash: '4 3' },
@@ -60,12 +69,17 @@ export class ZxViewerElement extends LitElement {
   /** Extra SVG painted on top of the diagram, in its coordinate space. The
    *  host uses it for the attribution badge; the viewer just renders it. */
   @property({ attribute: false }) overlay: SVGTemplateResult | null = null
+  /** What is picked out. The viewer is *controlled*: a gesture announces the
+   *  selection it makes as a `zx-selection` event and draws whatever the host
+   *  hands back, so the same selection can drive the other view too.
+   *  Selected edges are drawn but never selected here — they come from a press
+   *  on a dot in the hypergraph, where an edge is a thing you can point at. */
+  @property({ attribute: false }) selection: Selection = EMPTY_SELECTION
 
   /** Positions the user has dragged nodes to, seeded from the scene. H-boxes
    *  under auto-placement are overridden by `#lineParams` in `resolve()`. */
   #base = new Map<number, Point>()
   #lineParams = new Map<number, number>()
-  #selected = new Set<number>()
   #brush: Rect | null = null
   #topology: Topology | null = null
   /** Tears down the in-flight drag or brush gesture, if any. */
@@ -88,15 +102,22 @@ export class ZxViewerElement extends LitElement {
     super.disconnectedCallback()
   }
 
-  /** Reset all interaction state to the freshly laid-out scene. */
+  /** Reset all interaction state to the freshly laid-out scene. The selection
+   *  isn't reset here — it belongs to the host, which clears it when it lays
+   *  a new scene out. */
   #adoptScene() {
     this.#endGesture?.()
     const scene = this.scene
     this.#topology = scene ? new Topology(scene) : null
     this.#base = new Map(scene?.nodes.map(n => [n.id, { x: n.x, y: n.y }]) ?? [])
     this.#lineParams = this.#topology?.initialLineParams() ?? new Map()
-    this.#selected = new Set()
     this.#brush = null
+  }
+
+  /** Announce a selection of nodes. What comes back through `selection` is
+   *  what gets drawn — here and in the other view. */
+  #select(nodes: Iterable<number>) {
+    this.dispatchEvent(selectionEvent(nodeSelection(nodes)))
   }
 
   /** Run `onMove` for the rest of this gesture. Window-level listeners keep
@@ -124,17 +145,23 @@ export class ZxViewerElement extends LitElement {
     if (!group) return
     const id = Number(group.getAttribute('data-node'))
 
+    const selected = this.selection.nodes
+    let next = selected
     if (isAdditive(e)) {
-      if (this.#selected.has(id)) this.#selected.delete(id)
-      else this.#selected.add(id)
+      const toggled = new Set(selected)
+      if (toggled.has(id)) toggled.delete(id)
+      else toggled.add(id)
+      next = toggled
       e.stopImmediatePropagation()
-    } else if (!this.#selected.has(id)) {
-      this.#selected = new Set([id])
+    } else if (!selected.has(id)) {
+      next = new Set([id])
     }
-    this.requestUpdate()
+    if (next !== selected) this.#select(next)
 
     // The drag starts even on an additive click, so shift-clicking a node and
-    // moving in the same gesture drags the selection it just extended.
+    // moving in the same gesture drags the selection it just extended. It
+    // moves the set this press *makes* rather than re-reading `selection`,
+    // which only comes back from the host on the next update.
     let lastX = e.clientX
     let lastY = e.clientY
     this.#track(move => {
@@ -142,17 +169,17 @@ export class ZxViewerElement extends LitElement {
       const dy = move.clientY - lastY
       lastX = move.clientX
       lastY = move.clientY
-      this.#dragSelection(dx, dy)
+      this.#dragSelection(next, dx, dy)
     })
   }
 
-  #dragSelection(dx: number, dy: number) {
+  #dragSelection(nodes: ReadonlySet<number>, dx: number, dy: number) {
     const scene = this.scene
     const topology = this.#topology
     if (!scene || !topology) return
     const pos = this.#positions()
 
-    for (const id of this.#selected) {
+    for (const id of nodes) {
       // An auto-placed H-box slides along its chain rather than moving
       // freely; one without a chain just follows its neighbours.
       if (scene.autoHbox && topology.kindOf(id) === 'hadamard') {
@@ -183,9 +210,8 @@ export class ZxViewerElement extends LitElement {
     const startY = e.clientY - origin.top
     // Nodes selected before the brush started survive it, but a node covered
     // by the brush toggles — so re-brushing an already-selected node drops it.
-    const kept = isAdditive(e) ? new Set(this.#selected) : new Set<number>()
-    this.#selected = new Set(kept)
-    this.requestUpdate()
+    const kept = isAdditive(e) ? new Set(this.selection.nodes) : new Set<number>()
+    this.#select(kept)
 
     this.#track(
       move => {
@@ -211,7 +237,9 @@ export class ZxViewerElement extends LitElement {
             p.y < rect.y + rect.height
           if (kept.has(n.id) !== inside) next.add(n.id)
         }
-        this.#selected = next
+        this.#select(next)
+        // The brush rect is the viewer's own, so it still has to ask for the
+        // render that draws it; the selection arrives on the host's cycle.
         this.requestUpdate()
       },
       () => {
@@ -254,7 +282,7 @@ export class ZxViewerElement extends LitElement {
   #renderNode(node: SceneNode, pos: Map<number, Point>, size: number) {
     const p = pos.get(node.id)
     if (!p) return nothing
-    const style = this.#selected.has(node.id) ? SELECTED_STYLE : NODE_STYLE
+    const style = this.selection.nodes.has(node.id) ? SELECTED_STYLE : NODE_STYLE
 
     return svg`
       <g data-node=${node.id} transform="translate(${p.x},${p.y})">
@@ -330,11 +358,15 @@ export class ZxViewerElement extends LitElement {
         </g>
 
         <g class="link">
-          ${scene.links.map(
-            link => svg`<path
-              d=${linkPath(link, pos)} stroke=${edgeColor(link.kind, this.colors)}
-              fill="transparent" style="stroke-width: 1.5px" />`,
-          )}
+          ${scene.links.map((link, i) => {
+            // `scene.links` is built from `diagram.edges` in order, so the
+            // index here is the edge index a selection names.
+            const selected = this.selection.edges.has(i)
+            return svg`<path
+              d=${linkPath(link, pos)}
+              stroke=${selected ? SELECTED_STROKE : edgeColor(link.kind, this.colors)}
+              fill="transparent" style=${selected ? SELECTED_LINK_STYLE : LINK_STYLE} />`
+          })}
         </g>
 
         <g class="brush" @mousedown=${this.#onBrushDown}>
