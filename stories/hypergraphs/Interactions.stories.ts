@@ -55,10 +55,13 @@ export const HypergraphBlobSelection: Story = {
     // Click points are read off the dots themselves rather than hard-coded,
     // so the assertions survive a change of scale or zoom.
     const box = svg.getBoundingClientRect()
-    const clickDot = (wire: string) => {
+    const dotFor = (wire: string) => {
       const dot = root.querySelector<SVGGElement>(`g[data-wire="${wire}"]`)
       if (!dot) throw new Error(`dot ${wire} not mounted`)
-      const [x, y] = translateOf(dot)
+      return translateOf(dot)
+    }
+    const clickDot = (wire: string) => {
+      const [x, y] = dotFor(wire)
       fireMouse('mousedown', svg, box.left + x, box.top + y)
     }
 
@@ -87,12 +90,30 @@ export const HypergraphBlobSelection: Story = {
     // …and ends below where it starts, on the blob under the caption.
     expect(Number(leader?.getAttribute('y2'))).toBeGreaterThan(Number(leader?.getAttribute('y1')))
 
-    // Every spider has a leg on one of the two crossing wires, and both of
-    // those dots sit dead centre — so a click there is inside all four blobs.
+    // The crossing wires 2—5 and 3—4 have the same midpoint, and the layout
+    // slides each along its own wire until they read as two marks. Distinct
+    // isn't enough to assert: two dots a pixel apart are still one blot, so the
+    // check is that they clear a whole dot diameter, which is the property the
+    // spreading is for.
+    const [ax, ay] = dotFor('w5')
+    const [bx, by] = dotFor('w6')
+    const radius = Number(root.querySelector('g[data-wire="w6"] circle')?.getAttribute('r') ?? 0)
+    expect(radius).toBeGreaterThan(0)
+    expect(Math.hypot(ax - bx, ay - by)).toBeGreaterThan(2 * radius)
+    // They part sideways, across the gap between the two ranks, rather than
+    // down the column they share: sliding a dot along its own wire is what
+    // makes the spread two-dimensional, and the column is the one direction
+    // that is already full of other dots.
+    expect(Math.abs(ax - bx)).toBeGreaterThan(Math.abs(ay - by))
+
+    // w6 is a leg of both spiders it joins, and once slid it lies inside the
+    // hulls of the other two as well — the blobs overlap in the middle of this
+    // diagram whatever the dots do, which is a separate problem from whether
+    // two dots are drawn on one spot.
     clickDot('w6')
     await waitFor(() => expect(selectedBlobsIn(root)).toEqual(['e2', 'e3', 'e4', 'e5']))
     // One leader each: with the four piled on top of each other, that is what
-    // says which of the four captions belongs to which.
+    // says which of the captions belongs to which.
     expect(root.querySelectorAll('line.leader').length).toBe(4)
 
     // A click on bare canvas drops the selection, and the leaders and rings
@@ -105,10 +126,9 @@ export const HypergraphBlobSelection: Story = {
     // A press that lands on a *dot* selects by membership rather than by
     // geometry: the blobs that hold that wire, which for w6 (the 3—4 crossing
     // wire) is its two endpoints. Clicking the same spot as bare canvas picked
-    // out all four above, because the middle of this diagram falls inside every
-    // outline — but e2 and e5 do not hold w6, and where their hulls happen to
-    // fall is an accident of the layout rather than something about the
-    // hypergraph.
+    // out all four above, because w6 lies inside e2's and e5's hulls too — but
+    // neither holds w6, and where their hulls happen to fall is an accident of the
+    // layout rather than something about the hypergraph.
     const dot = root.querySelector<SVGGElement>('g[data-wire="w6"]')
     if (!dot) throw new Error('dot w6 not mounted')
     const [x, y] = translateOf(dot)
@@ -158,9 +178,18 @@ export const HypergraphDotDrag: Story = {
     const tallyBefore = tallyAt()
     if (!tallyBefore) throw new Error('no tally before the drag')
 
-    performDrag(await dotFor('w6'), 30, -20)
+    performDrag(await dotFor('w6'), -45, -10)
 
-    await waitFor(async () => expect(translateOf(await dotFor('w6'))).toEqual([x + 30, y - 20]))
+    // Compared to a tolerance rather than exactly: a slid dot no longer lands
+    // on a whole pixel, and the viewer adds the pointer's travel as
+    // `origin + move - start` where this adds `origin + delta`. Those differ in
+    // the last bit of a double, which says nothing about whether the drag
+    // worked.
+    await waitFor(async () => {
+      const [dx, dy] = translateOf(await dotFor('w6'))
+      expect(dx).toBeCloseTo(x - 45, 6)
+      expect(dy).toBeCloseTo(y - 10, 6)
+    })
     // e3 is the blob for node 3, one of the two spiders w6 joins.
     expect(outlineOf('e3')).not.toEqual(before)
     // The press picked out the blobs holding w6 on the way in, so the two being
@@ -168,16 +197,15 @@ export const HypergraphDotDrag: Story = {
     // selection to happen, and never selects the blobs w6 merely sits inside.
     expect(selectedBlobsIn(root)).toEqual(['e3', 'e4'])
 
-    // Dragging w6 out of the middle drags e3 across w5 — the other crossing
-    // wire, which e3 does not hold — and swallows it whole. The red mark is
-    // what says so: it is clipped to the outline of the one blob strayed into,
-    // so what goes red is exactly the part of the dot that is somewhere it
-    // shouldn't be. Asserted by sampling w5's rim against e3's rendered outline
-    // — the same `d` the mark is clipped to, so this is the shape on screen
-    // rather than a second calculation of it.
+    // Dragging w6 reshapes the two blobs holding it, and both end up swallowing
+    // part of w5 — the other crossing wire, which neither of them holds. That is
+    // a *partial* trespass, which is what the red mark is for: it is clipped to
+    // the outlines of the blobs strayed into, both of them at once, so what goes
+    // red is exactly the part of the dot that is somewhere it shouldn't be, and
+    // a dot half inside comes out half red.
     const mark = root.querySelector<SVGCircleElement>('g.overlap circle[data-wire="w5"]')
     if (!mark) throw new Error('w5 is not marked as overlapping anything')
-    expect(clipCount()).toBe(1)
+    expect(clipCount()).toBe(2)
 
     const cx = Number(mark.getAttribute('cx'))
     const cy = Number(mark.getAttribute('cy'))
@@ -191,7 +219,13 @@ export const HypergraphDotDrag: Story = {
       if (!path) throw new Error(`blob ${blob} not mounted`)
       return rim.filter(p => path.isPointInFill(p)).length
     }
-    expect(insideOf('e3')).toBe(rim.length)
+    // Sampled against the blobs' rendered outlines — the same `d` the mark is
+    // clipped to, so this is the shape on screen rather than a second
+    // calculation of it — and found partly in and partly out of each.
+    for (const blob of ['e3', 'e4']) {
+      expect(insideOf(blob)).toBeGreaterThan(0)
+      expect(insideOf(blob)).toBeLessThan(rim.length)
+    }
 
     // The count is derived from the same set the red marks are, so it follows a
     // drag. Its position doesn't: that comes from where the layout put the dots
