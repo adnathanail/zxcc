@@ -196,10 +196,12 @@ export class ZxDiagramElement extends LitElement {
    * return to their laid-out positions and the selection is cleared. That is
    * why it isn't run on every render — replacing `diagram` is the cheaper and
    * more predictable way to change the picture.
+   *
+   * A repaint doesn't have to be asked for: everything `relayout()` writes is
+   * `@state`, so producing a scene requests the update itself.
    */
   refresh() {
     this.relayout()
-    this.requestUpdate()
   }
 
   private relayout() {

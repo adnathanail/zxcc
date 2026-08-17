@@ -5,7 +5,7 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
 import { expect, waitFor } from 'storybook/test'
-import { type DiagramData, VIEW_MODES } from '../../src/index'
+import { type DiagramData, VIEW_MODES, type ZxDiagramElement } from '../../src/index'
 import { fourSpiderSquare } from '../diagrams'
 import { shadowRootOf } from '../interactionHelpers'
 
@@ -16,7 +16,7 @@ const meta: Meta = {
     docs: {
       description: {
         component:
-          'Assertions rather than pictures. Nothing here is snapshotted: the error UI is the same grey box whatever caused it, and what is being tested is the message.',
+          'Assertions rather than pictures — a message, or a repaint, rather than a drawing worth looking at. Nothing here is snapshotted.',
       },
     },
   },
@@ -101,5 +101,61 @@ export const ErrorStates: Story = {
     expect(await messageOf('bad-mode')).toBe(
       `Unknown view-mode 'both'. Expected one of: ${VIEW_MODES.join(', ')}.`,
     )
+  },
+}
+
+/** `refresh()` is the escape hatch for a `diagram` mutated in place: the
+ *  property still points at the same object, so there is nothing for Lit to
+ *  notice and the repaint has to be asked for. This pins both halves — that
+ *  the mutation alone paints nothing, and that `refresh()` paints it.
+ */
+export const InPlaceRefresh: Story = {
+  name: 'refresh() after mutating a diagram in place',
+  parameters: {
+    docs: {
+      story: {
+        description:
+          'A wire is grown into two either side of a new spider by pushing onto the arrays of the diagram already assigned, then `refresh()` is called. The picture is a three-node chain until that call and a four-node chain after it.',
+      },
+    },
+  },
+  render: () => html`
+    <zx-diagram
+      .diagram=${
+        {
+          nodes: [
+            { id: 0, type: 'input', ioId: 0 },
+            { id: 1, type: 'spider', color: 'Z', phase: '0' },
+            { id: 2, type: 'output', ioId: 0 },
+          ],
+          edges: [
+            { src: 0, tgt: 1 },
+            { src: 1, tgt: 2 },
+          ],
+        } as DiagramData
+      }
+    ></zx-diagram>
+  `,
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    const el = canvasElement.querySelector<ZxDiagramElement>('zx-diagram')
+    const diagram = el?.diagram
+    if (!el || !diagram) throw new Error('zx-diagram is not holding a diagram')
+
+    const nodeCount = () => root.querySelectorAll('svg g.node > g[data-node]').length
+    await waitFor(() => expect(nodeCount()).toBe(3))
+
+    // Splice an X spider into the wire out of the Z one. Every write here is to
+    // the object the property already holds, so `diagram` never changes
+    // identity and Lit has nothing to react to.
+    diagram.nodes.push({ id: 3, type: 'spider', color: 'X', phase: '0' })
+    diagram.edges[1].tgt = 3
+    diagram.edges.push({ src: 3, tgt: 2 })
+    await el.updateComplete
+    expect(nodeCount()).toBe(3)
+
+    el.refresh()
+    await el.updateComplete
+    expect(nodeCount()).toBe(4)
   },
 }
