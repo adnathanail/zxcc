@@ -20,7 +20,7 @@ const renderDiagram = ({ diagram, viewMode, showLabels, colorScheme, edgeColors 
     .diagram=${diagram}
     .edgeColors=${edgeColors ?? null}
     view-mode=${viewMode}
-    show-labels=${showLabels ? 'true' : 'false'}
+    ?show-labels=${showLabels}
     color-scheme=${colorScheme}
     style="min-height: 160px"
   ></zx-diagram>`
@@ -36,7 +36,7 @@ const meta: Meta<Args> = {
     showLabels: { control: 'boolean' },
     colorScheme: { control: 'select', options: ['original', 'rgb', 'grayscale'] },
   },
-  args: { viewMode: 'hypergraph', showLabels: true, colorScheme: 'original' },
+  args: { viewMode: 'hypergraph', showLabels: false, colorScheme: 'original' },
   parameters: {
     docs: {
       description: {
@@ -82,8 +82,6 @@ export const TwoSpiders: Story = {
         { src: 2, tgt: 3 },
       ],
     },
-
-    showLabels: true,
   },
 }
 
@@ -118,16 +116,11 @@ export const HadamardAndParallelEdges: Story = {
       ],
     },
   },
-  // A blob's caption is `name(phase)`, and the phase half takes `<zx-viewer>`'s
-  // blue so the same phase reads the same in either view.
+  // Labels are off by default, so a blob's caption is its phase alone — in
+  // `<zx-viewer>`'s blue, so the same phase reads the same in either view.
   play: async ({ canvasElement }) => {
     const root = await shadowRootOf(canvasElement)
-    await waitFor(() =>
-      expect(blobCaptions(root)).toEqual([
-        ['Z(', 'π/2', ')'],
-        ['X(', '0', ')'],
-      ]),
-    )
+    await waitFor(() => expect(blobCaptions(root)).toEqual([['π/2'], ['0']]))
     const phases = [...root.querySelectorAll('svg g.blob text tspan[fill="#00d"]')]
     expect(phases.map(t => t.textContent)).toEqual(['π/2', '0'])
     // Nothing trespasses in a diagram this small, so there is no tally to draw.
@@ -318,14 +311,15 @@ export const BothViewsSideBySide: Story = {
   },
 }
 
-// Labels off hides the names, not the phases: a blob's `Z(π/2)` drops to
-// `π/2`, and a node with no phase to show — a default-π Hadamard — loses its
-// text altogether. This mirrors `<zx-viewer>`, where `show-labels` only ever
-// governed the grey id text and the phase was always painted.
-export const LabelsHidden: Story = {
-  name: '9. Labels hidden',
+// Labels on adds the names, not the phases: a blob captioned `π/2` by default
+// becomes `Z(π/2)`, a node with no phase to show — a default-π Hadamard —
+// gains a caption it didn't have, and every dot gets its wire id. This mirrors
+// `<zx-viewer>`, where `show-labels` only ever governs the grey id text and the
+// phase is painted either way.
+export const LabelsShown: Story = {
+  name: '9. Labels shown',
   args: {
-    showLabels: false,
+    showLabels: true,
     diagram: {
       nodes: [
         { id: 0, type: 'input', ioId: 0 },
@@ -345,14 +339,18 @@ export const LabelsHidden: Story = {
   parameters: { chromatic: { disableSnapshot: true } },
   play: async ({ canvasElement }) => {
     const root = await shadowRootOf(canvasElement)
-    // The Z spider keeps its phase, the X spider its `0`, and both are still
-    // blue; the names and the parens around them went with the labels. The
-    // default-π Hadamard has no phase to show, so its blob goes uncaptioned.
-    await waitFor(() => expect(blobCaptions(root)).toEqual([['π/2'], ['0']]))
+    // The Z and X spiders wear their names and the parens around the phase;
+    // the default-π Hadamard has no phase to show, so its caption is the bare
+    // name — the one blob that has nothing to say with labels off.
+    await waitFor(() =>
+      expect(blobCaptions(root)).toEqual([['Z(', 'π/2', ')'], ['H'], ['X(', '0', ')']]),
+    )
+    // The phases are painted blue either way; only the grey around them is new.
     const phases = [...root.querySelectorAll('svg g.blob text tspan[fill="#00d"]')]
-    expect(phases.length).toBe(2)
-    // The wire ids are the other thing that went away.
-    expect(root.querySelectorAll('svg g.dot text').length).toBe(0)
+    expect(phases.map(t => t.textContent)).toEqual(['π/2', '0'])
+    // The wire ids are the other thing labels bring: one under every dot.
+    const wireIds = [...root.querySelectorAll('svg g.dot text')]
+    expect(wireIds.map(t => t.textContent)).toEqual(['w0', 'w1', 'w2', 'w3'])
   },
 }
 

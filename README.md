@@ -88,7 +88,7 @@ only — graph structure always lives in `diagram`.
 
 | Attribute | Property | Default | Meaning |
 | --- | --- | --- | --- |
-| `show-labels` | `showLabels` | `true` | Draw each node's id above it. Set `show-labels="false"` to hide — a bare boolean attribute can't express "off" for a true-by-default property. |
+| `show-labels` | `showLabels` | `false` | Draw each node's id above it, as `draw_d3(labels=True)` does. A bare `show-labels` turns it on. |
 | `color-scheme` | `colorScheme` | `original` | One of `original`, `rgb`, `grayscale` — the palettes from `pyzx.utils`. |
 | `scale` | `scale` | derived | Pixels per row/qubit. When set, the derived 20–50 clamp is bypassed. |
 | `view-mode` | `viewMode` | `graph` | Which view to draw: `graph`, `hypergraph`, or both — `both-vertical` (stacked) or `both-horizontal` (side by side). See [Hypergraph view](#hypergraph-view). |
@@ -96,7 +96,7 @@ only — graph structure always lives in `diagram`.
 | — | `edgeColors` | `null` | Wire colours by edge kind, the three built-in ones or kinds of your own. Wins over both of the above, for the kinds named. |
 
 ```html
-<zx-diagram show-labels="false" color-scheme="grayscale" scale="40"></zx-diagram>
+<zx-diagram show-labels color-scheme="grayscale" scale="40"></zx-diagram>
 ```
 
 The palettes are exported too, if you want to build a variant:

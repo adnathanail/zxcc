@@ -27,7 +27,7 @@ interface Args {
   edgeColors?: EdgeColors
   /** Omitted by most stories, which want the derived scale. */
   scale?: number
-  /** Omitted by most stories, which want pyzx's node-id labels on. */
+  /** Omitted by most stories, which want the default: node-id labels off. */
   showLabels?: boolean
 }
 
@@ -39,14 +39,14 @@ const meta: Meta<Args> = {
       .edgeColors=${edgeColors ?? null}
       color-scheme=${colorScheme ?? 'original'}
       scale=${ifDefined(scale)}
-      show-labels=${showLabels === false ? 'false' : ''}
+      ?show-labels=${showLabels === true}
       style="min-height: 160px"
     ></zx-diagram>`,
   parameters: {
     docs: {
       description: {
         component:
-          'Shapes and annotations beyond plain Z/X spiders: W-input/W-output pairs, the Z-box, Hadamard and W-io edges, grounded vertices, vdata annotations, the global scalar, self-loops, Pauli-web strands overlaid on edges, an explicit scale, hidden node-id labels, and the non-default pyzx colour schemes.',
+          'Shapes and annotations beyond plain Z/X spiders: W-input/W-output pairs, the Z-box, Hadamard and W-io edges, grounded vertices, vdata annotations, the global scalar, self-loops, Pauli-web strands overlaid on edges, an explicit scale, node-id labels switched on, and the non-default pyzx colour schemes.',
       },
     },
   },
@@ -329,13 +329,13 @@ export const PauliWeb: Story = {
   args: { diagram: pauliWebChain },
 }
 
-// show-labels defaults to true, so "off" has to be spelled out as
-// show-labels="false" — a bare boolean attribute can't express it. This exists
-// to exercise that converter, and a diagram minus its id labels is not worth a
-// Chromatic snapshot, so it opts out of the visual diff and keeps only the
-// play-function assertions.
-export const LabelsHidden: Story = {
-  name: 'Labels hidden',
+// show-labels defaults to off, matching pyzx, so the grey id above each node
+// has to be asked for: a bare `show-labels` attribute turns it on. This exists
+// to exercise that attribute, and a diagram plus its id labels is not worth a
+// Chromatic snapshot of its own, so it opts out of the visual diff and keeps
+// only the play-function assertions.
+export const LabelsShown: Story = {
+  name: 'Labels shown',
   args: {
     diagram: {
       nodes: [
@@ -350,14 +350,14 @@ export const LabelsHidden: Story = {
         { src: 2, tgt: 3 },
       ],
     },
-    showLabels: false,
+    showLabels: true,
   },
   parameters: { chromatic: { disableSnapshot: true } },
   play: async ({ canvasElement }) => {
     const root = await shadowRootOf(canvasElement)
-    expect(root.querySelectorAll('svg g.node text[fill="#999"]').length).toBe(0)
-    // The diagram itself still rendered — only the id labels went away.
-    expect(root.querySelectorAll('svg g.node circle').length).toBeGreaterThan(0)
+    // One grey id above every node in the diagram, boundaries included.
+    const labels = [...root.querySelectorAll('svg g.node text[fill="#999"]')]
+    expect(labels.map(t => t.textContent)).toEqual(['0', '1', '2', '3'])
   },
 }
 
