@@ -12,7 +12,10 @@ Work through in order; tick as they land.
 
 ### 1. An unrecognised `view-mode` renders nothing, not the graph
 
-- [ ] Done
+- [x] **Done.** Fixed by *reporting* rather than falling back — a mode is one of
+      four and picking one on the author's behalf is a guess. `VIEW_MODES` now
+      backs both the runtime check and the `ViewMode` type, and is exported.
+      Covered by `Other` → `8. Errors`, which fails if the check is removed.
 
 `src/zxDiagram.ts:227-230`
 

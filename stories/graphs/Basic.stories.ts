@@ -194,17 +194,3 @@ export const ChainedHboxes: Story = {
     expect(h2x - h1x).toBeGreaterThanOrEqual(boxWidth)
   },
 }
-
-export const RenderErrorPath: Story = {
-  name: '9. Render error path',
-  parameters: {
-    docs: {
-      description: {
-        story: 'A malformed diagram (`nodes` missing) triggers the error UI with a Retry button.',
-      },
-    },
-  },
-  args: {
-    diagram: { edges: [] } as unknown as DiagramData,
-  },
-}
