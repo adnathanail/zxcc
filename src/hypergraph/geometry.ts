@@ -5,6 +5,13 @@
 // of the ZX diagram itself. The two share `src/curves.ts` and nothing else:
 // `wireCurve` hands back the very curve the ZX viewer paints a wire as, rather
 // than a second opinion about where that wire runs.
+//
+// A blob is asked several questions per render — draw your outline, does this
+// point fall in you, does this dot's circle meet you — and all of them are
+// answered from its convex hull. So the hull is computed once by `blobHull` and
+// handed to the functions that need it, rather than each deriving its own. What
+// a function takes says which it depends on: `hull*` takes the hull, `blob*`
+// takes the blob and the dot positions.
 
 import { type Curve, edgeCurve, type Point } from '../curves'
 import type { SceneLink } from '../types'
@@ -63,8 +70,9 @@ function signedArea(polygon: Point[]): number {
 }
 
 /** The hull wound so it runs clockwise as drawn, which is the direction
- *  `blobPath` offsets outwards from and `blobContains` tests against. A
- *  two-point hull has zero area and is symmetric, so its winding is moot. */
+ *  {@link hullPath} offsets outwards from and {@link hullContains} tests
+ *  against. A two-point hull has zero area and is symmetric, so its winding is
+ *  moot. */
 function orientedHull(points: Point[]): Point[] {
   const hull = convexHull(points)
   if (signedArea(hull) < 0) hull.reverse()
@@ -72,13 +80,24 @@ function orientedHull(points: Point[]): Point[] {
 }
 
 /**
- * A closed outline enclosing every point, standing `radius` off the convex
- * hull of them: straight along each hull edge, a circular arc round each hull
- * vertex. One point gives a circle, two give a capsule, more give a rounded
- * convex polygon — so a hyperedge stays legible at any arity.
+ * The hull of one blob's dots, from the live dot positions.
+ *
+ * This is the expensive step — a sort and a monotone chain — and the shape
+ * every other question about a blob is answered from, so a caller drawing a
+ * whole scene computes it once per blob and passes it to the functions below
+ * rather than letting each of them derive it again.
  */
-export function blobPath(points: Point[], radius: number): string {
-  const hull = orientedHull(points)
+export function blobHull(blob: HypergraphBlob, pos: Map<string, Point>): Point[] {
+  return orientedHull(dotPoints(blob, pos))
+}
+
+/**
+ * A closed outline standing `radius` off the hull: straight along each hull
+ * edge, a circular arc round each hull vertex. One point gives a circle, two
+ * give a capsule, more give a rounded convex polygon — so a hyperedge stays
+ * legible at any arity, and a boundary's single dot comes out a circle.
+ */
+export function hullPath(hull: Point[], radius: number): string {
   if (hull.length === 0) return ''
   if (hull.length === 1) {
     const { x, y } = hull[0]
@@ -115,12 +134,6 @@ function dotPoints(blob: HypergraphBlob, pos: Map<string, Point>): Point[] {
     if (p) points.push(p)
   }
   return points
-}
-
-/** The outline for one blob, from the live dot positions. Derived per render
- *  rather than stored, the way `<zx-viewer>` derives its box bounds. */
-export function blobOutline(blob: HypergraphBlob, pos: Map<string, Point>, radius: number): string {
-  return blobPath(dotPoints(blob, pos), radius)
 }
 
 /** Mean of the points — inside the hull of them, and so inside the outline
@@ -164,20 +177,19 @@ function distanceToSegment(p: Point, a: Point, b: Point): number {
 }
 
 /**
- * Whether `point` falls inside the outline `blobOutline` draws — that is,
- * within `radius` of the hull of the blob's dots.
+ * Whether `point` falls inside the outline {@link hullPath} draws — that is,
+ * within `radius` of the hull.
  *
  * Tested against the geometry rather than by asking the DOM what was clicked,
  * because blobs overlap: SVG hit-testing reports only the topmost path, and
  * which one that is says nothing about the others under the pointer.
+ *
+ * `radius` is a parameter rather than the blob's own standoff because the same
+ * hull is asked two questions: whether a press landed inside the outline, and
+ * whether a dot's circle meets it, which is the same test with the radius
+ * fattened by the dot.
  */
-export function blobContains(
-  blob: HypergraphBlob,
-  pos: Map<string, Point>,
-  radius: number,
-  point: Point,
-): boolean {
-  const hull = orientedHull(dotPoints(blob, pos))
+export function hullContains(hull: Point[], radius: number, point: Point): boolean {
   if (hull.length === 0) return false
 
   // Inside the hull itself, every edge has the point on its right — the hull

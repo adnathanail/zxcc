@@ -121,15 +121,23 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   a boundary blob both come out as a dot held by exactly one blob. With it, the
   count reads directly off the drawing — every dot is in two blobs, one per end
   of its wire, and a self-loop is the only dot in one, since its two ends are
-  the same node. An identity wire (input straight to output) is in two as well,
-  where before it was in none. `Hypergraphs/Basic` → `7. Boundaries as
-  hyperedges` holds the shape — that a one-wire hyperedge draws as a circle —
-  and `Hypergraphs/Interactions` → `4. Boundary legs and self-loops` holds the
-  count, since reading which blobs hold a wire means pressing its dot.
-- `geometry.ts` — `wireCurve` (the curve a wire's dot rides), `convexHull`/`blobPath`
-  (the outline enclosing a set of dots), `blobContains` (the same shape as a
-  hit test), and `blobOutline`/`blobLabelAnchor`/`blobCentre` over a live
-  dot-position map.
+  the same node. An identity wire (input straight to output) is in two as well.
+  `Hypergraphs/Interactions` → `4. Boundary legs and self-loops` holds that
+  count, by pressing each dot and reading back the blobs the press reached —
+  which blobs hold a wire is membership, and a press is how the drawing answers
+  it.
+- `geometry.ts` — `wireCurve` (the curve a wire's dot rides), `blobHull` (the
+  convex hull of a blob's dots), `hullPath` (the outline standing off that hull)
+  and `hullContains` (the same shape as a hit test), plus
+  `blobLabelAnchor`/`blobCentre` over a live dot-position map.
+
+  What a function takes says what it depends on: `hull*` takes a hull, `blob*`
+  takes the blob and the positions. The hull is the split point because it is
+  the expensive step — a sort and a monotone chain — and every question about a
+  blob is answered from it, so `<zx-hypergraph-viewer>` computes one per blob
+  per render and passes it down. The trespass test asks every dot about every
+  blob, so deriving the hull inside it would be a sort per pair: on the 4-by-5
+  n-to-m story that is 18 hulls a render rather than 540.
 - `layout.ts` — `layoutHypergraph`. It zooms the resolved node positions by
   `ZOOM` first — the dual has twice the marks at half the spacing, so it is
   drawn roomier — then builds each wire's curve from those and parks the dot at
@@ -142,9 +150,9 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   loop drawn at `p * ZOOM`. Evaluating first and zooming after put a self-loop's
   dot 18px clear of the loop `<zx-viewer>` paints. Every other curve shape is
   homogeneous in its endpoints and comes out identical either way, which is why
-  the bug was confined to loops. `Other/Both viewers` → `6. Self-loop dots`
-  measures each dot against `getPointAtLength(len / 2)` of its wire and is what
-  holds this.
+  the bug was confined to loops. Nothing asserts this: to check it by hand, draw
+  a diagram carrying a self-loop in a `both` mode and compare the dot's
+  `translate` against `getPointAtLength(len / 2)` of the wire's path.
 - `viewer.ts` — `<zx-hypergraph-viewer>`, the second painter. Internal and
   light DOM. One piece of interaction state of its own, a plain field paired
   with an explicit `requestUpdate()` — the dragged dot positions — plus the
@@ -393,9 +401,8 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
   `.storybook/preview.ts`.
 - `Other/Both viewers` is the pair drawn together: the two arrangements, and the
   properties that do different work in each view — `show-labels` (node ids over
-  there, blob names and wire ids here), `scale`, and a wire kind's colour (which
-  has to come out the same on a wire and on the dot standing for it). Each runs
-  `both-vertical`, since one view would check half of what the property does.
+  there, blob names and wire ids here) and `scale`. Each runs `both-vertical`,
+  since one view would check half of what the property does.
 - `Other/Tests` is the group whose stories exist for their play function rather
   than their picture, and the whole group carries
   `chromatic: { disableSnapshot: true }` on its `meta`. It holds `Error states`:

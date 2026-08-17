@@ -80,8 +80,7 @@ justification, the gotcha, and that assertion.
       building the curves, and `at()` is a plain `curvePointAt`. Only self-loops
       move: every other curve shape is homogeneous in its endpoints, so scaling
       the endpoints and scaling the evaluated point are the same operation.
-      `Other/Both viewers` → `6. Self-loop dots` asserts all three dots land on
-      their own curve.
+      Verified by measurement at the time (below); no story holds it.
 
 `src/hypergraph/layout.ts:189-192`
 
@@ -104,11 +103,10 @@ Every other curve shape scales, so this only bites self-loops.
 the loop's `spread` proportional to `scale` in `edgeCurve` — would have changed
 how a loop looks in the graph view too, which is a separate decision.)
 
-**Shown by** `Other/Both viewers` → `6. Self-loop dots`, which measures each
+**Measured** on input → Z(with a self-loop) → output in `both-vertical`, each
 dot against `getPointAtLength(len / 2)` of the wire it stands for. Before the
-fix, on that diagram: the two straight wires exact, the self-loop's dot at
-`(0, -18)` — directly above the top of the loop, in empty canvas. After: all
-three at `(0, 0)`.
+fix: the two straight wires exact, the self-loop's dot at `(0, -18)` — directly
+above the top of the loop, in empty canvas. After: all three at `(0, 0)`.
 
 Measured on `selfLoopSpiders`, where node 2 carries two parallel self-loops, the
 offsets are 18.00, 14.06 and 18.48 — the last two mix this defect with
@@ -180,7 +178,14 @@ outside can want it either.
 
 ### 8. Hulls are recomputed O(dots × blobs) times per render
 
-- [ ] Done
+- [x] **Done.** `blobHull` is its own step, and the functions that consume a
+      hull take one: `hullPath` and `hullContains`, replacing `blobPath` /
+      `blobOutline` / `blobContains`. `render()` builds a hull per blob and an
+      outline per blob once and passes both down. On the 4-by-5 n-to-m story
+      (18 blobs, 29 dots) that is 18 hulls a render rather than 540+, on every
+      mousemove of a drag. `#onDown` still derives its own — one press is
+      O(blobs), and keeping the hulls out of cross-render state means a drag
+      can't leave them stale.
 
 `src/hypergraph/viewer.ts`:
 
