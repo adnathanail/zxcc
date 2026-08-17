@@ -224,9 +224,14 @@ hands it back as the colour.
 
 - `docs/hypergraph-plan.md` still says dragging is "still open" and "the stories
   currently only render" — both shipped this release
-- the CLAUDE.md Pauli-web gotcha, voided by item 2
-- `<zx-diagram>.refresh()` calls `requestUpdate()` redundantly after
-  `relayout()` has already set reactive state
+- ~~the CLAUDE.md Pauli-web gotcha, voided by item 2~~ — **nothing to do.** Item
+  2 restored the gap rather than deleting it, so the gotcha describes what
+  happens again: a 5px opaque band across a 7px strand.
+- ~~`<zx-diagram>.refresh()` calls `requestUpdate()` redundantly after
+  `relayout()` has already set reactive state~~ — **done.** Dropped. Covered by
+  `Other/Tests` → `refresh() after mutating a diagram in place`, which pins both
+  halves: an in-place mutation paints nothing, and `refresh()` paints it. That
+  story is `refresh()`'s only coverage — it had none before.
 - cosmetic: in a `both` mode with a `scalar`, `SCALAR_BOTTOM_MARGIN` is a fixed
   30px the graph layout doesn't scale while the hypergraph multiplies
   `scene.height` by `ZOOM` — the two canvases end up 18px different in height,
