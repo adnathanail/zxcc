@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
 import { expect, waitFor } from 'storybook/test'
 import type { DiagramData } from '../../src/types'
-import { strongComplementarity } from '../diagrams'
+import { fourSpiderSquare, strongComplementarity, strongComplementarityOf } from '../diagrams'
 import { shadowRootOf } from '../interactionHelpers'
 
 interface Args {
@@ -80,30 +80,7 @@ export const TwoSpiders: Story = {
 
 export const FourSpiderSquare: Story = {
   name: '2. Four spiders, eight wires',
-  args: {
-    diagram: {
-      nodes: [
-        { id: 0, type: 'input', ioId: 0 },
-        { id: 1, type: 'input', ioId: 1 },
-        { id: 2, type: 'spider', color: 'Z', phase: '0' },
-        { id: 3, type: 'spider', color: 'Z', phase: '0' },
-        { id: 4, type: 'spider', color: 'Z', phase: '0' },
-        { id: 5, type: 'spider', color: 'Z', phase: '0' },
-        { id: 6, type: 'output', ioId: 0 },
-        { id: 7, type: 'output', ioId: 1 },
-      ],
-      edges: [
-        { src: 0, tgt: 2 },
-        { src: 1, tgt: 4 },
-        { src: 2, tgt: 3 },
-        { src: 2, tgt: 4 },
-        { src: 3, tgt: 5 },
-        { src: 4, tgt: 5 },
-        { src: 3, tgt: 6 },
-        { src: 5, tgt: 7 },
-      ],
-    },
-  },
+  args: { diagram: fourSpiderSquare },
 }
 
 export const HadamardAndParallelEdges: Story = {
@@ -275,4 +252,17 @@ export const UnsupportedNodeType: Story = {
       ],
     },
   },
+}
+
+export const LargeStrongComplementarity: Story = {
+  name: '7. Strong complementarity, 4 to 4',
+  parameters: {
+    docs: {
+      story: {
+        description:
+          'The same shape at four-by-four: sixteen crossing wires whose dots all land in the one column between the two ranks, and eight blobs each having to reach across it. The worst case the view has to survive — `strongComplementarityOf(z, x)` in `stories/diagrams.ts` builds it at any size.',
+      },
+    },
+  },
+  args: { diagram: strongComplementarityOf(4, 4) },
 }

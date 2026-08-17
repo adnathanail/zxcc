@@ -1,4 +1,4 @@
-import type { DiagramData } from '../src/index'
+import type { DiagramData, DiagramEdge, DiagramNode } from '../src/index'
 
 // Reusable diagrams for stories. Each is a wire (input→…→output) chain.
 
@@ -220,4 +220,63 @@ export const strongComplementarity: DiagramData = {
     { src: 1, tgt: 6 },
     { src: 2, tgt: 5 },
   ],
+}
+
+// Four Z spiders in a square, each corner also carrying a boundary leg: eight
+// wires, four hyperedges, and every dot shared by two of them.
+export const fourSpiderSquare: DiagramData = {
+  nodes: [
+    { id: 0, type: 'input', ioId: 0 },
+    { id: 1, type: 'input', ioId: 1 },
+    { id: 2, type: 'spider', color: 'Z', phase: '0' },
+    { id: 3, type: 'spider', color: 'Z', phase: '0' },
+    { id: 4, type: 'spider', color: 'Z', phase: '0' },
+    { id: 5, type: 'spider', color: 'Z', phase: '0' },
+    { id: 6, type: 'output', ioId: 0 },
+    { id: 7, type: 'output', ioId: 1 },
+  ],
+  edges: [
+    { src: 0, tgt: 2 },
+    { src: 1, tgt: 4 },
+    { src: 2, tgt: 3 },
+    { src: 2, tgt: 4 },
+    { src: 3, tgt: 5 },
+    { src: 4, tgt: 5 },
+    { src: 3, tgt: 6 },
+    { src: 5, tgt: 7 },
+  ],
+}
+
+/**
+ * The n-to-m strong complementarity diagram: every Z spider joined to every X
+ * spider, each carrying a boundary leg of its own. `strongComplementarity`
+ * above is the 2-to-2 case written out; this is the same shape at any size.
+ *
+ * It is the worst case for the hypergraph view by construction. Every Z—X wire
+ * crosses every other, so the dots pile into the one column between the two
+ * ranks, and every blob has to reach across that column past all the dots it
+ * doesn't own.
+ */
+export function strongComplementarityOf(zCount: number, xCount: number): DiagramData {
+  const input = (i: number) => i
+  const z = (i: number) => zCount + i
+  const x = (j: number) => 2 * zCount + j
+  const output = (j: number) => 2 * zCount + xCount + j
+
+  const nodes: DiagramNode[] = []
+  const edges: DiagramEdge[] = []
+  for (let i = 0; i < zCount; i++) {
+    nodes.push({ id: input(i), type: 'input', ioId: i, col: 0, qubit: i })
+    nodes.push({ id: z(i), type: 'spider', color: 'Z', col: 1, qubit: i })
+    edges.push({ src: input(i), tgt: z(i) })
+  }
+  for (let j = 0; j < xCount; j++) {
+    nodes.push({ id: x(j), type: 'spider', color: 'X', col: 2, qubit: j })
+    nodes.push({ id: output(j), type: 'output', ioId: j, col: 3, qubit: j })
+    edges.push({ src: x(j), tgt: output(j) })
+  }
+  for (let i = 0; i < zCount; i++) {
+    for (let j = 0; j < xCount; j++) edges.push({ src: z(i), tgt: x(j) })
+  }
+  return { nodes, edges }
 }
