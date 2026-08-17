@@ -6,7 +6,6 @@ export {
   ORIGINAL_COLORS,
   RGB_COLORS,
 } from './colors'
-export { toHypergraph } from './hypergraph/convert'
 export type {
   HyperedgeKind,
   HypergraphData,

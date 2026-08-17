@@ -220,10 +220,11 @@ hands it back as the colour.
 
 ### 10. Stale docs and small warts
 
-- [ ] Done
+- [x] **Done**, each below.
 
-- `docs/hypergraph-plan.md` still says dragging is "still open" and "the stories
-  currently only render" — both shipped this release
+- ~~`docs/hypergraph-plan.md` still says dragging is "still open" and "the stories
+  currently only render" — both shipped this release~~ — **done** as part of
+  item 11, which rewrote the file.
 - ~~the CLAUDE.md Pauli-web gotcha, voided by item 2~~ — **nothing to do.** Item
   2 restored the gap rather than deleting it, so the gotcha describes what
   happens again: a 5px opaque band across a 7px strand.
@@ -247,7 +248,14 @@ hands it back as the colour.
 
 ### 11. Update hypergraph-plan
 
-- [ ] Done
+- [x] **Done.** Rewritten as a design log rather than a plan: the decisions the
+      conversion and the drawing actually made, each with the reason it was
+      made, and then what is still open. The narrative of what was built when,
+      the questions-and-answers structure, and the description of code that
+      CLAUDE.md already carries are gone. The measurements stay — the spread
+      table and the trespass results are the evidence behind the open items, and
+      exist nowhere else. Two things it recorded were simply wrong by now:
+      boundaries *are* hyperedges, and dragging and the play functions shipped.
 
 Chop out unnecessary context. Give short clear design decisions. Outline potential next steps
 
