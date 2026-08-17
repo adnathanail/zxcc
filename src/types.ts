@@ -167,6 +167,11 @@ export interface Scene {
   boxes: SceneBox[]
   width: number
   height: number
+  /** Height of the drawing on its own, before the strip reserved below it for
+   *  the scalar. Every pixel of this is proportional to `scale`; the strip is a
+   *  fixed number of pixels and is not. Anything rescaling a scene scales this
+   *  and carries the strip across unchanged. */
+  diagramHeight: number
   scale: number
   nodeSize: number
   /** Whether the viewer should position H-boxes from their neighbours.

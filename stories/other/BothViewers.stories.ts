@@ -60,11 +60,20 @@ const expectPairDrawn = async (root: ParentNode) => {
   expect(root.querySelectorAll('zx-hypergraph-viewer svg').length).toBe(1)
   expect(root.querySelectorAll('g.attribution').length).toBe(2)
 
-  // The graph is laid out at the dual's zoomed scale, so the pair is one
-  // width — a diagram with no blob overhanging its box comes out exact.
-  const widthOf = (tag: string) =>
-    Number(root.querySelector<SVGSVGElement>(`${tag} svg`)?.getAttribute('width'))
-  expect(widthOf('zx-viewer')).toBeCloseTo(widthOf('zx-hypergraph-viewer'), 6)
+  // The graph is laid out at the dual's zoomed scale, so the pair is one size —
+  // a diagram with no blob overhanging its box comes out exact on both axes.
+  // The height is the fussier of the two: a scalar reserves a strip of fixed
+  // pixels under the drawing, and only the drawing is proportional to the
+  // scale, so a canvas that zoomed the strip along with it would come out
+  // taller than its partner.
+  const sizeOf = (tag: string) => {
+    const svg = root.querySelector<SVGSVGElement>(`${tag} svg`)
+    return [Number(svg?.getAttribute('width')), Number(svg?.getAttribute('height'))]
+  }
+  const [graphWidth, graphHeight] = sizeOf('zx-viewer')
+  const [dualWidth, dualHeight] = sizeOf('zx-hypergraph-viewer')
+  expect(graphWidth).toBeCloseTo(dualWidth, 6)
+  expect(graphHeight).toBeCloseTo(dualHeight, 6)
 
   // One scale means the two line up: wire w0 is the first edge, 0—2, and its
   // dot sits at the midpoint of those two nodes as the graph draws them — the
@@ -126,7 +135,13 @@ export const BothViewsSideBySide: Story = {
       },
     },
   },
-  args: { diagram: fourSpiderSquare, viewMode: 'both-horizontal' },
+  // Carries a scalar, which is the case that makes the two heights hard to
+  // match: it reserves a strip of fixed pixels under the diagram, and the dual
+  // reserves the same strip without drawing anything in it.
+  args: {
+    diagram: { ...fourSpiderSquare, scalar: '1/√2' },
+    viewMode: 'both-horizontal',
+  },
   play: async ({ canvasElement }) => {
     const root = await shadowRootOf(canvasElement)
     await expectPairDrawn(root)

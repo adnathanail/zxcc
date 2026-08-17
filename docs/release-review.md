@@ -232,10 +232,16 @@ hands it back as the colour.
   `Other/Tests` → `refresh() after mutating a diagram in place`, which pins both
   halves: an in-place mutation paints nothing, and `refresh()` paints it. That
   story is `refresh()`'s only coverage — it had none before.
-- cosmetic: in a `both` mode with a `scalar`, `SCALAR_BOTTOM_MARGIN` is a fixed
-  30px the graph layout doesn't scale while the hypergraph multiplies
-  `scene.height` by `ZOOM` — the two canvases end up 18px different in height,
-  and the hypergraph reserves a scalar strip it never draws in
+- ~~in a `both` mode with a `scalar`, `SCALAR_BOTTOM_MARGIN` is a fixed 30px the
+  graph layout doesn't scale while the hypergraph multiplies `scene.height` by
+  `ZOOM` — the two canvases end up 18px different in height~~ — **done.**
+  `Scene.diagramHeight` is the drawing without the strip, and is the only part
+  `layoutHypergraph` zooms; the strip is carried across unzoomed, since a
+  distance in pixels is the same distance at any zoom. The dual still paints no
+  scalar — it keeps the strip so the pair is the same size, and the trespass
+  tally is written in it. `Other/Both viewers` → `2. Both views side by side`
+  now carries a scalar and asserts both canvas dimensions match; without the fix
+  it reports 270 against 288.
 
 ---
 

@@ -248,7 +248,19 @@ for exactly this. Every pixel position `layout()` produces is proportional to
 dot on the same coordinates as the midpoint of the wire it stands for — under
 that wire when the pair is stacked, level with it when it is side by side. The
 alternative — scaling the painted SVG to fit — would have blown the 12px labels
-up with it. A drag stays each view's own — pulling a dot about reshapes blobs
+up with it.
+
+The one thing `layout()` produces that is *not* proportional to `scale` is the
+strip it reserves under the drawing for the scalar, which is a fixed number of
+pixels. `Scene.diagramHeight` is the height without it, and is what
+`layoutHypergraph` zooms; the strip is carried across as it stands, since a
+distance in pixels is the same distance at any zoom. Zooming the whole `height`
+instead made the dual 18px taller than the graph whenever a diagram carried a
+scalar. The dual paints no scalar and keeps the strip regardless — the pair
+being the same size is the point of the mode, and the trespass tally is written
+in that strip.
+
+A drag stays each view's own — pulling a dot about reshapes blobs
 here and nothing there — but the **selection is shared**: `<zx-diagram>` holds
 it (`@state selection`, cleared on every relayout), passes it to both painters,
 and takes a new one from whichever painter announces `zx-selection`. That is the

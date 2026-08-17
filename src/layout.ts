@@ -293,6 +293,7 @@ export function layout(diagram: DiagramData, options: LayoutOptions = {}): Scene
     boxes,
     width,
     height,
+    diagramHeight,
     scale,
     nodeSize,
     autoHbox: !prePositioned,
