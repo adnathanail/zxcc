@@ -87,14 +87,14 @@ export function selectedNodesIn(root: ShadowRoot): number[] {
     .map(g => Number(g.getAttribute('data-node')))
 }
 
-/** Indices of the edges drawn as selected in the diagram view. An edge has no
- *  selected *style* — it is repainted in the selection blue outright — so the
- *  stroke is the marker. The index is the edge's index in `diagram.edges`,
- *  which is the order `g.link` paints them in. */
+/** Indices of the edges drawn as selected in the diagram view. A selected edge
+ *  keeps its own colour and is cased in blue instead, so the marker is a path
+ *  in `g.casing` rather than anything about the wire — it carries `data-link`,
+ *  the edge's index in `diagram.edges`. */
 export function selectedLinksIn(root: ShadowRoot): number[] {
-  return [...root.querySelectorAll<SVGPathElement>('zx-viewer g.link path')]
-    .map((path, i) => (path.getAttribute('stroke') === '#00f' ? i : -1))
-    .filter(i => i >= 0)
+  return [...root.querySelectorAll<SVGPathElement>('zx-viewer g.casing path[data-link]')].map(
+    path => Number(path.getAttribute('data-link')),
+  )
 }
 
 /** Ids of the wires whose dots are ringed as belonging to a selected blob, in

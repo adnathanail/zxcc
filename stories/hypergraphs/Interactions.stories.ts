@@ -329,5 +329,12 @@ export const LinkedSelection: StoryObj<Args> = {
     await waitFor(() => expect(selectedLinksIn(root)).toEqual([0]))
     expect(selectedNodesIn(root)).toEqual([])
     expect(selectedBlobsIn(root)).toEqual(['e2'])
+    // The edge is *cased*, not recoloured: the blue goes underneath, on its own
+    // path, and the wire keeps the colour that says what kind of edge it is.
+    const wire = root.querySelectorAll<SVGPathElement>('zx-viewer g.link path')[0]
+    const casing = root.querySelector<SVGPathElement>('zx-viewer g.casing path[data-link="0"]')
+    expect(wire.getAttribute('stroke')).toBe('#000000')
+    expect(casing?.getAttribute('d')).toBe(wire.getAttribute('d'))
+    expect(casing?.getAttribute('stroke')).toBe('#00f')
   },
 }

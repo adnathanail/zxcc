@@ -127,7 +127,7 @@ width with each dot directly under the wire it stands for. Dragging stays local 
 | a spider or Hadamard in the diagram | the blob standing for it, with every dot it holds ringed |
 | an input or output in the diagram | the dot of the wire it hangs off — a boundary is no hyperedge, so it has no blob |
 | a blob in the dual (by clicking the blob) | the spider it stands for |
-| a dot in the dual | the edge it stands for, drawn in the selection colour |
+| a dot in the dual | the edge it stands for, cased in the selection colour — the wire keeps its own, so an H-edge still reads as one |
 
 ```html
 <zx-diagram id="d" view-mode="both"></zx-diagram>
