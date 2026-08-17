@@ -43,8 +43,10 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
 - `curves.ts` — `Point`, the `Curve` union, and
   `edgeCurve`/`curvePath`/`curvePointAt`. `edgeCurve` is the single answer to
   where the wire between two points runs (straight, fanned arc, or self-loop);
-  `linkPath` draws that curve and `wireDot` evaluates it at t = 0.5, so the
-  painted wire and the hypergraph's dot on it cannot disagree.
+  `linkPath` draws that curve and `wireCurve` hands the same one to the
+  hypergraph layout, which parks a dot at t = 0.5 on it (and slides it along
+  when two dots would land together), so the painted wire and the hypergraph's
+  dot on it cannot disagree.
 - `colors.ts` — the pyzx palettes, the scheme lookup, and which entry each
   kind of thing is painted with (`nodeColor`, `edgeColor`, `webColor`), plus
   `PHASE_FILL`, `LABEL_FILL` and `SELECTED_STROKE` — the blue both painters
@@ -82,13 +84,14 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   anything that hasn't got one, so a W, Z-box or `wire` node throws with a
   message naming it. Everything downstream reads the hyperedge's `kind` and so
   never has to consider a node type it can't draw.
-- `geometry.ts` — `wireDot` (where a wire's dot sits), `convexHull`/`blobPath`
+- `geometry.ts` — `wireCurve` (the curve a wire's dot rides), `convexHull`/`blobPath`
   (the outline enclosing a set of dots), `blobContains` (the same shape as a
   hit test), and `blobOutline`/`blobLabelAnchor`/`blobCentre` over a live
   dot-position map.
 - `layout.ts` — `layoutHypergraph`, parking each wire's dot at the midpoint of
-  its edge so the two views line up, then zooming the positions, since the
-  dual has twice the marks at half the spacing.
+  its edge so the two views line up, sliding it along that edge when two dots
+  would land on one spot (`spreadCoincident`), then zooming the positions,
+  since the dual has twice the marks at half the spacing.
 - `viewer.ts` — `<zx-hypergraph-viewer>`, the second painter. Internal and
   light DOM. Two pieces of interaction state, both plain fields paired with an
   explicit `requestUpdate()`: the selection, and the dragged dot positions.
@@ -263,3 +266,25 @@ Check whether you are on the `gitbutler/workspace` branch; if so, use the `but` 
 - Barycentre-parked H-boxes are spread as a group, in one pass, rather than
   nudged one at a time: an iterative nudge settles exactly on its own
   threshold and the box visibly flicks sideways as the diagram is dragged.
+- Hypergraph dots that land on top of each other — two crossing edges share a
+  midpoint — are spread as a group in one pass for the same reason
+  (`spreadCoincident`), but each dot slides along *its own wire* rather than
+  down the column. The column is the one direction that is already full:
+  consecutive midpoints sit half a ZX scale apart on it, so a group of three or
+  more spread that way reaches into its neighbours' slots and lands on their
+  dots — measured on the n-to-m story, spreading down the column re-creates the
+  very collision it removes, from 4-by-4 up. Each wire runs its own way, so
+  sliding opens the group out across the gap between the ranks, which is empty,
+  and a slid dot is still on the wire it stands for (`wireCurve`, the curve
+  `<zx-viewer>` paints). Sitting at the exact midpoint is not worth preserving:
+  two wires can share that point, and then it says nothing.
+- The spread groups dots by proximity rather than by exact ties, and its step is
+  measured in dot radii (`TIE_GAP`), not in fractions of the grid: the question
+  is whether you can see that there are two of them. A diagram that arrives
+  pre-positioned from the algebraic walker is on no grid at all, so exact ties
+  are not the only way two dots become one blot.
+- Spreading dots does *not* reduce the trespass tally, and isn't meant to. Every
+  trespass at rest is a coincidence — measured, the whole tally — and separating
+  the dots converts each one into a dot sitting inside a neighbouring hull
+  instead. Clearing those needs every crowded dot moved half a scale or more,
+  which is a different problem from two dots drawn on one spot.

@@ -3,22 +3,28 @@
 //
 // DOM-free, and the counterpart of `src/geometry.ts`, which stays the geometry
 // of the ZX diagram itself. The two share `src/curves.ts` and nothing else:
-// `wireDot` reads the very curve the ZX viewer paints a wire as, rather than a
-// second opinion about where that wire runs.
+// `wireCurve` hands back the very curve the ZX viewer paints a wire as, rather
+// than a second opinion about where that wire runs.
 
-import { curvePointAt, edgeCurve, type Point } from '../curves'
+import { type Curve, edgeCurve, type Point } from '../curves'
 import type { SceneLink } from '../types'
 import type { HypergraphBlob } from './types'
 
-/** Where the dot for a wire goes: halfway along the curve the ZX viewer draws
- *  the same edge as. That is why parallel edges get distinct dots — they are
- *  drawn as a fan of arcs — and why a self-loop's dot sits inside its loop.
- *  Null when either endpoint is off the diagram. */
-export function wireDot(link: SceneLink, pos: Map<number, Point>): Point | null {
+/** The curve a wire's dot rides: the one the ZX viewer draws the same edge as.
+ *  Null when either endpoint is off the diagram.
+ *
+ *  The curve rather than a point, because where on it the dot goes is not
+ *  fixed. Halfway along is the default — which is why parallel edges get
+ *  distinct dots, they are drawn as a fan of arcs, and why a self-loop's dot
+ *  sits inside its loop — but two crossing edges share that point, and one dot
+ *  where there should be two is a different diagram, so the layout slides such
+ *  a dot along this same curve until they read as two. Handing back the curve
+ *  is what keeps that slide on the wire the viewer actually paints. */
+export function wireCurve(link: SceneLink, pos: Map<number, Point>): Curve | null {
   const s = pos.get(link.source)
   const t = pos.get(link.target)
   if (!s || !t) return null
-  return curvePointAt(edgeCurve(s, t, link.index, link.parallel), 0.5)
+  return edgeCurve(s, t, link.index, link.parallel)
 }
 
 /** Convex hull, counter-clockwise in maths axes (so clockwise on screen, where
