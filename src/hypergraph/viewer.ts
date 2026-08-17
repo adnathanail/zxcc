@@ -42,11 +42,7 @@ const LEADER_GAP = 4
 /** A blob's name, darker than the `LABEL_FILL` grey the wire ids take: it sits
  *  over a filled blob rather than on bare canvas. */
 const NAME_FILL = '#555'
-/** The ring drawn round every dot a selected blob holds, in the same blue the
- *  blob's own outline takes: the selection is one fact — these hyperedges and
- *  the wires in them — so it is painted in one colour. It stands off the dot
- *  rather than replacing its stroke so that it reads against every dot colour,
- *  the blue an H-wire's dot is filled with included. */
+/** The ring drawn round every dot a selected blob holds */
 const DOT_SELECTED_STYLE = `fill: none; stroke: ${SELECTED_STROKE}; stroke-width: 1.5px; pointer-events: none`
 /** Gap between a dot's rim and its selection ring. */
 const DOT_HALO = 2.5
