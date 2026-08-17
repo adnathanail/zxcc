@@ -39,12 +39,17 @@ import {
 
 const SELECTED_STYLE = `stroke-width: 2px; stroke: ${SELECTED_STROKE}`
 const NODE_STYLE = 'stroke-width: 1.5px'
-const LINK_STYLE = 'stroke-width: 1.5px'
-/** A selected edge is repainted in the selection blue and thickened. Taking
- *  the colour over means an H-edge stops reading as an H-edge while it is
- *  picked out — a marker that keeps the edge's own colour is the better
- *  answer, and is what this should become. */
-const SELECTED_LINK_STYLE = 'stroke-width: 2.5px'
+const LINK_WIDTH = 1.5
+/** A selected edge is cased rather than recoloured: the same path painted
+ *  underneath, wide enough to show either side of the wire. An edge's colour
+ *  is what it *is* — an H-edge is `Hedge` blue, `#0088ff` in pyzx's original
+ *  palette, which taking the selection blue over the top would be all but
+ *  indistinguishable from. So the blue goes round it instead, which is the
+ *  same move the other two marks make: a node keeps its fill and takes a blue
+ *  stroke, a dot keeps its fill and takes a blue ring standing off it. */
+const CASING_WIDTH = 5
+const LINK_STYLE = `stroke-width: ${LINK_WIDTH}px`
+const CASING_STYLE = `stroke-width: ${CASING_WIDTH}px; stroke-linecap: round; pointer-events: none`
 
 const BOX_STYLE: Record<BoxKind, { fill: string; stroke: string; dash: string }> = {
   stack: { fill: 'rgba(255,165,80,0.10)', stroke: 'rgba(220,130,30,0.65)', dash: '4 3' },
@@ -357,16 +362,26 @@ export class ZxViewerElement extends LitElement {
           )}
         </g>
 
+        <!-- The casings for the selected edges are a layer of their own,
+             *under* every wire rather than under their own: inside g.link a
+             casing would be painted over whichever edges come after it, and
+             cover the ones that cross it. Down here it reads as a highlight
+             on the canvas that the whole diagram is drawn over. -->
+        <g class="casing">
+          ${scene.links.map((link, i) =>
+            this.selection.edges.has(i)
+              ? svg`<path class="selected" data-link=${i} d=${linkPath(link, pos)}
+                  stroke=${SELECTED_STROKE} fill="transparent" style=${CASING_STYLE} />`
+              : nothing,
+          )}
+        </g>
+
         <g class="link">
-          ${scene.links.map((link, i) => {
-            // `scene.links` is built from `diagram.edges` in order, so the
-            // index here is the edge index a selection names.
-            const selected = this.selection.edges.has(i)
-            return svg`<path
-              d=${linkPath(link, pos)}
-              stroke=${selected ? SELECTED_STROKE : edgeColor(link.kind, this.colors)}
-              fill="transparent" style=${selected ? SELECTED_LINK_STYLE : LINK_STYLE} />`
-          })}
+          ${scene.links.map(
+            link => svg`<path
+              d=${linkPath(link, pos)} stroke=${edgeColor(link.kind, this.colors)}
+              fill="transparent" style=${LINK_STYLE} />`,
+          )}
         </g>
 
         <g class="brush" @mousedown=${this.#onBrushDown}>

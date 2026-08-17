@@ -209,10 +209,15 @@ the selection instead dispatches `zx-selection` and waits for the host to hand
 one back; a node drag moves the set the press itself *makes*, since that
 round-trip only lands on the next update. A selected ZX edge is drawn but never
 selected in this view — nothing here is an edge to point at, so it only ever
-arrives from a press on a dot in the other view — and for now it is repainted
-in the selection blue outright, which costs it its own colour (an H-edge stops
-reading as one while it is picked out). A marker that keeps the edge's colour is
-the intended replacement.
+arrives from a press on a dot in the other view. It is **cased** rather than
+recoloured: the same path painted underneath in the selection blue, wide enough
+to show either side of the wire. An edge's colour is what it *is* — an H-edge is
+`Hedge`, `#0088ff` in the original palette, which taking `#00f` over the top
+would be all but indistinguishable from — so the blue goes round it, the same
+move a node's blue outline and a dot's blue ring make. The casings are their own
+layer under *every* wire rather than under their own: inside `g.link` a casing
+would be painted over by whichever edges come after it and would cover the ones
+crossing it.
 
 Because a painter updates on its own cycle, anything that needs the SVG in the
 DOM has to await it: `<zx-diagram>` overrides `getUpdateComplete()` and awaits
@@ -276,8 +281,9 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
   rect.overlay`, `path.selectable` for the ground symbol, `text[fill="#999"]`
   for id labels, the scalar as the only direct `<text>` child of the `<svg>`,
   a selected node marked by `#00f` in its shape's `style` and a selected edge
-  by `#00f` as its path's `stroke` outright (there is no selected *style* for
-  an edge yet), and `g.attribution` carrying a `rect` chip. In `both` mode the
+  by its casing — `g.casing > path[data-link]`, carrying the edge's index, with
+  the wire in `g.link` left untouched — and `g.attribution` carrying a `rect`
+  chip. In `both` mode the
   two views share one tree, so anything ambiguous is scoped by painter tag
   (`zx-viewer …` / `zx-hypergraph-viewer …`). The hypergraph view has its own:
   `g.blob` wrapping per-hyperedge `<g data-hyperedge>`, `g.dot` wrapping
