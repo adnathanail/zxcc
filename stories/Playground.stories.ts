@@ -16,6 +16,8 @@ interface Args {
   viewMode: ViewMode
   showLabels: boolean
   colorScheme: ColorSchemeName
+  /** Pre-formatted, as the field itself is; empty leaves the diagram without one. */
+  globalScalar: string
   /** Left unset so the element derives it; the range control overrides. */
   scale?: number
 }
@@ -42,6 +44,9 @@ function buildDiagram(args: Args): DiagramData {
   if (args.box !== 'none') {
     diagram.boxes = [{ kind: args.box, nodeIds: [1, 2] }]
   }
+  // Omitted rather than set to '' when the control is cleared, so the layout
+  // reserves no strip below the diagram.
+  if (args.globalScalar !== '') diagram.scalar = args.globalScalar
   return diagram
 }
 
@@ -73,13 +78,14 @@ const meta: Meta<Args> = {
     },
     showLabels: { control: 'boolean' },
     colorScheme: { control: 'inline-radio', options: ['original', 'rgb', 'grayscale'] },
+    globalScalar: { control: 'text' },
     scale: { control: { type: 'range', min: 10, max: 100, step: 5 } },
   },
   parameters: {
     docs: {
       description: {
         component:
-          'Two spiders wired input → left → right → output. Use the controls to change colours, phases, insert a Hadamard, add parallel edges, wrap the pair in a stack/compose box, switch to the hypergraph dual (or show both views, stacked or side by side), toggle node-id labels, switch pyzx colour scheme, or pin the pixels-per-row scale.',
+          'Two spiders wired input → left → right → output. Use the controls to change colours, phases, insert a Hadamard, add parallel edges, wrap the pair in a stack/compose box, switch to the hypergraph dual (or show both views, stacked or side by side), toggle node-id labels, switch pyzx colour scheme, write a global scalar under the diagram, or pin the pixels-per-row scale.',
       },
     },
   },
@@ -100,6 +106,7 @@ const baseArgs: Args = {
   viewMode: 'graph',
   showLabels: false,
   colorScheme: 'original',
+  globalScalar: '',
 }
 
 export const Interactive: Story = {
@@ -110,5 +117,8 @@ export const Interactive: Story = {
     // element defaults them off, and the control is what turns them on.
     expect(root.querySelectorAll('svg g.node > g[data-node]').length).toBe(4)
     expect(root.querySelectorAll('svg g.node text[fill="#999"]').length).toBe(0)
+    // Same for the scalar: the control starts empty, so the field is left off
+    // the diagram and nothing is painted below it.
+    expect(root.querySelectorAll('svg > text').length).toBe(0)
   },
 }
