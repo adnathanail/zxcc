@@ -77,6 +77,12 @@ export interface HypergraphDot {
   y: number
   /** The underlying edge's kind, so an H-wire stays distinguishable. */
   kind: DiagramEdgeKind
+  /** Index of the ZX edge this dot stands for, and the nodes that edge joins.
+   *  Carried so a selection can be stated in the diagram's own terms — the
+   *  language the other view reads — rather than in wire ids. */
+  edge: number
+  src: number
+  tgt: number
   /** The ZX endpoints the wire joins, e.g. `0—2`. */
   label: string
 }
@@ -85,6 +91,9 @@ export interface HypergraphDot {
 export interface HypergraphBlob {
   /** The hyperedge's id, `e<node id>`. */
   id: string
+  /** The ZX node it stands for — what a selection of this blob names in the
+   *  diagram's own terms. */
+  nodeId: number
   /** What the node is, without its phase: `Z`, `X`, `H`. This is the half
    *  `show-labels` governs. */
   name: string

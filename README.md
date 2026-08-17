@@ -119,8 +119,15 @@ wire.
 `view-mode="both"` draws the pair, the diagram above its dual, each in its own scroll container.
 The dual is drawn 1.6× roomier than the diagram it comes from — it has twice the marks at half the
 spacing — so in this mode the diagram is laid out at that same scale, and the two come out the same
-width with each dot directly under the wire it stands for. They are otherwise independent:
-selecting or dragging in one view does not touch the other.
+width with each dot directly under the wire it stands for. Dragging stays local to a view, but the
+**selection is shared**, since the same thing has a counterpart in each picture:
+
+| Select this | …and this comes out selected |
+| --- | --- |
+| a spider or Hadamard in the diagram | the blob standing for it, with every dot it holds ringed |
+| an input or output in the diagram | the dot of the wire it hangs off — a boundary is no hyperedge, so it has no blob |
+| a blob in the dual (by clicking the blob) | the spider it stands for |
+| a dot in the dual | the edge it stands for, drawn in the selection colour |
 
 ```html
 <zx-diagram id="d" view-mode="both"></zx-diagram>

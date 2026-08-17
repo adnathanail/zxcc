@@ -173,6 +173,11 @@ export function layoutHypergraph(diagram: DiagramData, scene: Scene): Hypergraph
         x: 0,
         y: 0,
         kind: wire.kind,
+        // The dot's own edge index, rather than its position in `dots`: a wire
+        // whose link has no curve is dropped, so the two can diverge.
+        edge: i,
+        src: wire.src,
+        tgt: wire.tgt,
         label: `${wire.src}—${wire.tgt}`,
       },
     })
@@ -199,6 +204,7 @@ export function layoutHypergraph(diagram: DiagramData, scene: Scene): Hypergraph
   const blobs: HypergraphBlob[] = hg.hyperedges
     .map(e => ({
       id: e.id,
+      nodeId: e.nodeId,
       name: e.name,
       phase: e.phase,
       kind: e.kind,

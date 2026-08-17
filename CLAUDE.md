@@ -55,6 +55,14 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   `color-scheme`. Those
   lookups are here rather than in either painter so a spider and the blob
   standing for the same spider cannot come out different colours.
+- `selection.ts` — `Selection`, what is picked out, and the `zx-selection`
+  event a painter announces one with. A selection is held in the *diagram's*
+  terms — ZX node ids and indices into `diagram.edges` — never in either
+  painter's own, which is what lets the two views track each other: the same
+  value means "spider 2" to one and "the blob standing for node 2" to the
+  other, and neither painter has to know the other exists. Both painters are
+  controlled: they own no selection, they announce the one a gesture makes and
+  draw whatever `<zx-diagram>` hands back.
 - `attribution.ts` — the "❤️ zxcc" badge drawn into the diagram's SVG.
 - `zxDiagram.ts` — `<zx-diagram>`, the public element, and the only file that
   knows about both views.
@@ -93,8 +101,9 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   would land on one spot (`spreadCoincident`), then zooming the positions,
   since the dual has twice the marks at half the spacing.
 - `viewer.ts` — `<zx-hypergraph-viewer>`, the second painter. Internal and
-  light DOM. Two pieces of interaction state, both plain fields paired with an
-  explicit `requestUpdate()`: the selection, and the dragged dot positions.
+  light DOM. One piece of interaction state of its own, a plain field paired
+  with an explicit `requestUpdate()` — the dragged dot positions — plus the
+  `selection` the host hands it.
   A press on a dot selects and then drags it — every blob is derived from the
   dot positions on each render, so the blobs holding that wire reshape live,
   which is how the drawing is checked under strain, and selecting on the way in
@@ -106,7 +115,15 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   a press on a dot asks which hyperedges that wire is *part of* (membership,
   `blob.dots`). A dot often sits inside a blob that doesn't hold it — the hulls
   are crowded — and highlighting that blob would report an accident of the
-  layout as a fact about the hypergraph. Selected blobs paint last and take
+  layout as a fact about the hypergraph. What the two presses *name* differs
+  too, and that is what the diagram view reads: a press on canvas names the ZX
+  nodes its blobs stand for, a press on a dot names the ZX edge, since the dot
+  is that edge. The blobs holding a pressed dot are still outlined, but they are
+  derived from the selected edge (`#picked`) rather than named by it — which is
+  why pressing a dot lights up a wire over in the diagram and not the spiders at
+  its ends. `#picked` is also where a *boundary* is answered: an input or output
+  is no hyperedge and so has no blob, and the only thing standing for it here is
+  the dot of the wire it hangs off, which is ringed on its own. Selected blobs paint last and take
   the same blue stroke `<zx-viewer>` uses, and each gets a dashed leader from
   its caption to the middle of the blob — a caption sits just off the top of
   its outline, which in a pile of overlapping blobs looks like it could belong
@@ -157,8 +174,13 @@ for exactly this. Every pixel position `layout()` produces is proportional to
 `scale`, so that second layout brings the pair out the same width and puts each
 dot on the midpoint of the wire drawn above it, at the same coordinates. The
 alternative — scaling the painted SVG to fit — would have blown the 12px labels
-up with it. They share nothing else — no selection, no drag — so
-each is the same view it would be on its own. An unrecognised `view-mode` draws
+up with it. A drag stays each view's own — pulling a dot about reshapes blobs
+here and nothing there — but the **selection is shared**: `<zx-diagram>` holds
+it (`@state selection`, cleared on every relayout), passes it to both painters,
+and takes a new one from whichever painter announces `zx-selection`. That is the
+whole of the linkage; the mapping between the two pictures is each painter's own
+reading of the same node ids and edge indices, not a translation step in the
+host. An unrecognised `view-mode` draws
 the graph, the way an unrecognised `color-scheme` falls back to the original.
 It owns the presentation properties that mirror
 pyzx's `draw_d3` keyword arguments (`show-labels`, `color-scheme`, `scale`,
@@ -176,13 +198,21 @@ story's play function relies on) and avoids a second shadow boundary. It is
 deliberately not exported — promoting it later (own shadow root + export) is
 non-breaking; demoting it would not be.
 
-The viewer stores exactly four pieces of interaction state — dragged
-positions, H-box line parameters, the selection, and the live brush rect —
-and derives everything else (H-box positions, box bounds, edge paths) in
-`render()`. There is no imperative "sync the DOM to the model" pass; a drag
-mutates state and calls `requestUpdate()`. Those fields are plain private
-fields rather than `@state()` precisely because they are mutated in place and
-paired with an explicit `requestUpdate()`.
+The viewer stores exactly three pieces of interaction state — dragged
+positions, H-box line parameters, and the live brush rect — plus the
+`selection` the host owns, and derives everything else (H-box positions, box
+bounds, edge paths) in `render()`. There is no imperative "sync the DOM to the
+model" pass; a drag mutates state and calls `requestUpdate()`. Those three are
+plain private fields rather than `@state()` precisely because they are mutated
+in place and paired with an explicit `requestUpdate()`. A gesture that changes
+the selection instead dispatches `zx-selection` and waits for the host to hand
+one back; a node drag moves the set the press itself *makes*, since that
+round-trip only lands on the next update. A selected ZX edge is drawn but never
+selected in this view — nothing here is an edge to point at, so it only ever
+arrives from a press on a dot in the other view — and for now it is repainted
+in the selection blue outright, which costs it its own colour (an H-edge stops
+reading as one while it is picked out). A marker that keeps the edge's colour is
+the intended replacement.
 
 Because a painter updates on its own cycle, anything that needs the SVG in the
 DOM has to await it: `<zx-diagram>` overrides `getUpdateComplete()` and awaits
@@ -190,9 +220,9 @@ every mounted child before measuring the attributions. A measuring pass only
 counts as done once *every* badge has been placed — one view can be measurable
 while the other is not yet.
 
-`<zx-hypergraph-viewer>` keeps two, the same way — the selection and the
-dragged dot positions — and derives every blob outline, dot ring and trespass
-mark from them in `render()`.
+`<zx-hypergraph-viewer>` keeps one, the same way — the dragged dot positions —
+and derives every blob outline, dot ring and trespass mark from that and the
+host's selection in `render()`.
 
 ## Build
 
@@ -221,8 +251,8 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
 - Lit decorators are on: `experimentalDecorators: true` and
   `useDefineForClassFields: false` in tsconfig. Use `@customElement`,
   `@property`, `@state`.
-- `diagram`, `scene` and `colors` are `{ attribute: false }` properties, not
-  HTML attributes — they carry arbitrary objects.
+- `diagram`, `scene`, `colors` and `selection` are `{ attribute: false }`
+  properties, not HTML attributes — they carry arbitrary objects.
 - Templates use the `svg` tag for anything nested inside `<svg>`; only the
   root `<svg>` sits in an `html` template.
 - **No whitespace between the children of an SVG `<text>`.** A newline in the
@@ -245,7 +275,11 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
   contract: `g.node` wrapping per-node `<g data-node>`, `g.brush >
   rect.overlay`, `path.selectable` for the ground symbol, `text[fill="#999"]`
   for id labels, the scalar as the only direct `<text>` child of the `<svg>`,
-  and `g.attribution` carrying a `rect` chip. The hypergraph view has its own:
+  a selected node marked by `#00f` in its shape's `style` and a selected edge
+  by `#00f` as its path's `stroke` outright (there is no selected *style* for
+  an edge yet), and `g.attribution` carrying a `rect` chip. In `both` mode the
+  two views share one tree, so anything ambiguous is scoped by painter tag
+  (`zx-viewer …` / `zx-hypergraph-viewer …`). The hypergraph view has its own:
   `g.blob` wrapping per-hyperedge `<g data-hyperedge>`, `g.dot` wrapping
   per-wire `<g data-wire>`, a selected blob marked by `#00f` in its path's
   `style` and its leader as `line.leader[data-hyperedge]`, a dot held by a

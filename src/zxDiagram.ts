@@ -14,6 +14,9 @@ import { COLOR_SCHEMES, type ColorSchemeName } from './colors'
 import { ZOOM as HYPERGRAPH_ZOOM, layoutHypergraph } from './hypergraph/layout'
 import type { HypergraphScene } from './hypergraph/types'
 import { layout } from './layout'
+// `@zx-selection` in the template below is `SELECTION_EVENT`, written out
+// because a Lit binding's name has to be a literal.
+import { EMPTY_SELECTION, type Selection } from './selection'
 import type { DiagramData, Scene } from './types'
 import './graph/viewer'
 import './hypergraph/viewer'
@@ -61,6 +64,17 @@ export class ZxDiagramElement extends LitElement {
   @state() private scene: Scene | null = null
   @state() private hypergraph: HypergraphScene | null = null
   @state() private error: string | null = null
+
+  /** What is picked out, held here rather than in either painter so that the
+   *  two track each other: it is stated in the diagram's own terms — ZX node
+   *  ids and edge indices — and each painter draws whatever that means in its
+   *  own picture. A painter announces the selection a gesture makes; this is
+   *  the only thing that stores one. */
+  @state() private selection: Selection = EMPTY_SELECTION
+
+  private onSelection = (e: Event) => {
+    this.selection = (e as CustomEvent<Selection>).detail
+  }
 
   // Container background is Bootstrap .bg-light-subtle
   // Attribution background is Bootstrap .bg-secondary-subtle w/ 50% transparency
@@ -169,6 +183,9 @@ export class ZxDiagramElement extends LitElement {
   private relayout() {
     this.scene = null
     this.hypergraph = null
+    // A fresh layout is a fresh drawing, and the old selection names ids that
+    // may not even be in it.
+    this.selection = EMPTY_SELECTION
     try {
       // Both views start from the same `layout()`; the hypergraph is derived
       // from that scene rather than laying the diagram out a second time. The
@@ -223,6 +240,8 @@ export class ZxDiagramElement extends LitElement {
                 .scene=${this.scene}
                 .colors=${this.palette}
                 .showLabels=${this.showLabels}
+                .selection=${this.selection}
+                @zx-selection=${this.onSelection}
                 .overlay=${attributionTemplate(this.scene.width, this.scene.height)}
               ></zx-viewer>
             </div>
@@ -237,6 +256,8 @@ export class ZxDiagramElement extends LitElement {
                 .scene=${this.hypergraph}
                 .colors=${this.palette}
                 .showLabels=${this.showLabels}
+                .selection=${this.selection}
+                @zx-selection=${this.onSelection}
                 .overlay=${attributionTemplate(this.hypergraph.width, this.hypergraph.height)}
               ></zx-hypergraph-viewer>
             </div>
