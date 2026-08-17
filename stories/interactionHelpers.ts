@@ -73,6 +73,14 @@ export function selectedBlobsIn(root: ShadowRoot): string[] {
     .map(g => g.getAttribute('data-hyperedge') ?? '')
 }
 
+/** Ids of the wires whose dots are ringed as belonging to a selected blob, in
+ *  document order. */
+export function ringedDotsIn(root: ShadowRoot): string[] {
+  return [...root.querySelectorAll<SVGGElement>('svg g.dot g[data-wire]')]
+    .filter(g => g.querySelector('circle.selected'))
+    .map(g => g.getAttribute('data-wire') ?? '')
+}
+
 /** The `fill` of every circular or rectangular node shape — spiders,
  *  boundaries and W-inputs (circles), H-boxes and Z-boxes (rects). Pass a
  *  shape to narrow to one of the two. */

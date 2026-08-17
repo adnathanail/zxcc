@@ -109,6 +109,14 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   its outline, which in a pile of overlapping blobs looks like it could belong
   to any of them. Leaders are their own layer above every blob, since inside a
   blob's group they would be painted over by whichever blobs came after.
+  Every dot a selected blob holds is ringed in that same blue, derived from
+  the selection on each render rather than stored: an outline says which shapes
+  are picked out, but a hull is drawn round the dots it holds and will happily
+  enclose ones it doesn't, so the outline alone can't say which wires are *in*
+  it. That is also what makes pressing a dot answer "what shares a hyperedge
+  with this wire" rather than just "which shapes hold it". The ring stands off
+  the dot rather than restroking it, so it reads over every dot colour, the
+  blue an H-wire's dot is filled with included.
   It takes the same `colors`
   palette
   `<zx-viewer>` does: a blob is filled with its node's own colour at 40%
@@ -163,9 +171,9 @@ Because a painter updates on its own cycle, anything that needs the SVG in the
 DOM has to await it: `<zx-diagram>` overrides `getUpdateComplete()` and awaits
 whichever child is mounted before measuring the attribution.
 
-`<zx-hypergraph-viewer>` holds no interaction state at all yet — it derives
-every blob outline from the dot positions in `render()`, the same way, so
-adding drags means making that map state rather than restructuring it.
+`<zx-hypergraph-viewer>` keeps two, the same way — the selection and the
+dragged dot positions — and derives every blob outline, dot ring and trespass
+mark from them in `render()`.
 
 ## Build
 
@@ -220,7 +228,9 @@ Check whether you are on the `gitbutler/workspace` branch; if so, use the `but` 
   and `g.attribution` carrying a `rect` chip. The hypergraph view has its own:
   `g.blob` wrapping per-hyperedge `<g data-hyperedge>`, `g.dot` wrapping
   per-wire `<g data-wire>`, a selected blob marked by `#00f` in its path's
-  `style` and its leader as `line.leader[data-hyperedge]`, a blob's caption
+  `style` and its leader as `line.leader[data-hyperedge]`, a dot held by a
+  selected blob carrying a `circle.selected` ring inside its `<g data-wire>`,
+  a blob's caption
   split into `<tspan>`s with the phase carrying `fill="#00d"`, and a dot
   overlapping a blob that doesn't hold it as `g.overlap circle[data-wire]`
   with its `clipPath` id ending `-<wire id>`, and the trespass tally as

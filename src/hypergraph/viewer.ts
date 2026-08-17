@@ -6,8 +6,10 @@
 // leaves the SVG reachable from the host's shadow root.
 //
 // Blob outlines are derived in `render()` from the dot positions rather than
-// stored, so live positions are all that would need to become state. The only
-// interaction state is the selection; dots don't drag yet.
+// stored, so a drag only has to move a dot for every blob holding it to
+// reshape. There are two pieces of interaction state — the selected blobs and
+// the dragged dot positions — and everything else on screen, the ringed dots
+// included, is derived from them.
 
 import { html, LitElement, nothing, type PropertyValues, type SVGTemplateResult, svg } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
@@ -40,6 +42,14 @@ const LEADER_GAP = 4
 /** A blob's name, darker than the `LABEL_FILL` grey the wire ids take: it sits
  *  over a filled blob rather than on bare canvas. */
 const NAME_FILL = '#555'
+/** The ring drawn round every dot a selected blob holds, in the same blue the
+ *  blob's own outline takes: the selection is one fact — these hyperedges and
+ *  the wires in them — so it is painted in one colour. It stands off the dot
+ *  rather than replacing its stroke so that it reads against every dot colour,
+ *  the blue an H-wire's dot is filled with included. */
+const DOT_SELECTED_STYLE = `fill: none; stroke: ${SELECTED_STROKE}; stroke-width: 1.5px; pointer-events: none`
+/** Gap between a dot's rim and its selection ring. */
+const DOT_HALO = 2.5
 /** The red which the part of a dot that has strayed into a blob not holding it
  *  is painted. */
 const OVERLAP_FILL = '#e00'
@@ -124,6 +134,10 @@ export class ZxHypergraphViewerElement extends LitElement {
    * hold it, since a blob is a hull around its own dots and the drawing is
    * crowded; highlighting that blob would be answering with an accident of the
    * layout.
+   *
+   * Either way what is selected is a set of *blobs*; the dots those blobs hold
+   * are ringed as part of drawing them (see `render`), so pressing a dot picks
+   * out the wires that share a hyperedge with it.
    *
    * Dragging is what makes the view explorable: the blobs are derived from the
    * dot positions on every render, so pulling a dot about reshapes every blob
@@ -302,6 +316,13 @@ export class ZxHypergraphViewerElement extends LitElement {
     const blobs = [...scene.blobs].sort(
       (a, b) => Number(this.#selected.has(a.id)) - Number(this.#selected.has(b.id)),
     )
+    // Every wire the selected blobs hold, ringed along with them. An outline
+    // says which shapes are picked out, but a blob's hull is a drawing decision
+    // — it is drawn round the dots it holds and will happily enclose ones it
+    // doesn't — so the outline alone doesn't say which wires are *in* them.
+    // Ringing the dots states that membership directly, and is what makes the
+    // hyperedge's actual extent legible where the hulls overlap.
+    const ringed = new Set(scene.blobs.filter(b => this.#selected.has(b.id)).flatMap(b => b.dots))
     const trespasses = this.#trespasses(scene, pos)
 
     return html`
@@ -337,6 +358,12 @@ export class ZxHypergraphViewerElement extends LitElement {
                 pos.get(dot.id)?.y ?? dot.y
               })">
                 <circle r=${scene.dotSize} fill=${edgeColor(dot.kind, this.colors)} />
+                ${
+                  ringed.has(dot.id)
+                    ? svg`<circle class="selected" r=${scene.dotSize + DOT_HALO}
+                        style=${DOT_SELECTED_STYLE} />`
+                    : nothing
+                }
                 ${
                   this.showLabels
                     ? svg`<text y=${scene.blobRadius + 11} text-anchor="middle" font-size="10px"

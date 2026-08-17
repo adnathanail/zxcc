@@ -6,6 +6,7 @@ import { strongComplementarityOf } from '../diagrams'
 import {
   fireMouse,
   performDrag,
+  ringedDotsIn,
   selectedBlobsIn,
   shadowRootOf,
   translateOf,
@@ -61,13 +62,20 @@ export const HypergraphBlobSelection: Story = {
       fireMouse('mousedown', svg, box.left + x, box.top + y)
     }
 
-    // Nothing is selected to begin with, so nothing is leadered.
+    // Nothing is selected to begin with, so nothing is leadered, and no dot is
+    // ringed.
     expect(root.querySelectorAll('line.leader').length).toBe(0)
+    expect(ringedDotsIn(root)).toEqual([])
 
     // w0 is the top-left boundary leg, which only the first Z spider (node 2)
     // holds.
     clickDot('w0')
     await waitFor(() => expect(selectedBlobsIn(root)).toEqual(['e2']))
+    // Selecting a blob rings every dot it holds: the outline says which shapes
+    // are picked out, but a hull encloses dots it doesn't hold, so on its own it
+    // doesn't say which wires are in them. e2 is the first Z spider — its
+    // boundary leg and its two wires to the X rank.
+    expect(ringedDotsIn(root)).toEqual(['w0', 'w4', 'w5'])
     // The selected blob gets a line from its caption down to its own outline —
     // which caption goes with which shape is the thing four overlapping blobs
     // make unreadable. It starts just under the caption's baseline.
@@ -87,10 +95,12 @@ export const HypergraphBlobSelection: Story = {
     // says which of the four captions belongs to which.
     expect(root.querySelectorAll('line.leader').length).toBe(4)
 
-    // A click on bare canvas drops the selection, and the leaders with it.
+    // A click on bare canvas drops the selection, and the leaders and rings
+    // with it.
     fireMouse('mousedown', svg, box.left + 2, box.top + 2)
     await waitFor(() => expect(selectedBlobsIn(root)).toEqual([]))
     expect(root.querySelectorAll('line.leader').length).toBe(0)
+    expect(ringedDotsIn(root)).toEqual([])
 
     // A press that lands on a *dot* selects by membership rather than by
     // geometry: the blobs that hold that wire, which for w6 (the 3—4 crossing
@@ -104,6 +114,10 @@ export const HypergraphBlobSelection: Story = {
     const [x, y] = translateOf(dot)
     fireMouse('mousedown', dot, box.left + x, box.top + y)
     await waitFor(() => expect(selectedBlobsIn(root)).toEqual(['e3', 'e4']))
+    // Pressing a dot is how you ask what shares a hyperedge with a wire: the
+    // rings are on every wire of the two spiders w6 joins — w6 itself, the
+    // other Z leg and the other X leg of each — and on nothing else.
+    expect(ringedDotsIn(root)).toEqual(['w1', 'w2', 'w4', 'w6', 'w7'])
     fireMouse('mouseup', window, box.left + x, box.top + y)
   },
 }
