@@ -118,10 +118,21 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   (the outline enclosing a set of dots), `blobContains` (the same shape as a
   hit test), and `blobOutline`/`blobLabelAnchor`/`blobCentre` over a live
   dot-position map.
-- `layout.ts` — `layoutHypergraph`, parking each wire's dot at the midpoint of
-  its edge so the two views line up, sliding it along that edge when two dots
-  would land on one spot (`spreadCoincident`), then zooming the positions,
-  since the dual has twice the marks at half the spacing.
+- `layout.ts` — `layoutHypergraph`. It zooms the resolved node positions by
+  `ZOOM` first — the dual has twice the marks at half the spacing, so it is
+  drawn roomier — then builds each wire's curve from those and parks the dot at
+  its midpoint, sliding it along the curve when two dots would land on one spot
+  (`spreadCoincident`).
+
+  The zoom comes before the curves rather than after the midpoints for the sake
+  of one curve: a self-loop's arc is a fixed number of pixels above its node,
+  not a fraction of anything, so scaling a loop drawn at `p` does not give the
+  loop drawn at `p * ZOOM`. Evaluating first and zooming after put a self-loop's
+  dot 18px clear of the loop `<zx-viewer>` paints. Every other curve shape is
+  homogeneous in its endpoints and comes out identical either way, which is why
+  the bug was confined to loops. `Other/Both viewers` → `6. Self-loop dots`
+  measures each dot against `getPointAtLength(len / 2)` of its wire and is what
+  holds this.
 - `viewer.ts` — `<zx-hypergraph-viewer>`, the second painter. Internal and
   light DOM. One piece of interaction state of its own, a plain field paired
   with an explicit `requestUpdate()` — the dragged dot positions — plus the

@@ -34,7 +34,7 @@ const meta: Meta<Args> = {
     docs: {
       description: {
         component:
-          "The diagram and its dual drawn together: the two arrangements, and the properties that do different work in each view — `show-labels`, `scale`.",
+          'The diagram and its dual drawn together: the two arrangements, and the properties that do different work in each view — `show-labels`, `scale`.',
       },
     },
   },

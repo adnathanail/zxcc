@@ -76,7 +76,12 @@ justification, the gotcha, and that assertion.
 
 ### 3. Self-loop dots miss their wire in `both` modes
 
-- [ ] Done
+- [x] **Done.** `layoutHypergraph` now zooms the resolved node positions *before*
+      building the curves, and `at()` is a plain `curvePointAt`. Only self-loops
+      move: every other curve shape is homogeneous in its endpoints, so scaling
+      the endpoints and scaling the evaluated point are the same operation.
+      `Other/Both viewers` → `6. Self-loop dots` asserts all three dots land on
+      their own curve.
 
 `src/hypergraph/layout.ts:189-192`
 
@@ -95,12 +100,20 @@ inverted — the painter it has to agree with is already using zoomed ones.
 
 Every other curve shape scales, so this only bites self-loops.
 
-**Fix:** make the self-loop spread proportional to `scale` in `edgeCurve`, or
-hand `wireCurve` the zoomed positions.
+**Fix taken:** hand `wireCurve` the zoomed positions. (The alternative — making
+the loop's `spread` proportional to `scale` in `edgeCurve` — would have changed
+how a loop looks in the graph view too, which is a separate decision.)
 
-**Test:** `selfLoopSpiders` is only used in a graph-view story. Add a
-`both-vertical` story over it and assert the dot's `translate` against the
-wire's path midpoint.
+**Shown by** `Other/Both viewers` → `6. Self-loop dots`, which measures each
+dot against `getPointAtLength(len / 2)` of the wire it stands for. Before the
+fix, on that diagram: the two straight wires exact, the self-loop's dot at
+`(0, -18)` — directly above the top of the loop, in empty canvas. After: all
+three at `(0, 0)`.
+
+Measured on `selfLoopSpiders`, where node 2 carries two parallel self-loops, the
+offsets are 18.00, 14.06 and 18.48 — the last two mix this defect with
+`spreadCoincident` deliberately sliding tied dots along their own wires, which
+is why the story uses a single loop instead.
 
 ---
 
@@ -108,7 +121,7 @@ wire's path midpoint.
 
 ### 4. `show-labels="false"` now means labels *on*
 
-- [ ] Done
+- [x] **Done** this is fine we are pre-release
 
 The default flip in `e4367fe` is a visible breaking change on its own. The sharp
 edge: the **old README told people to write literally `show-labels="false"`** to
@@ -123,7 +136,7 @@ than a patch.
 
 ### 5. There is no public selection API
 
-- [ ] Done
+- [x] **Done** Not important right now
 
 Shared selection is the headline of this release, but:
 
@@ -142,7 +155,7 @@ after.
 
 ### 6. `viewMode` changes force a full relayout
 
-- [ ] Done
+- [x] **Done** Fine for now
 
 `src/zxDiagram.ts:130`. Every `viewMode` change drops all drags and the
 selection — including between `both-vertical` and `both-horizontal`, which by
@@ -211,7 +224,7 @@ hands it back as the colour.
 
 ### 11. Update hypergraph-plan
 
-- [ ] 
+- [ ] Done
 
 Chop out unnecessary context. Give short clear design decisions. Outline potential next steps
 
