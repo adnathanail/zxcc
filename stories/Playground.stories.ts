@@ -67,7 +67,10 @@ const meta: Meta<Args> = {
     hadamardOnEdge: { control: 'boolean' },
     parallelEdges: { control: { type: 'range', min: 1, max: 4, step: 1 } },
     box: { control: 'inline-radio', options: ['none', 'stack', 'compose'] },
-    viewMode: { control: 'inline-radio', options: ['graph', 'hypergraph', 'both'] },
+    viewMode: {
+      control: 'inline-radio',
+      options: ['graph', 'hypergraph', 'both-vertical', 'both-horizontal'],
+    },
     showLabels: { control: 'boolean' },
     colorScheme: { control: 'inline-radio', options: ['original', 'rgb', 'grayscale'] },
     scale: { control: { type: 'range', min: 10, max: 100, step: 5 } },
@@ -76,7 +79,7 @@ const meta: Meta<Args> = {
     docs: {
       description: {
         component:
-          'Two spiders wired input → left → right → output. Use the controls to change colours, phases, insert a Hadamard, add parallel edges, wrap the pair in a stack/compose box, switch to the hypergraph dual (or show both views stacked), toggle node-id labels, switch pyzx colour scheme, or pin the pixels-per-row scale.',
+          'Two spiders wired input → left → right → output. Use the controls to change colours, phases, insert a Hadamard, add parallel edges, wrap the pair in a stack/compose box, switch to the hypergraph dual (or show both views, stacked or side by side), toggle node-id labels, switch pyzx colour scheme, or pin the pixels-per-row scale.',
       },
     },
   },

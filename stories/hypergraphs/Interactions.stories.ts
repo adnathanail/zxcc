@@ -266,7 +266,7 @@ export const LinkedSelection: StoryObj<Args> = {
   name: '3. Selection across both views',
   args: { diagram: fourSpiderSquare },
   render: ({ diagram }) =>
-    html`<zx-diagram .diagram=${diagram} view-mode="both" style="min-height: 160px"></zx-diagram>`,
+    html`<zx-diagram .diagram=${diagram} view-mode="both-vertical" style="min-height: 160px"></zx-diagram>`,
   play: async ({ canvasElement }) => {
     const root = await shadowRootOf(canvasElement)
     const svg = await waitFor(() => {

@@ -91,7 +91,7 @@ only — graph structure always lives in `diagram`.
 | `show-labels` | `showLabels` | `true` | Draw each node's id above it. Set `show-labels="false"` to hide — a bare boolean attribute can't express "off" for a true-by-default property. |
 | `color-scheme` | `colorScheme` | `original` | One of `original`, `rgb`, `grayscale` — the palettes from `pyzx.utils`. |
 | `scale` | `scale` | derived | Pixels per row/qubit. When set, the derived 20–50 clamp is bypassed. |
-| `view-mode` | `viewMode` | `graph` | Which view to draw: `graph`, `hypergraph`, or `both` stacked. See [Hypergraph view](#hypergraph-view). |
+| `view-mode` | `viewMode` | `graph` | Which view to draw: `graph`, `hypergraph`, or both — `both-vertical` (stacked) or `both-horizontal` (side by side). See [Hypergraph view](#hypergraph-view). |
 | — | `colors` | `null` | Full palette override (`Record<string, string>`), keyed as in `pyzx.utils.original_colors`. Wins over `color-scheme`. |
 
 ```html
@@ -116,11 +116,13 @@ wire.
 <zx-diagram id="d" view-mode="hypergraph"></zx-diagram>
 ```
 
-`view-mode="both"` draws the pair, the diagram above its dual, each in its own scroll container.
-The dual is drawn 1.6× roomier than the diagram it comes from — it has twice the marks at half the
-spacing — so in this mode the diagram is laid out at that same scale, and the two come out the same
-width with each dot directly under the wire it stands for. Dragging stays local to a view, but the
-**selection is shared**, since the same thing has a counterpart in each picture:
+`view-mode="both-vertical"` draws the pair with the diagram above its dual, and
+`view-mode="both-horizontal"` puts them side by side, the diagram on the left; each is in its own
+scroll container either way. The dual is drawn 1.6× roomier than the diagram it comes from — it has
+twice the marks at half the spacing — so in these modes the diagram is laid out at that same scale,
+and the two come out the same size with each dot on the same coordinates as the midpoint of the wire
+it stands for: directly under it when stacked, level with it when side by side. Dragging stays local
+to a view, but the **selection is shared**, since the same thing has a counterpart in each picture:
 
 | Select this | …and this comes out selected |
 | --- | --- |
@@ -134,7 +136,8 @@ own ring is unbroken while the hyperedges holding that wire are outlined in dash
 wires those hyperedges hold get no mark, so the dot you pressed stays the one solid thing in its own answer.
 
 ```html
-<zx-diagram id="d" view-mode="both"></zx-diagram>
+<zx-diagram id="d" view-mode="both-vertical"></zx-diagram>
+<zx-diagram id="e" view-mode="both-horizontal"></zx-diagram>
 ```
 
 Only Z/X spiders, I/O, and Hadamards are supported in this view, other node types will be rejected.
