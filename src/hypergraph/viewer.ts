@@ -15,6 +15,7 @@
 import { html, LitElement, nothing, type PropertyValues, type SVGTemplateResult, svg } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 import {
+  type EdgeColors,
   edgeColor,
   LABEL_FILL,
   nodeColor,
@@ -95,6 +96,9 @@ export class ZxHypergraphViewerElement extends LitElement {
   @property({ attribute: false }) scene: HypergraphScene | null = null
   /** Palette to paint with, as `<zx-viewer>` takes. */
   @property({ attribute: false }) colors: Record<string, string> = ORIGINAL_COLORS
+  /** Wire colours by edge kind, again as `<zx-viewer>` takes them: a dot is a
+   *  wire, so it is painted from the same lookup the wire itself is. */
+  @property({ attribute: false }) edgeColors: EdgeColors | null = null
   /** Draw each dot's wire id and each blob's name. With it off a blob still
    *  shows its phase, if it has one. */
   @property({ attribute: false }) showLabels = true
@@ -440,7 +444,8 @@ export class ZxHypergraphViewerElement extends LitElement {
               <g data-wire=${dot.id} transform="translate(${pos.get(dot.id)?.x ?? dot.x},${
                 pos.get(dot.id)?.y ?? dot.y
               })">
-                <circle r=${scene.dotSize} fill=${edgeColor(dot.kind, this.colors)} />
+                <circle r=${scene.dotSize}
+                  fill=${edgeColor(dot.kind, this.colors, this.edgeColors)} />
                 ${
                   picked.dots.has(dot.id)
                     ? svg`<circle

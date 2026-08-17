@@ -383,22 +383,22 @@ export const UnsupportedNodeType: Story = {
   },
 }
 
-// `edgeColors` is folded into the palette rather than handed to a painter, so
-// there is one lookup behind both views: the dot standing for a wire cannot
-// come out a different colour from the wire itself.
+// Both painters read a wire's colour from the one `edgeColor` lookup, so a
+// kind invented for a diagram reaches the dual for nothing: the dot standing
+// for a wire cannot come out a different colour from the wire itself.
 export const WireColors: Story = {
-  name: '10. Wire colour overrides',
+  name: '10. Custom wire kinds',
   parameters: {
     docs: {
       story: {
         description:
-          'A colour per wire kind, keyed by the kinds the diagram is written in. Drawn in both views at once: the H-wire is pink in the diagram and its dot is the same pink in the dual.',
+          "A colour per wire kind, keyed by the kinds the diagram is written in — `control` here is this diagram's own, `hadamard` a built-in being overridden. Drawn in both views at once: each wire's colour in the diagram is the colour of its dot in the dual.",
       },
     },
   },
   args: {
     viewMode: 'both-vertical',
-    edgeColors: { hadamard: '#ff00aa' },
+    edgeColors: { hadamard: '#ff00aa', control: '#00aa55' },
     diagram: {
       nodes: [
         { id: 0, type: 'input', ioId: 0 },
@@ -407,7 +407,7 @@ export const WireColors: Story = {
         { id: 3, type: 'output', ioId: 0 },
       ],
       edges: [
-        { src: 0, tgt: 1 },
+        { src: 0, tgt: 1, kind: 'control' },
         { src: 1, tgt: 2, kind: 'hadamard' },
         { src: 2, tgt: 3 },
       ],
@@ -415,17 +415,15 @@ export const WireColors: Story = {
   },
   play: async ({ canvasElement }) => {
     const root = await shadowRootOf(canvasElement)
-    // w1 is the H-wire, the second edge.
-    const dot = () =>
-      root.querySelector<SVGCircleElement>('zx-hypergraph-viewer g[data-wire="w1"] circle')
-    await waitFor(() => expect(dot()).not.toBeNull())
-    const wire = root.querySelectorAll<SVGPathElement>('zx-viewer g.link path')[1]
-    expect(wire.getAttribute('stroke')).toBe('#ff00aa')
-    expect(dot()?.getAttribute('fill')).toBe(wire.getAttribute('stroke'))
-    // The wires that weren't named keep the palette's own colour, in both views.
-    expect(root.querySelectorAll('zx-viewer g.link path')[0].getAttribute('stroke')).toBe('#000000')
-    expect(
-      root.querySelector('zx-hypergraph-viewer g[data-wire="w0"] circle')?.getAttribute('fill'),
-    ).toBe('#000000')
+    const dotFill = (wire: string) =>
+      root
+        .querySelector<SVGCircleElement>(`zx-hypergraph-viewer g[data-wire="${wire}"] circle`)
+        ?.getAttribute('fill')
+    await waitFor(() => expect(dotFill('w0')).not.toBeUndefined())
+    // Wire i and dot wi are the same edge — the custom kind, the overridden
+    // built-in, and the wire left on the palette's own colour.
+    const wires = [...root.querySelectorAll<SVGPathElement>('zx-viewer g.link path')]
+    expect(wires.map(w => w.getAttribute('stroke'))).toEqual(['#00aa55', '#ff00aa', '#000000'])
+    expect(['w0', 'w1', 'w2'].map(dotFill)).toEqual(['#00aa55', '#ff00aa', '#000000'])
   },
 }

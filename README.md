@@ -72,7 +72,7 @@ interface DiagramNode {
 interface DiagramEdge {
   src: number
   tgt: number
-  kind?: 'simple' | 'hadamard' | 'w-io'   // default 'simple'
+  kind?: 'simple' | 'hadamard' | 'w-io' | string   // default 'simple'; see edgeColors
 }
 ```
 
@@ -93,7 +93,7 @@ only — graph structure always lives in `diagram`.
 | `scale` | `scale` | derived | Pixels per row/qubit. When set, the derived 20–50 clamp is bypassed. |
 | `view-mode` | `viewMode` | `graph` | Which view to draw: `graph`, `hypergraph`, or both — `both-vertical` (stacked) or `both-horizontal` (side by side). See [Hypergraph view](#hypergraph-view). |
 | — | `colors` | `null` | Full palette override (`Record<string, string>`), keyed as in `pyzx.utils.original_colors`. Wins over `color-scheme`. |
-| — | `edgeColors` | `null` | Wire colours by edge kind (`{ simple, hadamard, 'w-io' }`, all optional). Wins over both of the above, for the kinds named. |
+| — | `edgeColors` | `null` | Wire colours by edge kind, the three built-in ones or kinds of your own. Wins over both of the above, for the kinds named. |
 
 ```html
 <zx-diagram show-labels="false" color-scheme="grayscale" scale="40"></zx-diagram>
@@ -105,16 +105,30 @@ The palettes are exported too, if you want to build a variant:
 import { ORIGINAL_COLORS, RGB_COLORS, GRAYSCALE_COLORS, COLOR_SCHEMES } from '@adnathanail/zxcc'
 ```
 
-To recolour wires alone, `edgeColors` takes a colour per edge kind — the kinds the diagram is
-written in, rather than pyzx's `edge` / `Hedge` / `Xedge` palette entries. Only the kinds you name
-move; the rest stay on whatever `color-scheme` or `colors` decided:
+### Wire colours and custom wire kinds
+
+`edgeColors` maps edge kinds to colours — the kinds the diagram is written in, rather than pyzx's
+`edge` / `Hedge` / `Xedge` palette entries. Only the kinds you name move; the rest stay on whatever
+`color-scheme` or `colors` decided.
+
+An edge's `kind` is **only** a colour: nothing in the layout or the geometry reads it. So it isn't
+limited to the three built-in kinds — use any string you like and give it a colour here:
 
 ```js
-document.getElementById('d').edgeColors = { hadamard: '#ff00aa', 'w-io': 'grey' }
+const d = document.getElementById('d')
+d.diagram = {
+  nodes: [/* … */],
+  edges: [
+    { src: 0, tgt: 1, kind: 'control' },     // a kind of your own
+    { src: 1, tgt: 2, kind: 'hadamard' },    // a built-in, recoloured
+    { src: 2, tgt: 3 },                      // 'simple', left alone
+  ],
+}
+d.edgeColors = { control: '#00aa55', hadamard: '#ff00aa' }
 ```
 
-It is folded into the palette, so the hypergraph view's dot for a wire always comes out the same
-colour as the wire itself.
+A kind you don't give a colour draws like a plain wire. Both views read a wire's colour from the same
+lookup, so the hypergraph view's dot for a wire always comes out the colour of the wire itself.
 
 ## Hypergraph view
 

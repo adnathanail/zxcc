@@ -17,6 +17,7 @@ import { html, LitElement, nothing, type PropertyValues, type SVGTemplateResult,
 import { customElement, property } from 'lit/decorators.js'
 import {
   CANVAS_FILL,
+  type EdgeColors,
   edgeColor,
   LABEL_FILL,
   nodeColor,
@@ -80,6 +81,9 @@ function isAdditive(e: MouseEvent): boolean {
 export class ZxViewerElement extends LitElement {
   @property({ attribute: false }) scene: Scene | null = null
   @property({ attribute: false }) colors: Record<string, string> = ORIGINAL_COLORS
+  /** Wire colours by edge kind, taking precedence over the palette. The one
+   *  way a kind the palettes have never heard of gets a colour. */
+  @property({ attribute: false }) edgeColors: EdgeColors | null = null
   /** Draw each node's id above it (pyzx's `draw_d3(labels=...)`). */
   @property({ attribute: false }) showLabels = true
   /** Extra SVG painted on top of the diagram, in its coordinate space. The
@@ -401,7 +405,7 @@ export class ZxViewerElement extends LitElement {
         <g class="link">
           ${scene.links.map(
             link => svg`<path
-              d=${linkPath(link, pos)} stroke=${edgeColor(link.kind, this.colors)}
+              d=${linkPath(link, pos)} stroke=${edgeColor(link.kind, this.colors, this.edgeColors)}
               fill="transparent" style=${LINK_STYLE} />`,
           )}
         </g>
