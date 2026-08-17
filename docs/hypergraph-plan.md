@@ -97,6 +97,27 @@ Answers to the questions above, as built:
    consecutive dots are half a ZX scale apart — twice the marks at half the
    spacing. Blob radius and dot radius stay in unzoomed units, so zooming also
    buys the gap between neighbouring blobs.
+
+   Two edges that cross share a midpoint, so their dots would coincide;
+   `spreadCoincident` pulls such a group apart in one pass, sliding each dot
+   along its own wire (`wireCurve` at `t ≠ 0.5`) until the group clears three
+   dot radii. Sliding rather than pushing down the column is the whole point:
+   the column is where the other dots already are — consecutive midpoints are
+   half a scale apart on it — so a group opened that way runs into its
+   neighbours. Measured on the n-to-m story, counting pairs of dots drawn on
+   top of one another:
+
+   | | 2×2 | 3×3 | 4×5 | 6×6 |
+   |---|---|---|---|---|
+   | midpoints | 1 | 5 | 20 | 55 |
+   | spread down the column | 0 | 2 | 5 | 27 |
+   | slid along their wires | 0 | 0 | 0 | 8 |
+
+   Spreading down the column also puts dots back on the *same point* from 4×4
+   up (3 pairs at 4×5), because a group of four spans exactly its neighbour's
+   slot. Sliding never does. Neither approach touches the trespass tally — every
+   trespass at rest is a coincidence, and separating the dots just turns each
+   into a dot inside a neighbouring hull; see the note in `Next`.
 3. **Blob geometry.** `blobPath` — convex hull, offset outwards by a radius,
    arcs at the corners. One dot gives a circle, two a capsule, more a rounded
    convex polygon, so arity 2 is fine. Overlapping blobs are currently told
@@ -131,15 +152,23 @@ Answers to the questions above, as built:
   cost of the correspondence.
 - Dragging dots, and whether selection should mean more than "show me this
   blob" — the graph view's selection drags.
-- **Distinct wires can share a dot.** Two edges that cross have the same
-  midpoint, so their dots land on top of each other: in the strong
-  complementarity story `w6` (1—6) and `w7` (2—5) are both at the centre. The
-  hulls around them are correct, but the picture reads as one dot shared by
-  four blobs rather than two dots held by two each. `layout()` already fans
-  *parallel* edges apart via `index`/`parallel`; this is the same problem for
-  edges between different pairs, and wants the same kind of fix — spread
-  coincident dots as a group, the way `Topology.resolve` spreads
-  barycentre-parked H-boxes.
+- Labels in a crowded column. Each dot's label hangs a fixed distance below
+  it, which lands on the dot beneath when a column is dense — visible in the
+  middle of the strong complementarity story now that the tied dots are
+  spread. Part of the labels item above.
+- **Blobs swallowing dots they don't hold** — the red marks and the tally — is
+  a separate problem from dots overlapping, and spreading does not help it.
+  Measured: every trespass at rest is a *coincidence* (the dot is on one of that
+  blob's own dots), so the tally counts collisions today; separating the dots
+  turns each into a dot strictly inside a neighbouring hull and the count is
+  unchanged. Also measured, on the n-to-m story: `ZOOM` (1→4), `BLOB_RADIUS`
+  (0.35→0.1) and drawing a blob as the spider's legs thickened instead of a
+  convex hull all leave the tally *identical* — the last flags exactly the same
+  pairs, not merely the same number. What does clear it is moving every crowded
+  dot, not just the tied ones: with a half-scale displacement budget the 2×2 and
+  3×3 cases reach zero, while 4×5 does not get there at any budget. That points
+  at laying the hypergraph out from the hypergraph (the item above) rather than
+  at any nudging rule on top of the ZX positions.
 - Play functions. The stories currently only render; the ZX ones assert on the
   SVG, and the DOM here (`g.blob > g[data-hyperedge] > path`, `g.dot >
   g[data-wire]`) is a contract in the same way.
