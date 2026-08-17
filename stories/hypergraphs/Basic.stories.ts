@@ -1,21 +1,22 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
 import { expect, waitFor } from 'storybook/test'
+import type { ViewMode } from '../../src/index'
 import type { DiagramData } from '../../src/types'
 import { fourSpiderSquare, strongComplementarityOf } from '../diagrams'
 import { shadowRootOf } from '../interactionHelpers'
 
 interface Args {
   diagram: DiagramData
-  viewAsHypergraph: boolean
+  viewMode: ViewMode
   showLabels: boolean
   colorScheme: 'original' | 'rgb' | 'grayscale'
 }
 
-const renderDiagram = ({ diagram, viewAsHypergraph, showLabels, colorScheme }: Args) =>
+const renderDiagram = ({ diagram, viewMode, showLabels, colorScheme }: Args) =>
   html`<zx-diagram
     .diagram=${diagram}
-    ?view-as-hypergraph=${viewAsHypergraph}
+    view-mode=${viewMode}
     show-labels=${showLabels ? 'true' : 'false'}
     color-scheme=${colorScheme}
     style="min-height: 160px"
@@ -25,16 +26,16 @@ const meta: Meta<Args> = {
   title: 'Hypergraphs/Basic',
   render: renderDiagram,
   argTypes: {
-    viewAsHypergraph: { control: 'boolean' },
+    viewMode: { control: 'inline-radio', options: ['graph', 'hypergraph', 'both'] },
     showLabels: { control: 'boolean' },
     colorScheme: { control: 'select', options: ['original', 'rgb', 'grayscale'] },
   },
-  args: { viewAsHypergraph: true, showLabels: true, colorScheme: 'original' },
+  args: { viewMode: 'hypergraph', showLabels: true, colorScheme: 'original' },
   parameters: {
     docs: {
       description: {
         component:
-          "With `view-as-hypergraph` set, the element draws the diagram's hypergraph dual: every ZX edge becomes a dot, and every non-boundary ZX node becomes a blob enclosing the dots of its incident wires. Dots sit at the midpoint of the edge they came from, so the two views line up — toggle the control to compare. A blob is filled with the same palette entry its spider would be, so `color-scheme` applies to both views.",
+          'With `view-mode="hypergraph"`, the element draws the diagram\'s hypergraph dual: every ZX edge becomes a dot, and every non-boundary ZX node becomes a blob enclosing the dots of its incident wires. Dots sit at the midpoint of the edge they came from, so the two views line up — switch the control to `both` to see them stacked and compare. A blob is filled with the same palette entry its spider would be, so `color-scheme` applies to both views.',
       },
     },
   },
@@ -215,6 +216,27 @@ export const LargeStrongComplementarity: StoryObj<SizedArgs> = {
     renderDiagram({ ...rest, diagram: strongComplementarityOf(zCount, xCount) }),
 }
 
+export const BothViews: Story = {
+  name: '7. Both views stacked',
+  parameters: {
+    docs: {
+      story: {
+        description:
+          '`view-mode="both"` runs both painters, the diagram above its dual, each scrolling in its own container. Both are drawn from the one `layout()`, so a dot sits on the midpoint of the wire drawn directly above it. The two are independent otherwise — selecting or dragging in one does nothing to the other — and the attribution badge is drawn once, into the lower of the pair.',
+      },
+    },
+  },
+  args: { diagram: fourSpiderSquare, viewMode: 'both' },
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    // A painter each, in stack order, and one badge across the pair.
+    await waitFor(() => expect(root.querySelectorAll('zx-viewer svg').length).toBe(1))
+    expect(root.querySelectorAll('zx-hypergraph-viewer svg').length).toBe(1)
+    expect(root.querySelectorAll('g.attribution').length).toBe(1)
+    expect(root.querySelector('zx-hypergraph-viewer g.attribution')).not.toBeNull()
+  },
+}
+
 // Labels off hides the names, not the phases: a blob's `Z(π/2)` drops to
 // `π/2`, and a node with no phase to show — a default-π Hadamard — loses its
 // text altogether. This mirrors `<zx-viewer>`, where `show-labels` only ever
@@ -259,7 +281,7 @@ export const UnsupportedNodeType: Story = {
     docs: {
       story: {
         description:
-          'Only spiders and Hadamards have a blob shape. A W, Z-box or `wire` node would be a hyperedge in the dual, but there is no agreed way to draw one, so `toHypergraph` rejects the diagram rather than picking a colour. `<zx-diagram>` shows the message in its error state; drop `view-as-hypergraph` and the same diagram draws fine.',
+          'Only spiders and Hadamards have a blob shape. A W, Z-box or `wire` node would be a hyperedge in the dual, but there is no agreed way to draw one, so `toHypergraph` rejects the diagram rather than picking a colour. `<zx-diagram>` shows the message in its error state; switch `view-mode` back to `graph` and the same diagram draws fine.',
       },
     },
   },

@@ -146,13 +146,20 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
 ## The elements
 
 `<zx-diagram>` runs `layout()` in `willUpdate()` into `@state` (`scene` /
-`hypergraph` / `error`), then renders one of the two painters inside a scroll
-container — `<zx-viewer>`, or `<zx-hypergraph-viewer>` when
-`view-as-hypergraph` is set. The two states are mutually exclusive: only one
-view is built per update. It owns the presentation properties that mirror
+`hypergraph` / `error`), then renders a painter per non-null state, each inside
+its own scroll container — `<zx-viewer>` and/or `<zx-hypergraph-viewer>`.
+`view-mode` picks which: `graph` (the default), `hypergraph`, or `both`, the
+diagram stacked above its dual. `both` is the only mode that builds two, and
+the two are drawn from the *same* `layout()`, so a dot sits on the midpoint of
+the wire drawn above it. They share nothing else — no selection, no drag — so
+each is the same view it would be on its own. An unrecognised `view-mode` draws
+the graph, the way an unrecognised `color-scheme` falls back to the original.
+It owns the presentation properties that mirror
 pyzx's `draw_d3` keyword arguments (`show-labels`, `color-scheme`, `scale`,
 `colors`), resolves a scheme name to a palette, and passes the attribution
-badge down as the painter's `overlay`. It carries the stylesheet for the whole
+badge down as a painter's `overlay` — to exactly one of them (`badged`, the
+lower of a stacked pair), since two badges would read as two pictures rather
+than one stack. It carries the stylesheet for the whole
 shadow tree, the painters' SVG included.
 
 Both painters render into the **light DOM** (`createRenderRoot() { return
@@ -172,7 +179,7 @@ paired with an explicit `requestUpdate()`.
 
 Because a painter updates on its own cycle, anything that needs the SVG in the
 DOM has to await it: `<zx-diagram>` overrides `getUpdateComplete()` and awaits
-whichever child is mounted before measuring the attribution.
+every mounted child before measuring the attribution.
 
 `<zx-hypergraph-viewer>` keeps two, the same way — the selection and the
 dragged dot positions — and derives every blob outline, dot ring and trespass
