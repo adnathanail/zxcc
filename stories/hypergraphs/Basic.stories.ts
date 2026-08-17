@@ -4,7 +4,7 @@ import { expect, waitFor } from 'storybook/test'
 import type { ViewMode } from '../../src/index'
 import type { DiagramData } from '../../src/types'
 import { fourSpiderSquare, strongComplementarityOf } from '../diagrams'
-import { shadowRootOf } from '../interactionHelpers'
+import { shadowRootOf, translateOf } from '../interactionHelpers'
 
 interface Args {
   diagram: DiagramData
@@ -222,18 +222,28 @@ export const BothViews: Story = {
     docs: {
       story: {
         description:
-          '`view-mode="both"` runs both painters, the diagram above its dual, each scrolling in its own container. Both are drawn from the one `layout()`, so a dot sits on the midpoint of the wire drawn directly above it. The two are independent otherwise — selecting or dragging in one does nothing to the other — and the attribution badge is drawn once, into the lower of the pair.',
+          '`view-mode="both"` runs both painters, the diagram above its dual, each scrolling in its own container. Both are drawn from the one `layout()`, so a dot sits on the midpoint of the wire drawn directly above it. The two are independent otherwise — selecting or dragging in one does nothing to the other — and each carries its own attribution badge, since the badge belongs to the picture and travels with whichever SVG is copied.',
       },
     },
   },
   args: { diagram: fourSpiderSquare, viewMode: 'both' },
   play: async ({ canvasElement }) => {
     const root = await shadowRootOf(canvasElement)
-    // A painter each, in stack order, and one badge across the pair.
+    // A painter each, in stack order, and a badge in each of the two.
     await waitFor(() => expect(root.querySelectorAll('zx-viewer svg').length).toBe(1))
     expect(root.querySelectorAll('zx-hypergraph-viewer svg').length).toBe(1)
-    expect(root.querySelectorAll('g.attribution').length).toBe(1)
-    expect(root.querySelector('zx-hypergraph-viewer g.attribution')).not.toBeNull()
+    expect(root.querySelectorAll('g.attribution').length).toBe(2)
+    // Each badge is measured against its own painter's box rather than sharing
+    // one measurement: its chip's right edge lands on that SVG's own width.
+    for (const tag of ['zx-viewer', 'zx-hypergraph-viewer']) {
+      const svg = root.querySelector<SVGSVGElement>(`${tag} svg`)
+      const badge = root.querySelector<SVGGElement>(`${tag} g.attribution`)
+      const chip = badge?.querySelector('rect')
+      if (!svg || !badge || !chip) throw new Error(`${tag} badge not rendered`)
+      const right =
+        translateOf(badge)[0] + Number(chip.getAttribute('x')) + Number(chip.getAttribute('width'))
+      expect(right).toBeCloseTo(Number(svg.getAttribute('width')), 6)
+    }
   },
 }
 
