@@ -216,14 +216,24 @@ export function layoutHypergraph(diagram: DiagramData, scene: Scene): Hypergraph
     }))
     .filter(b => b.dots.length > 0)
 
+  // The canvas starts as the scene's own, zoomed — but only the drawing is
+  // zoomed. `layout()` reserves a strip of a fixed number of pixels under the
+  // drawing for the scalar, and a fixed number of pixels is the same distance
+  // at any zoom, so the strip is carried across as it stands. That is what
+  // makes the pair come out the same height in a `both` mode, where the graph
+  // is laid out at `scale * ZOOM` and gets the same strip under it.
+  //
+  // The dual paints no scalar. It keeps the strip anyway, both so the two
+  // views are the same size and because the trespass tally is written in it.
+  const scalarStrip = scene.height - scene.diagramHeight
+  let minX = 0
+  let minY = 0
+  let maxX = scene.width * ZOOM
   // A dot sits at the midpoint of an edge, inside the box the ZX nodes span,
   // so a blob normally fits in the padding `layout()` already leaves. A
   // self-loop's dot is the exception — it rides above its node — so grow the
   // canvas to whatever the blobs actually need.
-  let minX = 0
-  let minY = 0
-  let maxX = scene.width * ZOOM
-  let maxY = scene.height * ZOOM
+  let maxY = scene.diagramHeight * ZOOM + scalarStrip
   for (const d of dots) {
     minX = Math.min(minX, d.x - blobRadius)
     minY = Math.min(minY, d.y - blobRadius)
