@@ -64,12 +64,19 @@ export function strokesIn(root: ShadowRoot, layer: 'link' | 'web'): string[] {
   )
 }
 
-/** Ids of the hyperedge blobs currently drawn as selected, in document order.
- *  The viewer marks a selection with the same blue stroke `<zx-viewer>` uses,
- *  set in the path's `style`. */
-export function selectedBlobsIn(root: ShadowRoot): string[] {
+/** Ids of the hyperedge blobs currently drawn as picked out, in document order.
+ *  The viewer marks one with the same blue stroke `<zx-viewer>` uses, set in
+ *  the path's `style`. Pass `'named'` for the ones the selection names outright
+ *  (drawn solid) or `'implied'` for the ones derived from it (drawn dashed);
+ *  with no argument, both. */
+export function selectedBlobsIn(root: ShadowRoot, pick?: 'named' | 'implied'): string[] {
   return [...root.querySelectorAll<SVGGElement>('svg g.blob g[data-hyperedge]')]
-    .filter(g => (g.querySelector('path')?.getAttribute('style') ?? '').includes('#00f'))
+    .filter(g => {
+      const path = g.querySelector('path')
+      if (!(path?.getAttribute('style') ?? '').includes('#00f')) return false
+      const implied = path?.classList.contains('implied') ?? false
+      return pick === undefined || (pick === 'implied') === implied
+    })
     .map(g => g.getAttribute('data-hyperedge') ?? '')
 }
 
@@ -97,11 +104,18 @@ export function selectedLinksIn(root: ShadowRoot): number[] {
   )
 }
 
-/** Ids of the wires whose dots are ringed as belonging to a selected blob, in
- *  document order. */
-export function ringedDotsIn(root: ShadowRoot): string[] {
+/** Ids of the wires whose dots are ringed, in document order. `'named'` is the
+ *  dot the selection names — the one pressed, ringed solid — and `'implied'`
+ *  the ones that follow from it, ringed dashed; with no argument, both. */
+export function ringedDotsIn(root: ShadowRoot, pick?: 'named' | 'implied'): string[] {
+  const selector =
+    pick === undefined
+      ? 'circle.selected'
+      : pick === 'implied'
+        ? 'circle.selected.implied'
+        : 'circle.selected:not(.implied)'
   return [...root.querySelectorAll<SVGGElement>('svg g.dot g[data-wire]')]
-    .filter(g => g.querySelector('circle.selected'))
+    .filter(g => g.querySelector(selector))
     .map(g => g.getAttribute('data-wire') ?? '')
 }
 

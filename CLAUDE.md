@@ -123,7 +123,19 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   why pressing a dot lights up a wire over in the diagram and not the spiders at
   its ends. `#picked` is also where a *boundary* is answered: an input or output
   is no hyperedge and so has no blob, and the only thing standing for it here is
-  the dot of the wire it hangs off, which is ringed on its own. Selected blobs paint last and take
+  the dot of the wire it hangs off, which is ringed on its own.
+  `#picked` returns not just *what* is picked out but *how*: `named` for what
+  the selection says outright — the blob for a selected node, the dot for a
+  selected edge — and `implied` for what follows from it. Named is drawn solid
+  and implied dashed, because one press reaches a whole neighbourhood (press a
+  dot and you get the hyperedges holding that wire and every other wire in
+  them) and in one weight the neighbourhood swallows the mark at the middle of
+  it, which is the one you know is right. A boundary's dot is `implied`: the
+  selection names the boundary, and the dot is the nearest thing this view has
+  to it rather than the thing itself. The dash patterns differ between a blob's
+  hull and a dot's ring, since one pattern across both reads as coarse on the
+  small shape or as solid on the large one.
+  Picked blobs paint last — the named one last of all — and take
   the same blue stroke `<zx-viewer>` uses, and each gets a dashed leader from
   its caption to the middle of the blob — a caption sits just off the top of
   its outline, which in a pile of overlapping blobs looks like it could belong
@@ -294,8 +306,11 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
   (`zx-viewer …` / `zx-hypergraph-viewer …`). The hypergraph view has its own:
   `g.blob` wrapping per-hyperedge `<g data-hyperedge>`, `g.dot` wrapping
   per-wire `<g data-wire>`, a selected blob marked by `#00f` in its path's
-  `style` and its leader as `line.leader[data-hyperedge]`, a dot held by a
-  selected blob carrying a `circle.selected` ring inside its `<g data-wire>`,
+  `style` and its leader as `line.leader[data-hyperedge]`, a picked dot
+  carrying a `circle.selected` ring inside its `<g data-wire>`, an
+  *implied* (dashed) blob or ring carrying `.implied` alongside — so
+  `path:not(.implied)` and `circle.selected:not(.implied)` are what the
+  selection named,
   a blob's caption
   split into `<tspan>`s with the phase carrying `fill="#00d"`, and a dot
   overlapping a blob that doesn't hold it as `g.overlap circle[data-wire]`

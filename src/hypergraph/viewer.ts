@@ -39,7 +39,21 @@ import type { HypergraphBlob, HypergraphScene } from './types'
  *  two of them — so an overlap reads as the two colours over each other. */
 const BLOB_FILL_OPACITY = '0.4'
 const BLOB_STYLE = 'stroke-width: 1.5px; stroke: black'
+/**
+ * Solid for what the press named, dashed for what that implies.
+ *
+ * One press picks out a whole neighbourhood — press a dot and you get the
+ * hyperedges holding that wire and every other wire in them — and drawn in one
+ * weight the neighbourhood swallows the thing at the middle of it, which is the
+ * one mark you know is right. A dash is the usual way of saying "derived":
+ * unbroken is what you pointed at, broken is what followed from it.
+ *
+ * The dashes are measured for the shape they go round — a blob's outline is a
+ * long hull, a dot's ring is a circle a few pixels across, and one pattern
+ * across both would read as coarse on one and as a solid line on the other.
+ */
 const SELECTED_STYLE = `stroke-width: 2px; stroke: ${SELECTED_STROKE}`
+const IMPLIED_STYLE = `${SELECTED_STYLE}; stroke-dasharray: 6 4`
 /** The leader line from a selected blob's caption to the blob itself. Dashed
  *  and thin so it reads as an annotation over the drawing rather than another
  *  wire in it. */
@@ -50,8 +64,10 @@ const LEADER_GAP = 4
 /** A blob's name, darker than the `LABEL_FILL` grey the wire ids take: it sits
  *  over a filled blob rather than on bare canvas. */
 const NAME_FILL = '#555'
-/** The ring drawn round every dot a selected blob holds */
+/** The ring drawn round a picked dot — solid for the one pressed, dashed for
+ *  the ones a selected blob merely holds. See {@link SELECTED_STYLE}. */
 const DOT_SELECTED_STYLE = `fill: none; stroke: ${SELECTED_STROKE}; stroke-width: 1.5px; pointer-events: none`
+const DOT_IMPLIED_STYLE = `${DOT_SELECTED_STYLE}; stroke-dasharray: 4 3`
 /** Gap between a dot's rim and its selection ring. */
 const DOT_HALO = 2.5
 /** The red which the part of a dot that has strayed into a blob not holding it
@@ -62,6 +78,11 @@ const OVERLAP_FILL = '#e00'
  *  a diagram whose lowest dot sets the height can leave no strip to centre in.
  */
 const TALLY_MARGIN = 8
+
+/** How a mark came to be picked out: `named` is what the selection says
+ *  outright and what was pressed, `implied` is what followed from it. The two
+ *  are drawn solid and dashed respectively. */
+type Pick = 'named' | 'implied'
 
 /** Distinguishes one viewer's clip paths from another's. `url(#…)` resolves
  *  within the tree the reference sits in, and normally that is one
@@ -117,37 +138,41 @@ export class ZxHypergraphViewerElement extends LitElement {
   }
 
   /**
-   * What the current selection picks out here: the blobs to outline, and the
-   * dots to ring.
+   * What the current selection picks out here: the blobs to outline and the
+   * dots to ring, each with *how* it was picked.
    *
-   * Both are derived rather than stored, so the same selection reads the same
-   * whether it was made in this view or in the diagram beside it.
+   * All of it is derived rather than stored, so the same selection reads the
+   * same whether it was made in this view or in the diagram beside it.
    *
-   * A blob is outlined when the selection names its node — a spider picked out
-   * in the diagram view is the blob standing for it — or when it holds a
-   * selected wire, which is what a press on a dot makes: the question that
-   * press asks is which hyperedges the wire is part of.
+   * `named` is what the selection actually says — the blob standing for a
+   * selected ZX node, the dot standing for a selected ZX edge. It is drawn
+   * solid, and it is the thing that was pressed, in whichever view.
    *
-   * A dot is ringed when a blob holding it is outlined (so pressing a dot
-   * picks out everything sharing a hyperedge with it), when the selection names
-   * its edge, or when the selection names either of the ZX nodes it runs
-   * between. That last case is what a *boundary* selects: an input or an output
-   * is no hyperedge, so it has no blob to outline, and the only thing in this
-   * view that stands for it is the dot of the wire it dangles from.
+   * `implied` is everything that follows, drawn dashed. A blob is implied when
+   * it merely *holds* a selected wire, which is what a press on a dot produces:
+   * that press asks which hyperedges the wire is part of. A dot is implied when
+   * a picked blob holds it — so pressing a dot reaches the wires sharing a
+   * hyperedge with it — or when the selection names either of the ZX nodes it
+   * runs between. That last case is what a *boundary* picks out: an input or
+   * output is no hyperedge, so it has no blob to outline, and the only thing
+   * here standing for it is the dot of the wire it dangles from.
    */
-  #picked(scene: HypergraphScene): { blobs: Set<string>; dots: Set<string> } {
+  #picked(scene: HypergraphScene): { blobs: Map<string, Pick>; dots: Map<string, Pick> } {
     const { nodes, edges } = this.selection
-    const selectedWires = new Set(scene.dots.filter(d => edges.has(d.edge)).map(d => d.id))
-    const blobs = new Set(
-      scene.blobs
-        .filter(b => nodes.has(b.nodeId) || b.dots.some(id => selectedWires.has(id)))
-        .map(b => b.id),
-    )
-    const dots = new Set([
+    const blobs = new Map<string, Pick>()
+    const dots = new Map<string, Pick>()
+
+    for (const dot of scene.dots) if (edges.has(dot.edge)) dots.set(dot.id, 'named')
+    for (const blob of scene.blobs) {
+      if (nodes.has(blob.nodeId)) blobs.set(blob.id, 'named')
+      else if (blob.dots.some(id => dots.get(id) === 'named')) blobs.set(blob.id, 'implied')
+    }
+    const implied = [
       ...scene.blobs.filter(b => blobs.has(b.id)).flatMap(b => b.dots),
-      ...selectedWires,
       ...scene.dots.filter(d => nodes.has(d.src) || nodes.has(d.tgt)).map(d => d.id),
-    ])
+    ]
+    for (const id of implied) if (!dots.has(id)) dots.set(id, 'implied')
+
     return { blobs, dots }
   }
 
@@ -278,15 +303,17 @@ export class ZxHypergraphViewerElement extends LitElement {
     scene: HypergraphScene,
     blob: HypergraphBlob,
     pos: Map<string, Point>,
-    selected: boolean,
+    picked: Pick | undefined,
   ) {
     const caption = this.#blobCaption(blob)
     const anchor = this.#captionAnchor(scene, blob)
     return svg`
       <g data-hyperedge=${blob.id}>
-        <path d=${blobOutline(blob, pos, scene.blobRadius)}
+        <path class=${picked === 'implied' ? 'implied' : nothing}
+          d=${blobOutline(blob, pos, scene.blobRadius)}
           fill=${nodeColor(blob.kind, this.colors)} fill-opacity=${BLOB_FILL_OPACITY}
-          stroke-linejoin="round" style=${selected ? SELECTED_STYLE : BLOB_STYLE} />
+          stroke-linejoin="round"
+          style=${picked === undefined ? BLOB_STYLE : picked === 'named' ? SELECTED_STYLE : IMPLIED_STYLE} />
         ${
           anchor
             ? svg`<text x=${anchor.x} y=${anchor.y} text-anchor="middle" font-size="11px"
@@ -365,12 +392,13 @@ export class ZxHypergraphViewerElement extends LitElement {
     // are *in* them. Ringing the dots states that membership directly, and is
     // what makes the hyperedge's actual extent legible where the hulls overlap.
     const picked = this.#picked(scene)
-    // Selected blobs paint last so their outline isn't buried under a
+    // Picked blobs paint last so their outline isn't buried under a
     // neighbour's fill — with this much overlap that is the difference
-    // between seeing the highlighted shape and guessing at it.
-    const blobs = [...scene.blobs].sort(
-      (a, b) => Number(picked.blobs.has(a.id)) - Number(picked.blobs.has(b.id)),
-    )
+    // between seeing the highlighted shape and guessing at it — and the named
+    // one last of all, since it is the one mark that is certainly right.
+    const depth = (blob: HypergraphBlob) =>
+      picked.blobs.get(blob.id) === 'named' ? 2 : picked.blobs.has(blob.id) ? 1 : 0
+    const blobs = [...scene.blobs].sort((a, b) => depth(a) - depth(b))
     const trespasses = this.#trespasses(scene, pos)
 
     return html`
@@ -390,7 +418,7 @@ export class ZxHypergraphViewerElement extends LitElement {
         </defs>
 
         <g class="blob">
-          ${blobs.map(blob => this.#renderBlob(scene, blob, pos, picked.blobs.has(blob.id)))}
+          ${blobs.map(blob => this.#renderBlob(scene, blob, pos, picked.blobs.get(blob.id)))}
         </g>
 
         <!-- Leaders are a layer of their own, above every blob: inside a blob's
@@ -410,8 +438,14 @@ export class ZxHypergraphViewerElement extends LitElement {
                 <circle r=${scene.dotSize} fill=${edgeColor(dot.kind, this.colors)} />
                 ${
                   picked.dots.has(dot.id)
-                    ? svg`<circle class="selected" r=${scene.dotSize + DOT_HALO}
-                        style=${DOT_SELECTED_STYLE} />`
+                    ? svg`<circle
+                        class=${picked.dots.get(dot.id) === 'implied' ? 'selected implied' : 'selected'}
+                        r=${scene.dotSize + DOT_HALO}
+                        style=${
+                          picked.dots.get(dot.id) === 'named'
+                            ? DOT_SELECTED_STYLE
+                            : DOT_IMPLIED_STYLE
+                        } />`
                     : nothing
                 }
                 ${

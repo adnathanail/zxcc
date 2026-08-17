@@ -81,6 +81,13 @@ export const HypergraphBlobSelection: Story = {
     // doesn't say which wires are in them. e2 is the first Z spider — its
     // boundary leg and its two wires to the X rank.
     expect(ringedDotsIn(root)).toEqual(['w0', 'w4', 'w5'])
+    // The press landed on the blob, so the blob is what it *named* and is drawn
+    // solid; the dots only follow from it, and are drawn dashed. One press
+    // reaches a whole neighbourhood, and this is what keeps the thing pointed
+    // at from being lost in it.
+    expect(selectedBlobsIn(root, 'named')).toEqual(['e2'])
+    expect(ringedDotsIn(root, 'named')).toEqual([])
+    expect(ringedDotsIn(root, 'implied')).toEqual(['w0', 'w4', 'w5'])
     // The selected blob gets a line from its caption down to its own outline —
     // which caption goes with which shape is the thing four overlapping blobs
     // make unreadable. It starts just under the caption's baseline.
@@ -140,6 +147,14 @@ export const HypergraphBlobSelection: Story = {
     // rings are on every wire of the two spiders w6 joins — w6 itself, the
     // other Z leg and the other X leg of each — and on nothing else.
     expect(ringedDotsIn(root)).toEqual(['w1', 'w2', 'w4', 'w6', 'w7'])
+    // Here the press named the *dot*, so w6 alone is solid and everything the
+    // question dragged in with it — the two blobs, and the four other wires
+    // they hold — is dashed. The answer to "what shares a hyperedge with w6"
+    // stays distinguishable from w6 itself.
+    expect(ringedDotsIn(root, 'named')).toEqual(['w6'])
+    expect(ringedDotsIn(root, 'implied')).toEqual(['w1', 'w2', 'w4', 'w7'])
+    expect(selectedBlobsIn(root, 'named')).toEqual([])
+    expect(selectedBlobsIn(root, 'implied')).toEqual(['e3', 'e4'])
     fireMouse('mouseup', window, box.left + x, box.top + y)
   },
 }
@@ -291,6 +306,10 @@ export const LinkedSelection: StoryObj<Args> = {
     await waitFor(() => expect(selectedBlobsIn(root)).toEqual(['e2']))
     expect(ringedDotsIn(root)).toEqual(['w0', 'w2', 'w3'])
     expect(selectedNodesIn(root)).toEqual([2])
+    // The blob *is* the node that was pressed, drawn in the other view, so it
+    // is solid; its dots only follow, so they are dashed.
+    expect(selectedBlobsIn(root, 'named')).toEqual(['e2'])
+    expect(ringedDotsIn(root, 'implied')).toEqual(['w0', 'w2', 'w3'])
 
     // Input 0 is a boundary, so it is no hyperedge and has no blob: nothing is
     // outlined. What it does have over there is the dot for the wire it hangs
@@ -299,6 +318,9 @@ export const LinkedSelection: StoryObj<Args> = {
     await waitFor(() => expect(ringedDotsIn(root)).toEqual(['w0']))
     expect(selectedBlobsIn(root)).toEqual([])
     expect(selectedNodesIn(root)).toEqual([0])
+    // Dashed, not solid: the selection names the boundary, and the dot is the
+    // nearest thing this view has to it rather than the thing itself.
+    expect(ringedDotsIn(root, 'named')).toEqual([])
 
     // Back the other way. A press on the hypergraph canvas selects by geometry
     // — every blob the point falls inside — and each of those names its spider,
@@ -329,6 +351,9 @@ export const LinkedSelection: StoryObj<Args> = {
     await waitFor(() => expect(selectedLinksIn(root)).toEqual([0]))
     expect(selectedNodesIn(root)).toEqual([])
     expect(selectedBlobsIn(root)).toEqual(['e2'])
+    // …and the dot pressed is the solid one, with the blob it reached dashed.
+    expect(ringedDotsIn(root, 'named')).toEqual(['w0'])
+    expect(selectedBlobsIn(root, 'implied')).toEqual(['e2'])
     // The edge is *cased*, not recoloured: the blue goes underneath, on its own
     // path, and the wire keeps the colour that says what kind of edge it is.
     const wire = root.querySelectorAll<SVGPathElement>('zx-viewer g.link path')[0]

@@ -129,6 +129,11 @@ width with each dot directly under the wire it stands for. Dragging stays local 
 | a blob in the dual (by clicking the blob) | the spider it stands for |
 | a dot in the dual | the edge it stands for, cased in the selection colour — the wire keeps its own, so an H-edge still reads as one |
 
+In the dual, what you pointed at is drawn **solid** and everything that follows from it **dashed** — press a
+dot and its own ring is unbroken, while the hyperedges holding that wire, and the other wires in them, are
+outlined in dashes. One press reaches a whole neighbourhood, and this keeps the thing at the middle of it
+from being lost in the answer.
+
 ```html
 <zx-diagram id="d" view-mode="both"></zx-diagram>
 ```
