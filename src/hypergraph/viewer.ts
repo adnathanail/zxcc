@@ -150,28 +150,31 @@ export class ZxHypergraphViewerElement extends LitElement {
    *
    * `implied` is everything that follows, drawn dashed. A blob is implied when
    * it merely *holds* a selected wire, which is what a press on a dot produces:
-   * that press asks which hyperedges the wire is part of. A dot is implied when
-   * a picked blob holds it — so pressing a dot reaches the wires sharing a
-   * hyperedge with it — or when the selection names either of the ZX nodes it
-   * runs between. That last case is what a *boundary* picks out: an input or
-   * output is no hyperedge, so it has no blob to outline, and the only thing
-   * here standing for it is the dot of the wire it dangles from.
+   * that press asks which hyperedges the wire is part of, and the hyperedges
+   * are the whole of the answer. The wires *those* hold are a further step out
+   * again and are not marked — a press on one dot reaching a ring on five is
+   * more than was asked, and it buries the dot you pressed in its own answer.
+   *
+   * A dot is implied when the selection names either of the ZX nodes it runs
+   * between: a selected spider's own legs, which is the same set as the dots of
+   * the blob standing for it, and — the case that needs stating separately — a
+   * selected *boundary's* one leg. An input or output is no hyperedge, so it
+   * has no blob to outline, and the only thing here standing for it is the dot
+   * of the wire it dangles from.
    */
   #picked(scene: HypergraphScene): { blobs: Map<string, Pick>; dots: Map<string, Pick> } {
     const { nodes, edges } = this.selection
     const blobs = new Map<string, Pick>()
     const dots = new Map<string, Pick>()
 
-    for (const dot of scene.dots) if (edges.has(dot.edge)) dots.set(dot.id, 'named')
+    for (const dot of scene.dots) {
+      if (edges.has(dot.edge)) dots.set(dot.id, 'named')
+      else if (nodes.has(dot.src) || nodes.has(dot.tgt)) dots.set(dot.id, 'implied')
+    }
     for (const blob of scene.blobs) {
       if (nodes.has(blob.nodeId)) blobs.set(blob.id, 'named')
       else if (blob.dots.some(id => dots.get(id) === 'named')) blobs.set(blob.id, 'implied')
     }
-    const implied = [
-      ...scene.blobs.filter(b => blobs.has(b.id)).flatMap(b => b.dots),
-      ...scene.dots.filter(d => nodes.has(d.src) || nodes.has(d.tgt)).map(d => d.id),
-    ]
-    for (const id of implied) if (!dots.has(id)) dots.set(id, 'implied')
 
     return { blobs, dots }
   }
@@ -210,7 +213,9 @@ export class ZxHypergraphViewerElement extends LitElement {
    * gets picked out over there, not the spiders at its ends. The blobs holding
    * it are still outlined here, because that is the question this view answers
    * about a wire; they are derived from the selected edge rather than named by
-   * it (see `#picked`).
+   * it (see `#picked`). Those blobs are as far as it goes, though: the *other*
+   * wires they hold are a step further out again and get no mark, so the dot
+   * pressed stays the one solid thing in its own answer.
    *
    * Dragging is what makes the view explorable: the blobs are derived from the
    * dot positions on every render, so pulling a dot about reshapes every blob

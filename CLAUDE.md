@@ -127,26 +127,29 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   `#picked` returns not just *what* is picked out but *how*: `named` for what
   the selection says outright — the blob for a selected node, the dot for a
   selected edge — and `implied` for what follows from it. Named is drawn solid
-  and implied dashed, because one press reaches a whole neighbourhood (press a
-  dot and you get the hyperedges holding that wire and every other wire in
-  them) and in one weight the neighbourhood swallows the mark at the middle of
-  it, which is the one you know is right. A boundary's dot is `implied`: the
+  and implied dashed, since a press reaches things it didn't point at and in
+  one weight they read as equally certain. A boundary's dot is `implied`: the
   selection names the boundary, and the dot is the nearest thing this view has
   to it rather than the thing itself. The dash patterns differ between a blob's
   hull and a dot's ring, since one pattern across both reads as coarse on the
   small shape or as solid on the large one.
+  How far a press reaches is deliberately short. A press on a dot marks the dot
+  and the blobs holding it, and stops: the other wires *those* blobs hold are a
+  step further out again, and one dot pressed lighting up five is more than was
+  asked — it buries the dot in its own answer. So the only dots ever ringed are
+  the ones incident to a *named* ZX node, plus the named dot itself.
   Picked blobs paint last — the named one last of all — and take
   the same blue stroke `<zx-viewer>` uses, and each gets a dashed leader from
   its caption to the middle of the blob — a caption sits just off the top of
   its outline, which in a pile of overlapping blobs looks like it could belong
   to any of them. Leaders are their own layer above every blob, since inside a
   blob's group they would be painted over by whichever blobs came after.
-  Every dot a selected blob holds is ringed in that same blue, derived from
+  Every dot a *named* blob holds is ringed in that same blue, derived from
   the selection on each render rather than stored: an outline says which shapes
   are picked out, but a hull is drawn round the dots it holds and will happily
   enclose ones it doesn't, so the outline alone can't say which wires are *in*
-  it. That is also what makes pressing a dot answer "what shares a hyperedge
-  with this wire" rather than just "which shapes hold it". The ring stands off
+  it. Selecting a spider therefore states its arity in the dual directly. The
+  ring stands off
   the dot rather than restroking it, so it reads over every dot colour, the
   blue an H-wire's dot is filled with included.
   It takes the same `colors`
