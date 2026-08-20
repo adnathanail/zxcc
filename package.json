@@ -32,6 +32,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.bundle.js"
+    },
+    "./constants": {
+      "types": "./dist/constants.d.ts",
+      "import": "./dist/constants.js"
     }
   },
   "files": [
@@ -45,6 +49,7 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "test": "vitest run",
+    "test-node-entry": "node scripts/check-node-entry.mjs",
     "coverage": "vitest run --coverage",
     "typecheck-stories": "tsc -p tsconfig.stories.json",
     "lint": "biome check && npm run typecheck-stories",

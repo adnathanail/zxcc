@@ -10,6 +10,7 @@
       "src/**/*.ts",
       "stories/**/*.ts",
       "rollup.config.js",
+      "scripts/**/*.mjs",
       "package.json",
       "tsconfig.json",
       "tsconfig.stories.json",

@@ -1,11 +1,13 @@
+export type { EdgeColors } from './colors'
 export {
   COLOR_SCHEMES,
   type ColorSchemeName,
-  type EdgeColors,
   GRAYSCALE_COLORS,
   ORIGINAL_COLORS,
   RGB_COLORS,
-} from './colors'
+  VIEW_MODES,
+  type ViewMode,
+} from './constants'
 export type {
   HyperedgeKind,
   HypergraphData,
@@ -23,4 +25,4 @@ export type {
   PauliKind,
   PauliWebLink,
 } from './types'
-export { VIEW_MODES, type ViewMode, ZxDiagramElement } from './zxDiagram'
+export { ZxDiagramElement } from './zxDiagram'
