@@ -1,5 +1,6 @@
 // The spleen as a ZX diagram: node positions, wires, Pauli webs, and the
-// markup builder that draws them.
+// markup builder both `spleen.mjs` (the annotated plate) and `logo.mjs` (the
+// mark) draw from.
 //
 // Everything is drawn with zxcc's own marks — pyzx's original palette, the
 // viewer's shapes and text slots, and half-edge Pauli-web strands.
@@ -72,11 +73,19 @@ export const nodes = {
 /** The capsule, in order round the organ. */
 export const RING = 'n1 n2 n3 n4 n5 n6 n7 n8 n9 n10 n11 n12 n13 n14 n15 n16'.split(' ')
 
-const ringEdges = RING.map((id, i) => [id, RING[(i + 1) % RING.length], 'simple'])
+/** The ring reduced to what carries the silhouette: the whole medial border,
+ *  where the notch and the hilum are, and the corners of the lateral one.
+ *  Nodes are dropped in pairs — the ring alternates Z and X, so skipping an
+ *  odd number of them would put two spiders of one colour side by side. */
+export const RING_SPARSE = 'n1 n2 n3 n4 n5 n6 n7 n8 n11 n12 n15 n16'.split(' ')
 
-export const edges = [
-  ...ringEdges,
+/** The nodes a mark keeps at small sizes: the sparse capsule, the vessels, and
+ *  the trabecula with a follicle either side of it. */
+export const CORE = [...RING_SPARSE, 'b1', 'b2', 'b3', 'hb', 'f1', 'f3']
 
+/** Everything that is not the capsule ring. Ring wires are derived from
+ *  whichever ring a drawing uses, so they are not listed here. */
+export const EXTRA_EDGES = [
   // vessels at the hilum: artery in on a Hadamard wire, vein out on a plain
   // one, lymphatic on the grey W-io wire
   ['b1', 'n6', 'hadamard'],
@@ -123,12 +132,8 @@ export const edges = [
   ['v1', 'n6', 'simple'],
 ]
 
-// Pauli webs: a grey identity strand around the capsule (fibrous tissue) and a
-// red X strand along the red pulp cords.
-export const webs = [
-  ...ringEdges.map(([a, b]) => [a, b, 'I']),
-  ...['r1 r2', 'r2 r3', 'r3 r4', 'r4 r5'].map(p => [...p.split(' '), 'X']),
-]
+/** The red pulp cords, which carry a Pauli-web strand of their own. */
+const CORD_WEB = ['r1 r2', 'r2 r3', 'r3 r4', 'r4 r5'].map(p => p.split(' '))
 
 const EDGE_COLOR = { simple: C.edge, hadamard: C.Hedge, 'w-io': C.Xedge }
 const WEB_COLOR = { I: C.I, X: C.Xdark, Z: C.Zdark }
@@ -145,46 +150,104 @@ const LABEL_SLOT = {
   right: { x: 0.7 * SIZE + 6, y: 4, anchor: 'start' },
 }
 
-const at = id => {
-  const [, x, y] = nodes[id]
-  return [x, y]
-}
+const pairs = ids => ids.map((id, i) => [id, ids[(i + 1) % ids.length], 'simple'])
 
-const shape = kind => {
-  if (kind === 'h')
-    return `<rect x="${-0.75 * SIZE}" y="${-0.75 * SIZE}" width="${1.5 * SIZE}" height="${1.5 * SIZE}" fill="${NODE_FILL.h}" stroke="black" style="stroke-width: 1.5px" />`
-  const r = kind === 'boundary' ? 0.5 * SIZE : SIZE
-  return `<circle r="${r}" fill="${NODE_FILL[kind]}" stroke="black" style="stroke-width: 1.5px" />`
-}
+/**
+ * The three drawing layers, in the viewer's paint order, plus the box they
+ * occupy.
+ *
+ * @param ring     which capsule nodes to run the outline through
+ * @param keep     the nodes to draw; null draws every one
+ * @param text     whether to write the labels and phases
+ * @param stubs    boundary distance from the node it wires to, in pixels;
+ *                 null leaves each vessel where the plate puts it
+ * @param weight   multiplier on every stroke width
+ * @param dots     multiplier on every node's size. The node positions are
+ *                 fixed, so this is what sets how much of the drawing is
+ *                 spider rather than wire — a spider is 3% of the plate's
+ *                 width, which is under a pixel once the mark is small.
+ * @param strands  whether to paint the Pauli webs
+ */
+export function drawing({
+  ring = RING,
+  keep = null,
+  text = true,
+  stubs = null,
+  weight = 1,
+  dots = 1,
+  strands = true,
+} = {}) {
+  const size = SIZE * dots
+  const kept = new Set(keep ?? Object.keys(nodes))
+  const drawn = id => kept.has(id)
 
-/** The three drawing layers, in the viewer's paint order. */
-export function drawing() {
-  const linkPaths = edges.map(([a, b, kind]) => {
-    const [x1, y1] = at(a)
-    const [x2, y2] = at(b)
-    return `<path d="M ${x1} ${y1} L ${x2} ${y2}" stroke="${EDGE_COLOR[kind]}" fill="transparent" style="stroke-width: 1.5px" />`
-  })
+  const ringIds = ring.filter(drawn)
+  const ringEdges = pairs(ringIds)
+  const links = [...ringEdges, ...EXTRA_EDGES.filter(([a, b]) => drawn(a) && drawn(b))]
+
+  // A vessel's stub is measured from the node it wires to, so shortening one
+  // keeps its direction and drops the long run out to the plate's margin.
+  const pos = new Map(Object.entries(nodes).map(([id, [, x, y]]) => [id, [x, y]]))
+  if (stubs !== null) {
+    for (const [a, b] of links) {
+      for (const [end, anchor] of [
+        [a, b],
+        [b, a],
+      ]) {
+        if (nodes[end][0] !== 'boundary') continue
+        const [ax, ay] = pos.get(anchor)
+        const [ex, ey] = pos.get(end)
+        const len = Math.hypot(ex - ax, ey - ay)
+        pos.set(end, [ax + ((ex - ax) / len) * stubs, ay + ((ey - ay) / len) * stubs])
+      }
+    }
+  }
+
+  const webs = strands
+    ? [
+        ...ringEdges.map(([a, b]) => [a, b, 'I']),
+        ...CORD_WEB.filter(([a, b]) => drawn(a) && drawn(b)).map(([a, b]) => [a, b, 'X']),
+      ]
+    : []
+
+  const line = (a, b, stroke, width) => {
+    const [x1, y1] = pos.get(a)
+    const [x2, y2] = pos.get(b)
+    return `<path d="M ${x1} ${y1} L ${x2} ${y2}" stroke="${stroke}" fill="transparent" style="stroke-width: ${width}px" />`
+  }
 
   // A strand is a half-edge, source to midpoint, exactly as `webPath` draws
   // one; the pair of them covers the wire.
   const webPaths = webs.flatMap(([a, b, kind]) => {
-    const [x1, y1] = at(a)
-    const [x2, y2] = at(b)
+    const [x1, y1] = pos.get(a)
+    const [x2, y2] = pos.get(b)
     const mid = `${(x1 + x2) / 2} ${(y1 + y2) / 2}`
     return [
-      `<path d="M ${x1} ${y1} L ${mid}" stroke="${WEB_COLOR[kind]}" fill="transparent" style="stroke-width: 7px" />`,
-      `<path d="M ${x2} ${y2} L ${mid}" stroke="${WEB_COLOR[kind]}" fill="transparent" style="stroke-width: 7px" />`,
+      `<path d="M ${x1} ${y1} L ${mid}" stroke="${WEB_COLOR[kind]}" fill="transparent" style="stroke-width: ${7 * weight}px" />`,
+      `<path d="M ${x2} ${y2} L ${mid}" stroke="${WEB_COLOR[kind]}" fill="transparent" style="stroke-width: ${7 * weight}px" />`,
     ]
   })
 
-  const nodeGroups = Object.entries(nodes).map(
-    ([id, [kind, x, y, label, phase, slot = 'above']]) => {
+  const linkPaths = links.map(([a, b, kind]) => line(a, b, EDGE_COLOR[kind], 1.5 * weight))
+
+  const shape = kind => {
+    const stroke = `stroke="black" style="stroke-width: ${1.5 * weight}px"`
+    if (kind === 'h')
+      return `<rect x="${-0.75 * size}" y="${-0.75 * size}" width="${1.5 * size}" height="${1.5 * size}" fill="${NODE_FILL.h}" ${stroke} />`
+    const r = kind === 'boundary' ? 0.5 * size : size
+    return `<circle r="${r}" fill="${NODE_FILL[kind]}" ${stroke} />`
+  }
+
+  const nodeGroups = Object.entries(nodes)
+    .filter(([id]) => drawn(id))
+    .map(([id, [kind, , , label, phase, slot = 'above']]) => {
+      const [x, y] = pos.get(id)
       const parts = [shape(kind)]
-      if (phase)
+      if (text && phase)
         parts.push(
           `<text y="${0.7 * SIZE + 14}" text-anchor="middle" font-size="12px" font-family="monospace" fill="${PHASE_FILL}">${phase}</text>`,
         )
-      if (label) {
+      if (text && label) {
         const s = LABEL_SLOT[slot]
         parts.push(
           `<text x="${s.x}" y="${s.y}" text-anchor="${s.anchor}" font-size="10px" font-family="monospace" fill="${LABEL_FILL}">${label}</text>`,
@@ -193,10 +256,21 @@ export function drawing() {
       return `<g data-node="${id}" transform="translate(${x},${y})">\n${parts
         .map(p => `        ${p}`)
         .join('\n')}\n      </g>`
-    },
-  )
+    })
 
-  return { webPaths, linkPaths, nodeGroups }
+  // The box the marks occupy: the nodes, grown by the widest thing drawn on
+  // top of one — a spider's own radius, or half the strand running through it.
+  const reach = Math.max(size + 0.75 * weight, strands ? 3.5 * weight : 0)
+  const xs = [...kept].map(id => pos.get(id)[0])
+  const ys = [...kept].map(id => pos.get(id)[1])
+  const bounds = {
+    x: Math.min(...xs) - reach,
+    y: Math.min(...ys) - reach,
+    width: Math.max(...xs) - Math.min(...xs) + 2 * reach,
+    height: Math.max(...ys) - Math.min(...ys) + 2 * reach,
+  }
+
+  return { webPaths, linkPaths, nodeGroups, bounds }
 }
 
 /** The three layers as one block of markup, indented to sit inside an `<svg>`. */
