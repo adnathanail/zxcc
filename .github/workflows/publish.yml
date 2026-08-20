@@ -33,18 +33,26 @@ jobs:
         run: npm run build
       - name: Read version
         id: pkg
-        run: echo "version=v$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+        run: |
+          version=$(node -p "require('./package.json').version")
+          name=$(node -p "require('./package.json').name")
+          echo "tag=v${version}" >> "$GITHUB_OUTPUT"
+          echo "npm_url=https://www.npmjs.com/package/${name}/v/${version}" >> "$GITHUB_OUTPUT"
       - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - name: Create and push tag
         run: |
-          git tag "${{ steps.pkg.outputs.version }}"
-          git push origin "${{ steps.pkg.outputs.version }}"
+          git tag "${{ steps.pkg.outputs.tag }}"
+          git push origin "${{ steps.pkg.outputs.tag }}"
       - name: Publish to npm
         run: npm publish --access public
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ steps.pkg.outputs.version }}" --generate-notes --title "${{ steps.pkg.outputs.version }}"
+        run: |
+          gh release create "${{ steps.pkg.outputs.tag }}" \
+            --title "${{ steps.pkg.outputs.tag }}" \
+            --notes "📦 [${{ steps.pkg.outputs.tag }} on npm](${{ steps.pkg.outputs.npm_url }})" \
+            --generate-notes
