@@ -46,13 +46,18 @@ export const nodes = {
   n15: ['z', 118, 216, 'capsule', '', 'left'],
   n16: ['x', 152, 132],
 
-  // the vessels, as boundaries, leaving through the mouth of the hilar notch
-  b1: ['boundary', 596, 146, 'splenic artery'],
-  b2: ['boundary', 620, 238, 'splenic vein'],
+  // The vessels, as boundaries, leaving through the mouth of the hilar notch.
+  // The artery takes the middle of the fan: it is the one a reduced mark keeps,
+  // and down the middle is the only line out of the notch that clears both
+  // lips at any length.
+  b1: ['boundary', 620, 238, 'splenic artery'],
+  b2: ['boundary', 596, 146, 'splenic vein'],
   b3: ['boundary', 596, 332, 'efferent lymphatic', '', 'below'],
 
-  // white pulp, hung off the trabecular artery
-  hb: ['h', 238, 240],
+  // White pulp, hung off the trabecular artery. The trabecula sits a little
+  // left of the bean's centre: its gap from the hilum is what a mark drawn
+  // with big spiders runs out of first.
+  hb: ['h', 222, 242],
   f1: ['z', 214, 168, 'white pulp'],
   f2: ['z', 176, 244, '', 'π/2'],
   f3: ['z', 206, 334, '', 'π/4'],
@@ -163,8 +168,8 @@ const LABEL_SLOT = {
 const pairs = ids => ids.map((id, i) => [id, ids[(i + 1) % ids.length], 'simple'])
 
 /**
- * The three drawing layers, in the viewer's paint order, plus the box they
- * occupy.
+ * The three drawing layers, in the viewer's paint order, the box they occupy,
+ * and the positions everything was drawn at.
  *
  * @param ring     which capsule nodes to run the outline through
  * @param keep     the nodes to draw; null draws every one
@@ -287,7 +292,7 @@ export function drawing({
     height: Math.max(...ys) - Math.min(...ys) + 2 * reach,
   }
 
-  return { webPaths, linkPaths, nodeGroups, bounds }
+  return { webPaths, linkPaths, nodeGroups, bounds, positions: pos }
 }
 
 /** The three layers as one block of markup, indented to sit inside an `<svg>`. */

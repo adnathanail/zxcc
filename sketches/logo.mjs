@@ -11,7 +11,7 @@
 // Run it with `node sketches/logo.mjs`, then open `sketches/logo.html`.
 import { writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { CORE, drawing, GLYPH, layers, RING_GLYPH, RING_SPARSE } from './spleenDrawing.mjs'
+import { CORE, drawing, GLYPH, layers, nodes, RING_GLYPH, RING_SPARSE, SIZE } from './spleenDrawing.mjs'
 
 // The sizes each mark is shown at are the range it is meant for: the whole
 // organ stops where its interior stops reading, and the two reduced marks
@@ -34,6 +34,7 @@ function svg(parts, { square = false } = {}) {
   const box = [b.x, b.y, b.width, b.height].map(n => Math.round(n * 100) / 100).join(' ')
   return {
     box,
+    parts,
     ratio: b.width / b.height,
     markup: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box}">\n${layers(parts)}\n</svg>\n`,
   }
@@ -43,19 +44,37 @@ function svg(parts, { square = false } = {}) {
  * How much heavier than the plate each reduced mark is drawn — spiders and
  * stroke widths together. The plate's proportions are set for a 700px drawing,
  * where a spider is 3% of the width; a mark that has to hold at 32px wants a
- * bigger share of itself to be spider. These are the numbers to tweak.
- *
- * Each has a ceiling, which is the closest pair of nodes that mark keeps —
- * past it the two touch. The sparse mark's is 2.68, at the capsule's n2–n3;
- * the glyph's is 3.0, at the hilum and the trabecula beside it.
+ * bigger share of itself to be spider. These are the numbers to tweak, and
+ * `ceiling()` below prints how far each can go.
  */
-const SCALE = { mark: 2.2, glyph: 2.9 }
+const SCALE = { mark: 2.4, glyph: 3.4 }
+
+/** How much of a node's own size each shape reaches out from its centre: a
+ *  spider its radius, a boundary half that, an H-box half its width. */
+const REACH = { z: 1, x: 1, h: 0.75, boundary: 0.5 }
+
+/** The scale at which a mark's closest two nodes meet, and which pair they
+ *  are. Past it the drawing overlaps itself. Measured on the positions the
+ *  mark is actually drawn at, since a stub moves its boundary well off the one
+ *  in `nodes`. */
+function ceiling(keep, positions) {
+  let closest = { scale: Number.POSITIVE_INFINITY, pair: '' }
+  for (const [i, a] of keep.entries())
+    for (const b of keep.slice(i + 1)) {
+      const [ax, ay] = positions.get(a)
+      const [bx, by] = positions.get(b)
+      const gap = Math.hypot(ax - bx, ay - by)
+      const scale = gap / ((REACH[nodes[a][0]] + REACH[nodes[b][0]]) * SIZE)
+      if (scale < closest.scale) closest = { scale, pair: `${a}–${b}` }
+    }
+  return closest
+}
 
 // The three vessels leave the hilum within 33° of each other, so how far out
 // they run is what sets how far apart their dots land.
 const full = svg(drawing({ text: false, stubs: 62 }))
 const mark = svg(
-  drawing({ ring: RING_SPARSE, keep: CORE, text: false, stubs: 90, scale: SCALE.mark }),
+  drawing({ ring: RING_SPARSE, keep: CORE, text: false, stubs: 140, scale: SCALE.mark }),
   { square: true },
 )
 // The glyph is what is left when every mark has to be worth a pixel: a capsule
@@ -64,6 +83,14 @@ const glyph = svg(
   drawing({ ring: RING_GLYPH, keep: GLYPH, text: false, stubs: 140, scale: SCALE.glyph }),
   { square: true },
 )
+
+for (const [name, keep, parts] of [
+  ['mark', CORE, mark.parts],
+  ['glyph', GLYPH, glyph.parts],
+]) {
+  const { scale, pair } = ceiling(keep, parts.positions)
+  console.log(`${name}: drawn at ${SCALE[name]}, ceiling ${scale.toFixed(2)} at ${pair}`)
+}
 
 const out = name => fileURLToPath(new URL(name, import.meta.url))
 writeFileSync(out('logo.svg'), full.markup)
