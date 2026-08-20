@@ -148,7 +148,7 @@ export const EXTRA_EDGES = [
 ]
 
 /** The red pulp cords, which carry a Pauli-web strand of their own. */
-const CORD_WEB = ['r1 r2', 'r2 r3', 'r3 r4', 'r4 r5'].map(p => p.split(' '))
+export const CORD_WEB = ['r1 r2', 'r2 r3', 'r3 r4', 'r4 r5'].map(p => p.split(' '))
 
 const EDGE_COLOR = { simple: C.edge, hadamard: C.Hedge, 'w-io': C.Xedge }
 const WEB_COLOR = { I: C.I, X: C.Xdark, Z: C.Zdark }

@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# Carries an inlined copy of dist/; `node sketches/spleenElement.mjs` rebuilds it.
+sketches/spleen-element.html
 build/
 storybook-static/
 coverage/
