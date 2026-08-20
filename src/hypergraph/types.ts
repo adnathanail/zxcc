@@ -1,8 +1,8 @@
 // Data contracts for the hypergraph view, the way `src/types.ts` holds the
 // ones for the diagram itself:
 //
-//   DiagramData --toHypergraph()--> HypergraphData
-//                --layoutHypergraph()--> HypergraphScene --<zx-hypergraph-viewer>--> SVG
+//   DiagramData + Scene --toHypergraph()--> HypergraphData
+//                        --layoutHypergraph()--> HypergraphScene --<zx-hypergraph-viewer>--> SVG
 //
 // `Hypergraph{Wire,Edge,Data}` is the conversion's output: the dual as pure
 // combinatorics, with no coordinates. `Hypergraph{Dot,Blob,Scene}` is that

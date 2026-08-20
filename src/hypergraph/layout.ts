@@ -145,7 +145,7 @@ function speed(rider: Rider, at: (rider: Rider) => Point): number {
  * and a colour to be drawn with.
  */
 export function layoutHypergraph(diagram: DiagramData, scene: Scene): HypergraphScene {
-  const hg = toHypergraph(diagram)
+  const hg = toHypergraph(diagram, scene)
 
   // H-boxes carry no grid position, so their pixel positions are the ones the
   // viewer would derive; resolving them here keeps a dot on an H-box's wire

@@ -10,7 +10,7 @@
 // Pure and DOM-free, and the counterpart of `src/layout.ts` in this half of
 // the package: `./layout.ts` is what gives the result coordinates.
 
-import type { DiagramData, DiagramNode } from '../types'
+import type { DiagramData, DiagramNode, Scene } from '../types'
 import type { HyperedgeKind, HypergraphData, HypergraphEdge, HypergraphWire } from './types'
 
 /**
@@ -51,22 +51,11 @@ function labelFor(name: string, phase: string): string {
   return phase ? `${name}(${phase})` : name
 }
 
-/** The phase on its own, the way `layout()` fills `SceneNode.text` — H-box π
- *  convention included, and empty for anything that carries no phase. The
- *  hypergraph keeps it apart from the label so that turning labels off hides
- *  the name and not the phase, as it does in the diagram view. */
-function phaseFor(n: DiagramNode, kind: HyperedgeKind, phaseOverride?: string): string {
-  if (phaseOverride !== undefined) return phaseOverride
-  if (kind !== 'hadamard') return n.phase ?? ''
-  const raw = n.phase ?? 'π'
-  return raw === 'π' ? '' : raw
-}
-
-/** Convert a ZX diagram to its hypergraph dual. Throws the same way `layout`
- *  does on a malformed diagram (missing `nodes`/`edges`), and on a node that has
- *  no blob shape — see {@link blobKind}. */
-export function toHypergraph(diagram: DiagramData): HypergraphData {
-  const labels = new Map<number, string>(diagram.labels ?? [])
+/** Convert a ZX diagram to its hypergraph dual, taking each phase from the
+ *  `scene` that same diagram laid out to. Throws on a node that has no
+ *  blob shape — see {@link blobKind}. */
+export function toHypergraph(diagram: DiagramData, scene: Scene): HypergraphData {
+  const phases = new Map<number, string>(scene.nodes.map(n => [n.id, n.text]))
   const byId = new Map<number, DiagramNode>()
   for (const n of diagram.nodes) byId.set(n.id, n)
 
@@ -74,7 +63,7 @@ export function toHypergraph(diagram: DiagramData): HypergraphData {
   for (const n of diagram.nodes) {
     const kind = blobKind(n)
     const name = nameFor(n, kind)
-    const phase = phaseFor(n, kind, labels.get(n.id))
+    const phase = phases.get(n.id) ?? ''
     hyperedges.set(n.id, {
       id: `e${n.id}`,
       nodeId: n.id,

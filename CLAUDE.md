@@ -102,8 +102,10 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
 - `attribution.ts` — the "❤️ zxcc" badge drawn into the diagram's SVG.
 - `zxDiagram.ts` — `<zx-diagram>`, the public element, and the only file that
   knows about both views.
-- `index.ts` — package entry: `ZxDiagramElement`, the palettes, the input
-  types, `toHypergraph`.
+- `index.ts` — package entry: `ZxDiagramElement`, the palettes, and the input
+  types. `toHypergraph` is *not* exported: the dual is a way of drawing a
+  diagram, not a data structure the package hands out, and keeping it internal
+  is what lets it take a `Scene` (see `hypergraph/convert.ts`).
 
 **`src/graph/` — the ZX diagram itself**
 
@@ -116,18 +118,29 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
 - `types.ts` — the dual's data contracts, `../types.ts`'s counterpart:
   `Hypergraph{Wire,Edge,Data}` for the conversion, `Hypergraph{Dot,Blob,Scene}`
   for the laid-out result.
-- `convert.ts` — `toHypergraph`, turning a `DiagramData` into wires (one per
-  ZX edge) and hyperedges (one per ZX node, boundaries included). A hyperedge carries
+- `convert.ts` — `toHypergraph`, turning a `DiagramData`, and the `Scene` it
+  laid out to, into wires (one per ZX edge) and hyperedges (one per ZX node,
+  boundaries included). A hyperedge carries
   its `name` (`Z`) and `phase` (`π/2`) as separate fields, plus the joined
   `label` (`Z(π/2)`) for a caller that wants one string: `show-labels` drops
   the name and keeps the phase, and the viewer paints the phase in
   `<zx-viewer>`'s blue, so a phase reads the same in either view. That is the
   same split `layout()` makes between a node's id label and its `text`.
+
   `blobKind` is here too, and is the *only* place the hypergraph half looks at
   a `DiagramNodeType`: it maps a node to the shape its blob takes and rejects
   anything that hasn't got one, so a W, Z-box or `wire` node throws with a
   message naming it. Everything downstream reads the hyperedge's `kind` and so
   never has to consider a node type it can't draw.
+
+  The `Scene` is there for the phase and nothing else. Which string a node's
+  phase *draws* is a convention — an H-box's default `π` draws nothing, and a
+  `labels` entry replaces whatever the phase said — and `SceneNode.text` is the
+  answer with both applied. Reading it is what keeps a blob's caption and the
+  phase under the node it stands for from drifting apart; deriving it a second
+  time from `DiagramNode.phase` meant stating every rule twice, in two folders.
+  The conversion is combinatorics either way — it takes no *coordinates* from
+  the scene, and `layoutHypergraph` already had one to hand.
 
   A boundary is a hyperedge holding one wire, so its blob is the hull of a
   single dot — a circle around it. That is what tells a boundary leg apart from
