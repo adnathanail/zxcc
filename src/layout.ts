@@ -57,7 +57,8 @@ function placeNodes(diagram: DiagramData): Map<number, PlacedNode> {
         break
       case 'spider':
         kind = n.color === 'X' ? 'x-spider' : 'z-spider'
-        text = n.phase ?? ''
+        // A phase of 0 renders no text — pyzx convention.
+        text = n.phase === '0' ? '' : (n.phase ?? '')
         break
       case 'hadamard': {
         kind = 'hadamard'

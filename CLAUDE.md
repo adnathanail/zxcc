@@ -134,13 +134,15 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   never has to consider a node type it can't draw.
 
   The `Scene` is there for the phase and nothing else. Which string a node's
-  phase *draws* is a convention — an H-box's default `π` draws nothing, and a
-  `labels` entry replaces whatever the phase said — and `SceneNode.text` is the
-  answer with both applied. Reading it is what keeps a blob's caption and the
-  phase under the node it stands for from drifting apart; deriving it a second
-  time from `DiagramNode.phase` meant stating every rule twice, in two folders.
-  The conversion is combinatorics either way — it takes no *coordinates* from
-  the scene, and `layoutHypergraph` already had one to hand.
+  phase *draws* is a set of conventions — a spider's `0` and an H-box's default
+  `π` draw nothing, a `labels` entry replaces whatever the phase said — and
+  `SceneNode.text` is the answer with all of them applied. Reading it is what
+  keeps a blob's caption and the phase under the node it stands for from
+  drifting apart; deriving it a second time from `DiagramNode.phase` meant
+  stating every convention twice, in two folders, and the H-box rule was
+  already living in both. The conversion is combinatorics either way — it takes
+  no *coordinates* from the scene, and `layoutHypergraph` already had one to
+  hand.
 
   A boundary is a hyperedge holding one wire, so its blob is the hull of a
   single dot — a circle around it. That is what tells a boundary leg apart from
@@ -479,7 +481,14 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
   starts to matter.
 - `phase` strings are pre-formatted (`π/2`, `-π/4`, `0`) — no parsing in
   `layout.ts`. Consumers do their own formatting.
-- Default H-box phase is `π`, which renders no text (pyzx convention).
+- Default H-box phase is `π`, and a spider phase of `0` — both render no
+  text (pyzx convention). Both are string comparisons against the
+  pre-formatted phase, so `0` suppresses and `0.0` or `2π` does not; a
+  `labels` override still draws, since it says outright what to write. A
+  Z-box keeps its `0`: its phase is a parameter whose default is 1, so 0 is
+  worth saying. `placeNodes` in `layout.ts` is the single home for all of
+  this — the hypergraph reads the result off `SceneNode.text` rather than
+  applying the conventions again.
 - `labels` overrides are folded into `SceneNode.text` during layout — the
   viewer never sees the override map.
 - Boxes are sorted largest-nodeIds-first so outer paint behind inner.

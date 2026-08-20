@@ -95,7 +95,7 @@ export const HadamardAndParallelEdges: Story = {
       nodes: [
         { id: 0, type: 'input', ioId: 0 },
         { id: 1, type: 'spider', color: 'Z', phase: 'π/2' },
-        { id: 2, type: 'spider', color: 'X', phase: '0' },
+        { id: 2, type: 'spider', color: 'X', phase: 'π' },
         { id: 3, type: 'output', ioId: 0 },
       ],
       edges: [
@@ -110,9 +110,9 @@ export const HadamardAndParallelEdges: Story = {
   // `<zx-viewer>`'s blue, so the same phase reads the same in either view.
   play: async ({ canvasElement }) => {
     const root = await shadowRootOf(canvasElement)
-    await waitFor(() => expect(blobCaptionsIn(root)).toEqual([['π/2'], ['0']]))
+    await waitFor(() => expect(blobCaptionsIn(root)).toEqual([['π/2'], ['π']]))
     const phases = [...root.querySelectorAll('svg g.blob text tspan[fill="#00d"]')]
-    expect(phases.map(t => t.textContent)).toEqual(['π/2', '0'])
+    expect(phases.map(t => t.textContent)).toEqual(['π/2', 'π'])
     // Nothing trespasses in a diagram this small, so there is no tally to draw.
     expect(root.querySelector('svg text.tally')).toBeNull()
   },

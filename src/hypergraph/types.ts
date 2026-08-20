@@ -53,7 +53,7 @@ export interface HypergraphEdge {
    *  the name is what `show-labels` adds, and the phase is painted in the
    *  diagram view's blue whether labels are on or not. */
   phase: string
-  /** The two joined, e.g. `Z(π/2)`, `X(0)`, `H` — the one-string form, for a
+  /** The two joined, e.g. `Z(π/2)`, `X(π)`, `H` — the one-string form, for a
    *  caller that wants a label rather than the pieces. */
   label: string
   /** Incident wire ids, in edge order. A self-loop appears twice — the

@@ -177,7 +177,7 @@ export const LabelsShown: Story = {
         { id: 0, type: 'input', ioId: 0 },
         { id: 1, type: 'spider', color: 'Z', phase: 'π/2' },
         { id: 2, type: 'hadamard' },
-        { id: 3, type: 'spider', color: 'X', phase: '0' },
+        { id: 3, type: 'spider', color: 'X', phase: 'π' },
         { id: 4, type: 'output', ioId: 0 },
       ],
       edges: [
@@ -202,7 +202,7 @@ export const LabelsShown: Story = {
       ['in'],
       ['Z(', 'π/2', ')'],
       ['H'],
-      ['X(', '0', ')'],
+      ['X(', 'π', ')'],
       ['out'],
     ])
     // The phases are blue in both views, and they are the same two phases.
@@ -210,8 +210,8 @@ export const LabelsShown: Story = {
       [...root.querySelectorAll(`${tag} tspan[fill="#00d"], ${tag} text[fill="#00d"]`)].map(
         t => t.textContent,
       )
-    expect(blueIn('zx-hypergraph-viewer')).toEqual(['π/2', '0'])
-    expect(blueIn('zx-viewer')).toEqual(['π/2', '0'])
+    expect(blueIn('zx-hypergraph-viewer')).toEqual(['π/2', 'π'])
+    expect(blueIn('zx-viewer')).toEqual(['π/2', 'π'])
     // The wire ids are the other thing labels bring to the dual: one per dot.
     const wireIds = [...root.querySelectorAll('zx-hypergraph-viewer svg g.dot text')]
     expect(wireIds.map(t => t.textContent)).toEqual(['w0', 'w1', 'w2', 'w3'])
