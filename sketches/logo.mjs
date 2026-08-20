@@ -13,7 +13,14 @@ import { writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { CORE, drawing, GLYPH, layers, RING_GLYPH, RING_SPARSE } from './spleenDrawing.mjs'
 
-const SIZES = [256, 128, 96, 64, 48, 32]
+// The sizes each mark is shown at are the range it is meant for: the whole
+// organ stops where its interior stops reading, and the two reduced marks
+// start below where it does.
+const SIZES = {
+  full: [256, 128, 96, 64],
+  mark: [128, 96, 64, 48, 32],
+  glyph: [128, 96, 64, 48, 32, 16],
+}
 
 /** Grow a box to a square about its own centre, so a mark that is taller than
  *  it is wide keeps its margins when it is dropped into a square slot. */
@@ -51,15 +58,17 @@ writeFileSync(out('logo.svg'), full.markup)
 writeFileSync(out('logo-mark.svg'), mark.markup)
 writeFileSync(out('logo-glyph.svg'), glyph.markup)
 
-/** One row of the mark at every size, over a given background. */
-const row = (label, { box, markup, ratio }, background, dark) => `
+/** One row of a mark across the sizes it is meant for, over a background. */
+const row = (label, sizes, { box, markup, ratio }, background, dark) => `
   <section class="${dark ? 'dark' : ''}" style="background:${background}">
     <h2>${label}</h2>
     <div class="row">
-      ${SIZES.map(
-        s =>
-          `<figure>${markup.replace('<svg ', `<svg width="${Math.round(s * ratio)}" height="${s}" `)}<figcaption>${s}px</figcaption></figure>`,
-      ).join('\n      ')}
+      ${sizes
+        .map(
+          s =>
+            `<figure>${markup.replace('<svg ', `<svg width="${Math.round(s * ratio)}" height="${s}" `)}<figcaption>${s}px</figcaption></figure>`,
+        )
+        .join('\n      ')}
     </div>
     <p class="box">viewBox="${box}"</p>
   </section>`
@@ -90,12 +99,12 @@ const html = `<!doctype html>
 <h1>SpLean mark</h1>
 <p class="sub">The spleen diagram as a logo: same node positions, wires and Pauli webs as the plate, with the labels, phases, scalar and badge dropped, the vessels cut back to stubs at the hilum, and progressively less kept as the mark gets smaller.</p>
 
-${row('Whole organ — logo.svg', full, '#fcfcfd', false)}
-${row('Whole organ, on dark', full, '#1c1c1f', true)}
-${row('Sparse mark — logo-mark.svg', mark, '#fcfcfd', false)}
-${row('Sparse mark, on dark', mark, '#1c1c1f', true)}
-${row('Glyph — logo-glyph.svg', glyph, '#fcfcfd', false)}
-${row('Glyph, on dark', glyph, '#1c1c1f', true)}
+${row('Whole organ — logo.svg', SIZES.full, full, '#fcfcfd', false)}
+${row('Whole organ, on dark', SIZES.full, full, '#1c1c1f', true)}
+${row('Sparse mark — logo-mark.svg', SIZES.mark, mark, '#fcfcfd', false)}
+${row('Sparse mark, on dark', SIZES.mark, mark, '#1c1c1f', true)}
+${row('Glyph — logo-glyph.svg', SIZES.glyph, glyph, '#fcfcfd', false)}
+${row('Glyph, on dark', SIZES.glyph, glyph, '#1c1c1f', true)}
 `
 
 writeFileSync(out('logo.html'), html)
