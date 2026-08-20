@@ -86,6 +86,8 @@ An edge with `src === tgt` renders as a self-loop arc.
 These mirror the keyword arguments of pyzx's `draw_d3()` and control presentation
 only — graph structure always lives in `diagram`.
 
+_Some can be set as attributes in HTML, some must be set with JS on the element, similarly to `diagram` above_
+
 | Attribute | Property | Default | Meaning |
 | --- | --- | --- | --- |
 | `show-labels` | `showLabels` | `false` | Draw node/wire IDs |
@@ -141,39 +143,12 @@ to it. An input/output is incident to one wire, so its blob is a circle around t
 <zx-diagram id="d" view-mode="hypergraph"></zx-diagram>
 ```
 
-`view-mode="both-vertical"` draws the pair with the diagram above its dual, and
-`view-mode="both-horizontal"` puts them side by side, the diagram on the left; each is in its own
-scroll container either way. The dual is drawn 1.6× roomier than the diagram it comes from — it has
-twice the marks at half the spacing — so in these modes the diagram is laid out at that same scale,
-and the two come out the same size with each dot on the same coordinates as the midpoint of the wire
-it stands for: directly under it when stacked, level with it when side by side. Dragging stays local
-to a view, but the **selection is shared**, since the same thing has a counterpart in each picture:
-
-| Select this | …and this comes out selected |
-| --- | --- |
-| a spider or Hadamard in the diagram | the blob standing for it, with every dot it holds ringed |
-| an input or output in the diagram | the circle blob around the dot of the wire it hangs off |
-| a blob in the dual (by clicking the blob) | the spider it stands for |
-| a dot in the dual | the edge it stands for, cased in the selection colour — the wire keeps its own, so an H-edge still reads as one |
-
-In the dual, what you pointed at is drawn **solid** and what follows from it **dashed** — press a dot and its
-own ring is unbroken while the hyperedges holding that wire are outlined in dashes. It stops there: the other
-wires those hyperedges hold get no mark, so the dot you pressed stays the one solid thing in its own answer.
-
-```html
-<zx-diagram id="d" view-mode="both-vertical"></zx-diagram>
-<zx-diagram id="e" view-mode="both-horizontal"></zx-diagram>
-```
-
 Only Z/X spiders, I/O, and Hadamards are supported in this view, other node types will be rejected.
 
-The conversion is also available standalone:
+### Both views
 
-```js
-import { toHypergraph } from '@adnathanail/zxcc'
-
-const hg = toHypergraph(diagram)  // { wires, hyperedges }
-```
+You can also have both the graph & hypergraph views, by setting the `view-mode` to `both-vertical` or `both-horizontal`.
+Selections will be synced across the two viewers.
 
 ## Development
 
