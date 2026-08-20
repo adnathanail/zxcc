@@ -17,9 +17,9 @@ import { CORE, drawing, GLYPH, layers, RING_GLYPH, RING_SPARSE } from './spleenD
 // organ stops where its interior stops reading, and the two reduced marks
 // start below where it does.
 const SIZES = {
-  full: [256, 128, 96, 64],
+  full: [256, 128, 96],
   mark: [128, 96, 64, 48, 32],
-  glyph: [128, 96, 64, 48, 32, 16],
+  glyph: [96, 64, 48, 32, 16],
 }
 
 /** Grow a box to a square about its own centre, so a mark that is taller than
