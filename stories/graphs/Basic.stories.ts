@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
-import { expect } from 'storybook/test'
+import { expect, waitFor } from 'storybook/test'
 import { type DiagramData, ORIGINAL_COLORS } from '../../src/index'
 import { singleZSpider, zHHzChain } from '../diagrams'
 import { shadowRootOf, translateOf, waitForNodes } from '../interactionHelpers'
@@ -97,6 +97,13 @@ export const BellStatePrep: Story = {
         { src: 3, tgt: 6 },
       ],
     },
+  },
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    // A phase of 0 draws no text, the way an H-box's default π draws none, so
+    // every node here is bare: with labels off there is nothing to write at all.
+    await waitFor(() => expect(root.querySelectorAll('svg g.node g').length).toBe(7))
+    expect(root.querySelectorAll('svg g.node text').length).toBe(0)
   },
 }
 
