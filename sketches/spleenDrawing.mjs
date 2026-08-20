@@ -171,11 +171,17 @@ const pairs = ids => ids.map((id, i) => [id, ids[(i + 1) % ids.length], 'simple'
  * @param text     whether to write the labels and phases
  * @param stubs    boundary distance from the node it wires to, in pixels;
  *                 null leaves each vessel where the plate puts it
+ * @param scale    how much heavier than the plate to draw: one multiplier for
+ *                 both `weight` and `dots`, which is what a mark that has to
+ *                 survive being shrunk wants. Either can still be given on its
+ *                 own to override it.
  * @param weight   multiplier on every stroke width
  * @param dots     multiplier on every node's size. The node positions are
  *                 fixed, so this is what sets how much of the drawing is
  *                 spider rather than wire — a spider is 3% of the plate's
- *                 width, which is under a pixel once the mark is small.
+ *                 width, which is under a pixel once the mark is small. Its
+ *                 ceiling is the closest pair of nodes kept: they touch once a
+ *                 spider's diameter reaches the gap between their centres.
  * @param strands  whether to paint the Pauli webs
  */
 export function drawing({
@@ -183,8 +189,9 @@ export function drawing({
   keep = null,
   text = true,
   stubs = null,
-  weight = 1,
-  dots = 1,
+  scale = 1,
+  weight = scale,
+  dots = scale,
   strands = true,
 } = {}) {
   const size = SIZE * dots

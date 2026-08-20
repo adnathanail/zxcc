@@ -39,17 +39,29 @@ function svg(parts, { square = false } = {}) {
   }
 }
 
+/**
+ * How much heavier than the plate each reduced mark is drawn — spiders and
+ * stroke widths together. The plate's proportions are set for a 700px drawing,
+ * where a spider is 3% of the width; a mark that has to hold at 32px wants a
+ * bigger share of itself to be spider. These are the numbers to tweak.
+ *
+ * Each has a ceiling, which is the closest pair of nodes that mark keeps —
+ * past it the two touch. The sparse mark's is 2.68, at the capsule's n2–n3;
+ * the glyph's is 3.0, at the hilum and the trabecula beside it.
+ */
+const SCALE = { mark: 2.2, glyph: 2.9 }
+
 // The three vessels leave the hilum within 33° of each other, so how far out
 // they run is what sets how far apart their dots land.
 const full = svg(drawing({ text: false, stubs: 62 }))
 const mark = svg(
-  drawing({ ring: RING_SPARSE, keep: CORE, text: false, stubs: 90, weight: 1.9, dots: 1.7 }),
+  drawing({ ring: RING_SPARSE, keep: CORE, text: false, stubs: 90, scale: SCALE.mark }),
   { square: true },
 )
 // The glyph is what is left when every mark has to be worth a pixel: a capsule
 // of eight spiders, the trabecula in the middle of it, and one vessel.
 const glyph = svg(
-  drawing({ ring: RING_GLYPH, keep: GLYPH, text: false, stubs: 140, weight: 3, dots: 2.6 }),
+  drawing({ ring: RING_GLYPH, keep: GLYPH, text: false, stubs: 140, scale: SCALE.glyph }),
   { square: true },
 )
 
