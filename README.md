@@ -150,6 +150,17 @@ Only Z/X spiders, I/O, and Hadamards are supported in this view, other node type
 You can also have both the graph & hypergraph views, by setting the `view-mode` to `both-vertical` or `both-horizontal`.
 Selections will be synced across the two viewers.
 
+## Exported constants
+
+The main entry defines a custom element as it loads, so it needs a DOM and won't import in Node.
+To allow build-time usage of constants by Node, we have a second entry point, `@adnathanail/zxcc/constants`:
+
+```js
+import { VIEW_MODES, COLOR_SCHEMES } from '@adnathanail/zxcc/constants'
+
+if (!VIEW_MODES.includes(mode)) throw new Error(`unknown view-mode: ${mode}`)
+```
+
 ## Development
 
 Install npm dependencies:

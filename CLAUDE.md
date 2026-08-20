@@ -77,6 +77,20 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   into it because a kind of your own has no pyzx entry to fold into; both
   painters call this one function, which is what stops a wire and the dot
   standing for it disagreeing.
+- `constants.ts` — the plain data behind the presentation properties:
+  `VIEW_MODES`/`ViewMode`, and the three palettes plus `COLOR_SCHEMES`. This is
+  their single home; everything that needs one imports from here, and `index.ts`
+  re-exports the lot so the package's public surface is unchanged. It is also
+  published as a *second entry point*, `@adnathanail/zxcc/constants`, for
+  build-time tooling that validates an option value in Node. The main entry
+  can't serve that — the bundle opens with a bare `window` reference and calls
+  `customElements.define` at module scope. **It imports nothing, and that is
+  load-bearing**: the shipped `dist/constants.js` is the tsc intermediate
+  rather than a bundle, and tsc leaves relative specifiers extensionless
+  (`from './colors'`), which Node refuses to resolve. A file with no specifiers
+  has nothing to refuse. So only data lives here — `isViewMode` and the colour
+  lookups stay in `zxDiagram.ts` and `colors.ts`, since they are code the
+  browser half calls and moving them would drag imports in.
 - `selection.ts` — `Selection`, what is picked out, and the `zx-selection`
   event a painter announces one with. A selection is held in the *diagram's*
   terms — ZX node ids and indices into `diagram.edges` — never in either
@@ -337,6 +351,13 @@ host's selection in `render()`.
   so the shipped bundle has zero runtime deps.
 - Package entry is `dist/index.bundle.js`; `dist/index.js` is the tsc
   intermediate (also shipped, but nothing imports it in practice).
+- There is a second entry, `./constants` → `dist/constants.js`, which *is* a
+  tsc intermediate and is meant to be imported as one. `npm run test-node-entry`
+  (`scripts/check-node-entry.mjs`, run in CI after the build) imports it through
+  the exports map in a separate Node process with no DOM shim and asserts the
+  values, so an import added to `src/constants.ts` — which the bundler would
+  resolve without complaint — fails the build instead of quietly breaking every
+  Node consumer.
 - `context: 'globalThis'` in rollup config is required so tsc's emitted
   `__decorate` helper (used by Lit's `@customElement` etc.) doesn't get
   rewritten to `undefined && ...`.

@@ -10,7 +10,8 @@
 import { css, html, LitElement, nothing, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { attributionTemplate, placeAttribution } from './attribution'
-import { CANVAS_FILL, COLOR_SCHEMES, type ColorSchemeName, type EdgeColors } from './colors'
+import { CANVAS_FILL, type EdgeColors } from './colors'
+import { COLOR_SCHEMES, type ColorSchemeName, VIEW_MODES, type ViewMode } from './constants'
 import { ZOOM as HYPERGRAPH_ZOOM, layoutHypergraph } from './hypergraph/layout'
 import type { HypergraphScene } from './hypergraph/types'
 import { layout } from './layout'
@@ -21,11 +22,8 @@ import type { DiagramData, Scene } from './types'
 import './graph/viewer'
 import './hypergraph/viewer'
 
-export const VIEW_MODES = ['graph', 'hypergraph', 'both-vertical', 'both-horizontal'] as const
-export type ViewMode = (typeof VIEW_MODES)[number]
-
 /** `view-mode` is a plain string attribute, so the value that arrives is
- *  whatever was typed — the type above says nothing about it at runtime. */
+ *  whatever was typed — `ViewMode` says nothing about it at runtime. */
 function isViewMode(mode: string): mode is ViewMode {
   return (VIEW_MODES as readonly string[]).includes(mode)
 }

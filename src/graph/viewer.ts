@@ -21,11 +21,11 @@ import {
   edgeColor,
   LABEL_FILL,
   nodeColor,
-  ORIGINAL_COLORS,
   PHASE_FILL,
   SELECTED_STROKE,
   webColor,
 } from '../colors'
+import { ORIGINAL_COLORS } from '../constants'
 import type { Point } from '../curves'
 import { EMPTY_SELECTION, nodeSelection, type Selection, selectionEvent } from '../selection'
 import { Topology } from '../topology'

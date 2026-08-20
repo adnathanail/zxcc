@@ -23,6 +23,8 @@ jobs:
         run: npm run lint
       - name: Build
         run: npm run build
+      - name: Node entry point
+        run: npm run test-node-entry
       - name: Chromatic
         uses: chromaui/action@latest
         with:
