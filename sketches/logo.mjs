@@ -18,8 +18,8 @@ import { CORE, drawing, GLYPH, layers, nodes, RING_GLYPH, RING_SPARSE, SIZE } fr
 // start below where it does.
 const SIZES = {
   full: [256, 128, 96],
-  mark: [128, 96, 64, 48, 32],
-  glyph: [96, 64, 48, 32, 16],
+  mark: [128, 96, 64],
+  glyph: [96, 64, 48, 32],
 }
 
 /** Grow a box to a square about its own centre, so a mark that is taller than
