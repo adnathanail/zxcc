@@ -1,16 +1,17 @@
 // Emits the SpLean mark from the same definitions as the plate, with the text,
 // the scalar and the badge left off and the vessels cut back to stubs.
 //
-// Two assets, because one drawing cannot hold up across the whole size range:
-//   logo.svg       the whole organ, tight to its marks, for 128px and up
-//   logo-mark.svg  the sparse capsule and the trabecula, in a square box,
-//                  with the strokes weighted up to survive down to 32px
-// plus logo.html, which puts both at every size on light and dark to compare.
+// Three assets, because one drawing cannot hold up across the whole size range:
+//   logo.svg        the whole organ, tight to its marks, for 128px and up
+//   logo-mark.svg   the sparse capsule, the trabecula and the three vessels,
+//                   in a square box, with the strokes weighted up for 48px
+//   logo-glyph.svg  sparser still, for favicon sizes
+// plus logo.html, which puts all three at every size on light and dark.
 //
 // Run it with `node sketches/logo.mjs`, then open `sketches/logo.html`.
 import { writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { CORE, drawing, layers, RING_SPARSE } from './spleenDrawing.mjs'
+import { CORE, drawing, GLYPH, layers, RING_GLYPH, RING_SPARSE } from './spleenDrawing.mjs'
 
 const SIZES = [256, 128, 96, 64, 48, 32]
 
@@ -38,18 +39,10 @@ const mark = svg(
   drawing({ ring: RING_SPARSE, keep: CORE, text: false, stubs: 90, weight: 1.9, dots: 1.7 }),
   { square: true },
 )
-// Nothing carrying interior detail survives a favicon, so the glyph keeps only
-// what the silhouette needs: the capsule, and the vessels that say the
-// silhouette is a diagram.
+// The glyph is what is left when every mark has to be worth a pixel: a capsule
+// of eight spiders, the trabecula in the middle of it, and one vessel.
 const glyph = svg(
-  drawing({
-    ring: RING_SPARSE,
-    keep: [...RING_SPARSE, 'b1', 'b2', 'b3'],
-    text: false,
-    stubs: 104,
-    weight: 2.8,
-    dots: 2.4,
-  }),
+  drawing({ ring: RING_GLYPH, keep: GLYPH, text: false, stubs: 140, weight: 3, dots: 2.6 }),
   { square: true },
 )
 
@@ -95,7 +88,7 @@ const html = `<!doctype html>
 </style>
 
 <h1>SpLean mark</h1>
-<p class="sub">The spleen diagram as a logo: same node positions, wires and Pauli webs as the plate, with the labels, phases, scalar and badge dropped and the three vessels cut back to stubs at the hilum.</p>
+<p class="sub">The spleen diagram as a logo: same node positions, wires and Pauli webs as the plate, with the labels, phases, scalar and badge dropped, the vessels cut back to stubs at the hilum, and progressively less kept as the mark gets smaller.</p>
 
 ${row('Whole organ — logo.svg', full, '#fcfcfd', false)}
 ${row('Whole organ, on dark', full, '#1c1c1f', true)}

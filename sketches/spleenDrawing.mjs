@@ -83,6 +83,16 @@ export const RING_SPARSE = 'n1 n2 n3 n4 n5 n6 n7 n8 n11 n12 n15 n16'.split(' ')
  *  the trabecula with a follicle either side of it. */
 export const CORE = [...RING_SPARSE, 'b1', 'b2', 'b3', 'hb', 'f1', 'f3']
 
+/** Sparser still, for the glyph: the notch and its two lips, the apex, and one
+ *  corner apiece for the bottom and the lateral border. Eight spiders is what
+ *  is left when a capsule node has to be worth a whole pixel. */
+export const RING_GLYPH = 'n1 n4 n5 n6 n7 n8 n11 n14'.split(' ')
+
+/** What the glyph keeps besides that capsule: the trabecula, and one vessel of
+ *  the three — they leave the hilum within 33° of each other, so at glyph size
+ *  the other two only thicken the first. */
+export const GLYPH = [...RING_GLYPH, 'hb', 'b1']
+
 /** Everything that is not the capsule ring. Ring wires are derived from
  *  whichever ring a drawing uses, so they are not listed here. */
 export const EXTRA_EDGES = [
