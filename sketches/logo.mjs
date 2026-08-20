@@ -19,7 +19,7 @@ import { CORE, drawing, GLYPH, layers, nodes, RING_GLYPH, RING_SPARSE, SIZE } fr
 const SIZES = {
   full: [256, 128, 96],
   mark: [128, 96, 64],
-  glyph: [96, 64, 48, 32],
+  glyph: [64, 48, 32],
 }
 
 /** Grow a box to a square about its own centre, so a mark that is taller than
@@ -47,7 +47,7 @@ function svg(parts, { square = false } = {}) {
  * bigger share of itself to be spider. These are the numbers to tweak, and
  * `ceiling()` below prints how far each can go.
  */
-const SCALE = { mark: 2.4, glyph: 3.4 }
+const SCALE = { mark: 2.1, glyph: 3.8 }
 
 /** How much of a node's own size each shape reaches out from its centre: a
  *  spider its radius, a boundary half that, an H-box half its width. */

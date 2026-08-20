@@ -1,106 +1,106 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="64 49 416 416">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="66.62 51.63 410.75 410.75">
   <g class="web">
-      <path d="M 222 70 L 242 87" stroke="#dddddd" fill="transparent" style="stroke-width: 16.8px" />
-      <path d="M 262 104 L 242 87" stroke="#dddddd" fill="transparent" style="stroke-width: 16.8px" />
-      <path d="M 262 104 L 279 91" stroke="#dddddd" fill="transparent" style="stroke-width: 16.8px" />
-      <path d="M 296 78 L 279 91" stroke="#dddddd" fill="transparent" style="stroke-width: 16.8px" />
-      <path d="M 296 78 L 317 105" stroke="#dddddd" fill="transparent" style="stroke-width: 16.8px" />
-      <path d="M 338 132 L 317 105" stroke="#dddddd" fill="transparent" style="stroke-width: 16.8px" />
-      <path d="M 338 132 L 345 162" stroke="#dddddd" fill="transparent" style="stroke-width: 16.8px" />
-      <path d="M 352 192 L 345 162" stroke="#dddddd" fill="transparent" style="stroke-width: 16.8px" />
-      <path d="M 352 192 L 319 214" stroke="#dddddd" fill="transparent" style="stroke-width: 16.8px" />
-      <path d="M 286 236 L 319 214" stroke="#dddddd" fill="transparent" style="stroke-width: 16.8px" />
-      <path d="M 286 236 L 319 264" stroke="#dddddd" fill="transparent" style="stroke-width: 16.8px" />
-      <path d="M 352 292 L 319 264" stroke="#dddddd" fill="transparent" style="stroke-width: 16.8px" />
-      <path d="M 352 292 L 350 324" stroke="#dddddd" fill="transparent" style="stroke-width: 16.8px" />
-      <path d="M 348 356 L 350 324" stroke="#dddddd" fill="transparent" style="stroke-width: 16.8px" />
-      <path d="M 348 356 L 276 400" stroke="#dddddd" fill="transparent" style="stroke-width: 16.8px" />
-      <path d="M 204 444 L 276 400" stroke="#dddddd" fill="transparent" style="stroke-width: 16.8px" />
-      <path d="M 204 444 L 180 427" stroke="#dddddd" fill="transparent" style="stroke-width: 16.8px" />
-      <path d="M 156 410 L 180 427" stroke="#dddddd" fill="transparent" style="stroke-width: 16.8px" />
-      <path d="M 156 410 L 137 313" stroke="#dddddd" fill="transparent" style="stroke-width: 16.8px" />
-      <path d="M 118 216 L 137 313" stroke="#dddddd" fill="transparent" style="stroke-width: 16.8px" />
-      <path d="M 118 216 L 135 174" stroke="#dddddd" fill="transparent" style="stroke-width: 16.8px" />
-      <path d="M 152 132 L 135 174" stroke="#dddddd" fill="transparent" style="stroke-width: 16.8px" />
-      <path d="M 152 132 L 187 101" stroke="#dddddd" fill="transparent" style="stroke-width: 16.8px" />
-      <path d="M 222 70 L 187 101" stroke="#dddddd" fill="transparent" style="stroke-width: 16.8px" />
+      <path d="M 222 70 L 242 87" stroke="#dddddd" fill="transparent" style="stroke-width: 14.700000000000001px" />
+      <path d="M 262 104 L 242 87" stroke="#dddddd" fill="transparent" style="stroke-width: 14.700000000000001px" />
+      <path d="M 262 104 L 279 91" stroke="#dddddd" fill="transparent" style="stroke-width: 14.700000000000001px" />
+      <path d="M 296 78 L 279 91" stroke="#dddddd" fill="transparent" style="stroke-width: 14.700000000000001px" />
+      <path d="M 296 78 L 317 105" stroke="#dddddd" fill="transparent" style="stroke-width: 14.700000000000001px" />
+      <path d="M 338 132 L 317 105" stroke="#dddddd" fill="transparent" style="stroke-width: 14.700000000000001px" />
+      <path d="M 338 132 L 345 162" stroke="#dddddd" fill="transparent" style="stroke-width: 14.700000000000001px" />
+      <path d="M 352 192 L 345 162" stroke="#dddddd" fill="transparent" style="stroke-width: 14.700000000000001px" />
+      <path d="M 352 192 L 319 214" stroke="#dddddd" fill="transparent" style="stroke-width: 14.700000000000001px" />
+      <path d="M 286 236 L 319 214" stroke="#dddddd" fill="transparent" style="stroke-width: 14.700000000000001px" />
+      <path d="M 286 236 L 319 264" stroke="#dddddd" fill="transparent" style="stroke-width: 14.700000000000001px" />
+      <path d="M 352 292 L 319 264" stroke="#dddddd" fill="transparent" style="stroke-width: 14.700000000000001px" />
+      <path d="M 352 292 L 350 324" stroke="#dddddd" fill="transparent" style="stroke-width: 14.700000000000001px" />
+      <path d="M 348 356 L 350 324" stroke="#dddddd" fill="transparent" style="stroke-width: 14.700000000000001px" />
+      <path d="M 348 356 L 276 400" stroke="#dddddd" fill="transparent" style="stroke-width: 14.700000000000001px" />
+      <path d="M 204 444 L 276 400" stroke="#dddddd" fill="transparent" style="stroke-width: 14.700000000000001px" />
+      <path d="M 204 444 L 180 427" stroke="#dddddd" fill="transparent" style="stroke-width: 14.700000000000001px" />
+      <path d="M 156 410 L 180 427" stroke="#dddddd" fill="transparent" style="stroke-width: 14.700000000000001px" />
+      <path d="M 156 410 L 137 313" stroke="#dddddd" fill="transparent" style="stroke-width: 14.700000000000001px" />
+      <path d="M 118 216 L 137 313" stroke="#dddddd" fill="transparent" style="stroke-width: 14.700000000000001px" />
+      <path d="M 118 216 L 135 174" stroke="#dddddd" fill="transparent" style="stroke-width: 14.700000000000001px" />
+      <path d="M 152 132 L 135 174" stroke="#dddddd" fill="transparent" style="stroke-width: 14.700000000000001px" />
+      <path d="M 152 132 L 187 101" stroke="#dddddd" fill="transparent" style="stroke-width: 14.700000000000001px" />
+      <path d="M 222 70 L 187 101" stroke="#dddddd" fill="transparent" style="stroke-width: 14.700000000000001px" />
   </g>
 
   <g class="link">
-      <path d="M 222 70 L 262 104" stroke="#000000" fill="transparent" style="stroke-width: 3.5999999999999996px" />
-      <path d="M 262 104 L 296 78" stroke="#000000" fill="transparent" style="stroke-width: 3.5999999999999996px" />
-      <path d="M 296 78 L 338 132" stroke="#000000" fill="transparent" style="stroke-width: 3.5999999999999996px" />
-      <path d="M 338 132 L 352 192" stroke="#000000" fill="transparent" style="stroke-width: 3.5999999999999996px" />
-      <path d="M 352 192 L 286 236" stroke="#000000" fill="transparent" style="stroke-width: 3.5999999999999996px" />
-      <path d="M 286 236 L 352 292" stroke="#000000" fill="transparent" style="stroke-width: 3.5999999999999996px" />
-      <path d="M 352 292 L 348 356" stroke="#000000" fill="transparent" style="stroke-width: 3.5999999999999996px" />
-      <path d="M 348 356 L 204 444" stroke="#000000" fill="transparent" style="stroke-width: 3.5999999999999996px" />
-      <path d="M 204 444 L 156 410" stroke="#000000" fill="transparent" style="stroke-width: 3.5999999999999996px" />
-      <path d="M 156 410 L 118 216" stroke="#000000" fill="transparent" style="stroke-width: 3.5999999999999996px" />
-      <path d="M 118 216 L 152 132" stroke="#000000" fill="transparent" style="stroke-width: 3.5999999999999996px" />
-      <path d="M 152 132 L 222 70" stroke="#000000" fill="transparent" style="stroke-width: 3.5999999999999996px" />
-      <path d="M 425.99749011733684 236.8383083240559 L 286 236" stroke="#0088ff" fill="transparent" style="stroke-width: 3.5999999999999996px" />
-      <path d="M 286 236 L 420.4484717455074 196.96657271904624" stroke="#000000" fill="transparent" style="stroke-width: 3.5999999999999996px" />
-      <path d="M 286 236 L 419.73422078664714 277.41446837263913" stroke="#999999" fill="transparent" style="stroke-width: 3.5999999999999996px" />
-      <path d="M 286 236 L 222 242" stroke="#0088ff" fill="transparent" style="stroke-width: 3.5999999999999996px" />
-      <path d="M 222 242 L 214 168" stroke="#0088ff" fill="transparent" style="stroke-width: 3.5999999999999996px" />
-      <path d="M 222 242 L 206 334" stroke="#0088ff" fill="transparent" style="stroke-width: 3.5999999999999996px" />
+      <path d="M 222 70 L 262 104" stroke="#000000" fill="transparent" style="stroke-width: 3.1500000000000004px" />
+      <path d="M 262 104 L 296 78" stroke="#000000" fill="transparent" style="stroke-width: 3.1500000000000004px" />
+      <path d="M 296 78 L 338 132" stroke="#000000" fill="transparent" style="stroke-width: 3.1500000000000004px" />
+      <path d="M 338 132 L 352 192" stroke="#000000" fill="transparent" style="stroke-width: 3.1500000000000004px" />
+      <path d="M 352 192 L 286 236" stroke="#000000" fill="transparent" style="stroke-width: 3.1500000000000004px" />
+      <path d="M 286 236 L 352 292" stroke="#000000" fill="transparent" style="stroke-width: 3.1500000000000004px" />
+      <path d="M 352 292 L 348 356" stroke="#000000" fill="transparent" style="stroke-width: 3.1500000000000004px" />
+      <path d="M 348 356 L 204 444" stroke="#000000" fill="transparent" style="stroke-width: 3.1500000000000004px" />
+      <path d="M 204 444 L 156 410" stroke="#000000" fill="transparent" style="stroke-width: 3.1500000000000004px" />
+      <path d="M 156 410 L 118 216" stroke="#000000" fill="transparent" style="stroke-width: 3.1500000000000004px" />
+      <path d="M 118 216 L 152 132" stroke="#000000" fill="transparent" style="stroke-width: 3.1500000000000004px" />
+      <path d="M 152 132 L 222 70" stroke="#000000" fill="transparent" style="stroke-width: 3.1500000000000004px" />
+      <path d="M 425.99749011733684 236.8383083240559 L 286 236" stroke="#0088ff" fill="transparent" style="stroke-width: 3.1500000000000004px" />
+      <path d="M 286 236 L 420.4484717455074 196.96657271904624" stroke="#000000" fill="transparent" style="stroke-width: 3.1500000000000004px" />
+      <path d="M 286 236 L 419.73422078664714 277.41446837263913" stroke="#999999" fill="transparent" style="stroke-width: 3.1500000000000004px" />
+      <path d="M 286 236 L 222 242" stroke="#0088ff" fill="transparent" style="stroke-width: 3.1500000000000004px" />
+      <path d="M 222 242 L 214 168" stroke="#0088ff" fill="transparent" style="stroke-width: 3.1500000000000004px" />
+      <path d="M 222 242 L 206 334" stroke="#0088ff" fill="transparent" style="stroke-width: 3.1500000000000004px" />
   </g>
 
   <g class="node">
       <g data-node="n1" transform="translate(222,70)">
-        <circle r="19.2" fill="#ccffcc" stroke="black" style="stroke-width: 3.5999999999999996px" />
+        <circle r="16.8" fill="#ccffcc" stroke="black" style="stroke-width: 3.1500000000000004px" />
       </g>
       <g data-node="n2" transform="translate(262,104)">
-        <circle r="19.2" fill="#ff8888" stroke="black" style="stroke-width: 3.5999999999999996px" />
+        <circle r="16.8" fill="#ff8888" stroke="black" style="stroke-width: 3.1500000000000004px" />
       </g>
       <g data-node="n3" transform="translate(296,78)">
-        <circle r="19.2" fill="#ccffcc" stroke="black" style="stroke-width: 3.5999999999999996px" />
+        <circle r="16.8" fill="#ccffcc" stroke="black" style="stroke-width: 3.1500000000000004px" />
       </g>
       <g data-node="n4" transform="translate(338,132)">
-        <circle r="19.2" fill="#ff8888" stroke="black" style="stroke-width: 3.5999999999999996px" />
+        <circle r="16.8" fill="#ff8888" stroke="black" style="stroke-width: 3.1500000000000004px" />
       </g>
       <g data-node="n5" transform="translate(352,192)">
-        <circle r="19.2" fill="#ccffcc" stroke="black" style="stroke-width: 3.5999999999999996px" />
+        <circle r="16.8" fill="#ccffcc" stroke="black" style="stroke-width: 3.1500000000000004px" />
       </g>
       <g data-node="n6" transform="translate(286,236)">
-        <circle r="19.2" fill="#ff8888" stroke="black" style="stroke-width: 3.5999999999999996px" />
+        <circle r="16.8" fill="#ff8888" stroke="black" style="stroke-width: 3.1500000000000004px" />
       </g>
       <g data-node="n7" transform="translate(352,292)">
-        <circle r="19.2" fill="#ccffcc" stroke="black" style="stroke-width: 3.5999999999999996px" />
+        <circle r="16.8" fill="#ccffcc" stroke="black" style="stroke-width: 3.1500000000000004px" />
       </g>
       <g data-node="n8" transform="translate(348,356)">
-        <circle r="19.2" fill="#ff8888" stroke="black" style="stroke-width: 3.5999999999999996px" />
+        <circle r="16.8" fill="#ff8888" stroke="black" style="stroke-width: 3.1500000000000004px" />
       </g>
       <g data-node="n11" transform="translate(204,444)">
-        <circle r="19.2" fill="#ccffcc" stroke="black" style="stroke-width: 3.5999999999999996px" />
+        <circle r="16.8" fill="#ccffcc" stroke="black" style="stroke-width: 3.1500000000000004px" />
       </g>
       <g data-node="n12" transform="translate(156,410)">
-        <circle r="19.2" fill="#ff8888" stroke="black" style="stroke-width: 3.5999999999999996px" />
+        <circle r="16.8" fill="#ff8888" stroke="black" style="stroke-width: 3.1500000000000004px" />
       </g>
       <g data-node="n15" transform="translate(118,216)">
-        <circle r="19.2" fill="#ccffcc" stroke="black" style="stroke-width: 3.5999999999999996px" />
+        <circle r="16.8" fill="#ccffcc" stroke="black" style="stroke-width: 3.1500000000000004px" />
       </g>
       <g data-node="n16" transform="translate(152,132)">
-        <circle r="19.2" fill="#ff8888" stroke="black" style="stroke-width: 3.5999999999999996px" />
+        <circle r="16.8" fill="#ff8888" stroke="black" style="stroke-width: 3.1500000000000004px" />
       </g>
       <g data-node="b1" transform="translate(425.99749011733684,236.8383083240559)">
-        <circle r="9.6" fill="#000000" stroke="black" style="stroke-width: 3.5999999999999996px" />
+        <circle r="8.4" fill="#000000" stroke="black" style="stroke-width: 3.1500000000000004px" />
       </g>
       <g data-node="b2" transform="translate(420.4484717455074,196.96657271904624)">
-        <circle r="9.6" fill="#000000" stroke="black" style="stroke-width: 3.5999999999999996px" />
+        <circle r="8.4" fill="#000000" stroke="black" style="stroke-width: 3.1500000000000004px" />
       </g>
       <g data-node="b3" transform="translate(419.73422078664714,277.41446837263913)">
-        <circle r="9.6" fill="#000000" stroke="black" style="stroke-width: 3.5999999999999996px" />
+        <circle r="8.4" fill="#000000" stroke="black" style="stroke-width: 3.1500000000000004px" />
       </g>
       <g data-node="hb" transform="translate(222,242)">
-        <rect x="-14.399999999999999" y="-14.399999999999999" width="28.799999999999997" height="28.799999999999997" fill="#ffff66" stroke="black" style="stroke-width: 3.5999999999999996px" />
+        <rect x="-12.600000000000001" y="-12.600000000000001" width="25.200000000000003" height="25.200000000000003" fill="#ffff66" stroke="black" style="stroke-width: 3.1500000000000004px" />
       </g>
       <g data-node="f1" transform="translate(214,168)">
-        <circle r="19.2" fill="#ccffcc" stroke="black" style="stroke-width: 3.5999999999999996px" />
+        <circle r="16.8" fill="#ccffcc" stroke="black" style="stroke-width: 3.1500000000000004px" />
       </g>
       <g data-node="f3" transform="translate(206,334)">
-        <circle r="19.2" fill="#ccffcc" stroke="black" style="stroke-width: 3.5999999999999996px" />
+        <circle r="16.8" fill="#ccffcc" stroke="black" style="stroke-width: 3.1500000000000004px" />
       </g>
   </g>
 </svg>
