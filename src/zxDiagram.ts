@@ -10,8 +10,14 @@
 import { css, html, LitElement, nothing, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { attributionTemplate, placeAttribution } from './attribution'
-import { CANVAS_FILL, type EdgeColors } from './colors'
-import { COLOR_SCHEMES, type ColorSchemeName, VIEW_MODES, type ViewMode } from './constants'
+import type { EdgeColors } from './colors'
+import {
+  CANVAS_FILL,
+  COLOR_SCHEMES,
+  type ColorSchemeName,
+  VIEW_MODES,
+  type ViewMode,
+} from './constants'
 import { ZOOM as HYPERGRAPH_ZOOM, layoutHypergraph } from './hypergraph/layout'
 import type { HypergraphScene } from './hypergraph/types'
 import { layout } from './layout'

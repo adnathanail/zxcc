@@ -14,15 +14,8 @@
 
 import { html, LitElement, nothing, type PropertyValues, type SVGTemplateResult, svg } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
-import {
-  type EdgeColors,
-  edgeColor,
-  LABEL_FILL,
-  nodeColor,
-  PHASE_FILL,
-  SELECTED_STROKE,
-} from '../colors'
-import { ORIGINAL_COLORS } from '../constants'
+import { type EdgeColors, edgeColor, nodeColor } from '../colors'
+import { LABEL_FILL, ORIGINAL_COLORS, PHASE_FILL, SELECTED_STROKE } from '../constants'
 import type { Point } from '../curves'
 import {
   EMPTY_SELECTION,

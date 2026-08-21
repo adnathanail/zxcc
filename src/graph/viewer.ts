@@ -15,17 +15,15 @@
 
 import { html, LitElement, nothing, type PropertyValues, type SVGTemplateResult, svg } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
+import { type EdgeColors, edgeColor, nodeColor, webColor } from '../colors'
 import {
   CANVAS_FILL,
-  type EdgeColors,
-  edgeColor,
   LABEL_FILL,
-  nodeColor,
+  ORIGINAL_COLORS,
   PHASE_FILL,
   SELECTED_STROKE,
-  webColor,
-} from '../colors'
-import { ORIGINAL_COLORS } from '../constants'
+  VDATA_FILL,
+} from '../constants'
 import type { Point } from '../curves'
 import { EMPTY_SELECTION, nodeSelection, type Selection, selectionEvent } from '../selection'
 import { Topology } from '../topology'
@@ -325,7 +323,7 @@ export class ZxViewerElement extends LitElement {
         ${
           node.vdata.length > 0
             ? svg`<text y=${-0.7 * size - 14 - 10 * node.vdata.length} text-anchor="middle"
-                font-size="8px" font-family="monospace" fill="#c66"
+                font-size="8px" font-family="monospace" fill=${VDATA_FILL}
                 style="pointer-events: none; user-select: none;">${node.vdata.map(
                   entry => svg`<tspan x="0" dy="1.2em">${entry.join(': ')}</tspan>`,
                 )}</text>`

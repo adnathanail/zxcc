@@ -59,15 +59,12 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   hypergraph layout, which parks a dot at t = 0.5 on it (and slides it along
   when two dots would land together), so the painted wire and the hypergraph's
   dot on it cannot disagree.
-- `colors.ts` — the pyzx palettes, the scheme lookup, and which entry each
-  kind of thing is painted with (`nodeColor`, `edgeColor`, `webColor`), plus
-  `PHASE_FILL`, `LABEL_FILL`, `SELECTED_STROKE` and `VDATA_FILL` — the blue
-  both painters write a phase in, the grey they write an id label in, the blue
-  they outline a selection in, and the red a node's vdata is annotated in. None
-  is a palette entry, so none moves with
-  `color-scheme`. Those
-  lookups are here rather than in either painter so a spider and the blob
-  standing for the same spider cannot come out different colours.
+- `colors.ts` — which palette entry each kind of thing is painted with
+  (`nodeColor`, `edgeColor`, `webColor`). The values
+  themselves, palettes and fixed colours alike, are in `constants.ts`; this
+  file is the lookups, and they are here rather than in either painter so a
+  spider and the blob standing for the same spider cannot come out different
+  colours.
   `edgeColor` takes a third argument, `<zx-diagram>`'s `edgeColors` map, and
   tries it *before* the palette: `edgeColors[kind]`, then `EDGE_KEY[kind]`'s
   palette entry for one of the three built-in kinds, then `colors.edge`. That
@@ -78,15 +75,22 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   into it because a kind of your own has no pyzx entry to fold into; both
   painters call this one function, which is what stops a wire and the dot
   standing for it disagreeing.
-- `constants.ts` — the plain data behind the presentation properties:
-  `VIEW_MODES`/`ViewMode`, and the three palettes plus `COLOR_SCHEMES`. The
+- `constants.ts` — every colour value the package paints with, plus the plain
+  data behind the presentation properties: `VIEW_MODES`/`ViewMode`, and the
+  three palettes plus `COLOR_SCHEMES`. The
   palettes are pyzx's with one key added, `Idark`, the identity Pauli-web
   strand: pyzx has no such strand, and it is the same grey in all three schemes
   since an identity strand is the one that names no basis. It lives in the
-  palettes rather than beside `PHASE_FILL` and friends so that every strand a
-  web can carry is looked up the same way. This is
-  their single home; everything that needs one imports from here, and `index.ts`
-  re-exports the lot so the package's public surface is unchanged. It is also
+  palettes rather than among the fixed colours below so that every strand a web
+  can carry is looked up the same way. Those fixed colours are the five that
+  belong to no palette and so stay put under every scheme: `PHASE_FILL`,
+  `LABEL_FILL`, `SELECTED_STROKE`, `CANVAS_FILL` and `VDATA_FILL` — the blue
+  both painters write a phase in, the grey they write an id label in, the blue
+  they outline a selection in, the near-white the SVG background takes, and the
+  red a node's vdata is annotated in. This is every colour's
+  single home; everything that needs one imports from here, and `index.ts`
+  re-exports the view modes and the palettes, the public half — the fixed
+  colours are internal and stay unexported. It is also
   published as a *second entry point*, `@adnathanail/zxcc/constants`, for
   build-time tooling that validates an option value in Node. The main entry
   can't serve that — the bundle opens with a bare `window` reference and calls
@@ -95,7 +99,7 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   rather than a bundle, and tsc leaves relative specifiers extensionless
   (`from './colors'`), which Node refuses to resolve. A file with no specifiers
   has nothing to refuse. So only data lives here — `isViewMode` and the colour
-  lookups stay in `zxDiagram.ts` and `colors.ts`, since they are code the
+  *lookups* stay in `zxDiagram.ts` and `colors.ts`, since they are code the
   browser half calls and moving them would drag imports in.
 - `selection.ts` — `Selection`, what is picked out, and the `zx-selection`
   event a painter announces one with. A selection is held in the *diagram's*
@@ -348,8 +352,9 @@ move a node's blue outline and a dot's blue ring make. And it *stands off* the
 wire, again as the dot's ring does: a band of `CANVAS_FILL` between the two,
 which is what makes the blue read as a surround rather than as a thicker wire,
 and is what the light-blue-inside-dark-blue H-edge needs. `CANVAS_FILL` is in
-`colors.ts` because `<zx-diagram>` paints the SVG background with it too, and a
-band in any other colour would be a stripe rather than a gap. The casings are
+`constants.ts` with every other colour because `<zx-diagram>` paints the SVG
+background with it too, and a band in any other colour would be a stripe rather
+than a gap. The casings are
 their own layer under *every* wire rather than under their own: inside `g.link`
 a casing would be painted over by whichever edges come after it and would cover
 the ones crossing it. Every blue is painted before every gap, so two selected
