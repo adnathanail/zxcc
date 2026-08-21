@@ -164,7 +164,10 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   `Hypergraphs/Interactions` → `4. Boundary legs and self-loops` holds that
   count, by pressing each dot and reading back the blobs the press reached —
   which blobs hold a wire is membership, and a press is how the drawing answers
-  it.
+  it. `<zx-diagram disable-io-blobs-in-hypergraph>` drops them, for a
+  diagram whose boundaries are many enough that a circle round every leg is
+  more outline than information; that count is what it costs, which is why they
+  are on by default.
 - `geometry.ts` — `wireCurve` (the curve a wire's dot rides), `blobHull` (the
   convex hull of a blob's dots), `hullPath` (the outline standing off that hull)
   and `hullContains` (the same shape as a hit test), plus
@@ -177,6 +180,12 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   per render and passes it down. The trespass test asks every dot about every
   blob, so deriving the hull inside it would be a sort per pair: on the 4-by-5
   n-to-m story that is 18 hulls a render rather than 540.
+  Its `boundaryBlobs` option (see `layout.ts`) is the one thing that can be left
+  out of the drawing, and it is applied when the blobs are built rather than
+  when they are painted — a blob missing from the `HypergraphScene` cannot be
+  pressed inside, cannot ring the dot it holds, and cannot have a neighbouring
+  dot counted as trespassing into it. Skipping it in the viewer would have left
+  all three answering about a shape that is not on screen.
 - `layout.ts` — `layoutHypergraph`. It zooms the resolved node positions by
   `ZOOM` first — the dual has twice the marks at half the spacing, so it is
   drawn roomier — then builds each wire's curve from those and parks the dot at
@@ -316,7 +325,15 @@ noticing the picture is wrong. `VIEW_MODES` is the array both the check and the
 `ViewMode` type derive from, so the two cannot drift.
 It owns the presentation properties that mirror
 pyzx's `draw_d3` keyword arguments (`show-labels`, `color-scheme`, `scale`,
-`colors`) plus `edgeColors`, which has no pyzx counterpart; resolves a scheme
+`colors`) plus `edgeColors` and `disable-io-blobs-in-hypergraph`, which have no
+pyzx counterpart. That last one is named for what it turns *off*, against the
+grain of every other property here, because Lit's `Boolean` converter reads a
+present attribute as true and an absent one as false: a default-on `show-…`
+would have no way to say "off" in markup and would need a converter of its own,
+where a default-off `disable-…` is a bare attribute. The layout option behind
+it stays positive (`boundaryBlobs`), so the negation happens once, at the point
+the two meet. Changing it relayouts, since the flag is answered when the blobs
+are built; resolves a scheme
 name to a palette and hands both it and the wire-kind map to each painter; and
 passes the attribution
 badge down as each painter's `overlay` — one per view, placed against that
