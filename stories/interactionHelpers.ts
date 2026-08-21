@@ -86,6 +86,21 @@ export function selectedBlobsIn(root: ShadowRoot, pick?: 'named' | 'implied'): s
     .map(g => g.getAttribute('data-hyperedge') ?? '')
 }
 
+/** Ids of the hyperedge blobs drawn, in document order — every blob, picked out
+ *  or not. Paint order is depth order, so this is not node-id order. */
+export function blobIdsIn(root: ParentNode): string[] {
+  return [...root.querySelectorAll('svg g.blob g[data-hyperedge]')].map(
+    g => g.getAttribute('data-hyperedge') ?? '',
+  )
+}
+
+/** Ids of the wires drawn as dots, in document order. */
+export function dotIdsIn(root: ParentNode): string[] {
+  return [...root.querySelectorAll('svg g.dot g[data-wire]')].map(
+    g => g.getAttribute('data-wire') ?? '',
+  )
+}
+
 /** Ids of the nodes drawn as selected in the diagram view, in document order.
  *  `<zx-viewer>` marks one with the same blue stroke the hypergraph view uses,
  *  set in the shape's `style`. Scoped to the painter, since in `both` mode the

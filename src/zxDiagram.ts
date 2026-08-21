@@ -18,7 +18,11 @@ import {
   VIEW_MODES,
   type ViewMode,
 } from './constants'
-import { ZOOM as HYPERGRAPH_ZOOM, layoutHypergraph } from './hypergraph/layout'
+import {
+  ZOOM as HYPERGRAPH_ZOOM,
+  type HypergraphLayoutOptions,
+  layoutHypergraph,
+} from './hypergraph/layout'
 import type { HypergraphScene } from './hypergraph/types'
 import { layout } from './layout'
 // `@zx-selection` in the template below is `SELECTION_EVENT`, written out
@@ -74,6 +78,12 @@ export class ZxDiagramElement extends LitElement {
    *  or both (`both-vertical` / `both-horizontal`).
    *  Throws if given invalid value. */
   @property({ attribute: 'view-mode' }) viewMode: ViewMode = 'graph'
+
+  /** Drop (single node) i/o blobs in the hypergraph view
+   *    see {@link HypergraphLayoutOptions.boundaryBlobs}
+   *  No effect in `graph` mode. */
+  @property({ attribute: 'disable-io-blobs-in-hypergraph', type: Boolean })
+  disableIOBlobsInHypergraph = false
 
   /** The laid-out views. Which are non-null follows `viewMode`, so in either
    *  `both` mode they are populated together and two painters are rendered. */
@@ -133,7 +143,12 @@ export class ZxDiagramElement extends LitElement {
   private placementPending = false
 
   protected willUpdate(changed: PropertyValues<this>) {
-    if (changed.has('diagram') || changed.has('scale') || changed.has('viewMode')) {
+    if (
+      changed.has('diagram') ||
+      changed.has('scale') ||
+      changed.has('viewMode') ||
+      changed.has('disableIOBlobsInHypergraph')
+    ) {
       this.relayout()
     }
   }
@@ -229,7 +244,11 @@ export class ZxDiagramElement extends LitElement {
         const scene = layout(this.diagram, { scale: this.scale ?? undefined })
         const both = isBoth(this.viewMode)
         const hypergraph =
-          this.viewMode === 'hypergraph' || both ? layoutHypergraph(this.diagram, scene) : null
+          this.viewMode === 'hypergraph' || both
+            ? layoutHypergraph(this.diagram, scene, {
+                boundaryBlobs: !this.disableIOBlobsInHypergraph,
+              })
+            : null
         // Render graph scene (unless only rendering hypergraph)
         if (this.viewMode !== 'hypergraph') {
           // If rendering graph and hypergraph, scale graph scene to match hypergraph's larger default size

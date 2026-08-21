@@ -94,6 +94,7 @@ _Some can be set as attributes in HTML, some must be set with JS on the element,
 | `color-scheme` | `colorScheme` | `original` | `original` / `rgb` / `grayscale` |
 | `scale` | `scale` | derived | Pixels per row/qubit |
 | `view-mode` | `viewMode` | `graph` | `graph` / `hypergraph` / `both-vertical` / `both-horizontal` - see [Hypergraph view](#hypergraph-view). |
+| `disable-io-blobs-in-hypergraph` | `disableIOBlobsInHypergraph` | `false` | Leave out the single-dot blob around each input/output in the hypergraph view. |
 | — | `colors` | `null` | Full palette override (`Record<string, string>`), overrides `color-scheme`. |
 | — | `edgeColors` | `null` | Define custom wire 'kinds', to display wires in custom colours, overrides both of the above for the kinds named. |
 
@@ -144,6 +145,26 @@ to it. An input/output is incident to one wire, so its blob is a circle around t
 ```
 
 Only Z/X spiders, I/O, and Hadamards are supported in this view, other node types will be rejected.
+
+### Input/output blobs
+
+Each input/output gets a blob of its own, a circle around the single dot for its leg. That circle is
+what tells a boundary leg apart from a self-loop: both are one dot hanging off one spider, and the
+rule that every dot sits in two blobs — one per end of its wire — only reads off the drawing while
+the boundaries have blobs too. On a diagram with many boundaries it is also a lot of outline, so it
+can be turned off:
+
+```html
+<zx-diagram id="d" view-mode="hypergraph" disable-io-blobs-in-hypergraph></zx-diagram>
+```
+
+```js
+document.getElementById('d').disableIOBlobsInHypergraph = true
+```
+
+The dots stay either way — a boundary leg is still a wire. Only the circle round it goes, and with it
+goes anything that circle could be pressed or counted for: an input/output can no longer be selected
+in this view, and a dot near one no longer counts as trespassing into it.
 
 ### Both views
 

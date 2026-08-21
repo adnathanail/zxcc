@@ -135,6 +135,16 @@ function speed(rider: Rider, at: (rider: Rider) => Point): number {
   return Math.hypot(ahead.x - behind.x, ahead.y - behind.y) / (2 * step) || 1
 }
 
+/** What the caller can vary about the drawing, as opposed to about the diagram. */
+export interface HypergraphLayoutOptions {
+  /** Draw a blob (with a single node) for each input/output as well as for
+   *   each spider.
+   *  If disabled, a boundary leg and a self-loop are indistinguishable.
+   *  Required, so that `<zx-diagram>`'s `disableIOBlobsInHypergraph` is the
+   *  only place that says what gets drawn unless asked otherwise. */
+  boundaryBlobs: boolean
+}
+
 /**
  * Lay out the hypergraph dual of `diagram`, positioned from `scene` — the
  * result of `layout(diagram)`, which the caller supplies so that both views
@@ -144,7 +154,11 @@ function speed(rider: Rider, at: (rider: Rider) => Point): number {
  * Hadamards and boundaries have one — so everything from here on has a shape
  * and a colour to be drawn with.
  */
-export function layoutHypergraph(diagram: DiagramData, scene: Scene): HypergraphScene {
+export function layoutHypergraph(
+  diagram: DiagramData,
+  scene: Scene,
+  { boundaryBlobs }: HypergraphLayoutOptions,
+): HypergraphScene {
   const hg = toHypergraph(diagram, scene)
 
   // H-boxes carry no grid position, so their pixel positions are the ones the
@@ -206,6 +220,7 @@ export function layoutHypergraph(diagram: DiagramData, scene: Scene): Hypergraph
 
   const placed = new Set(dots.map(d => d.id))
   const blobs: HypergraphBlob[] = hg.hyperedges
+    .filter(e => boundaryBlobs || e.kind !== 'boundary') // Optionally filter out boundary blobs
     .map(e => ({
       id: e.id,
       nodeId: e.nodeId,

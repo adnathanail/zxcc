@@ -4,21 +4,23 @@ import { expect, waitFor } from 'storybook/test'
 import type { ViewMode } from '../../src/index'
 import type { DiagramData } from '../../src/types'
 import { fourSpiderSquare, strongComplementarityOf } from '../diagrams'
-import { blobCaptionsIn, shadowRootOf } from '../interactionHelpers'
+import { blobCaptionsIn, blobIdsIn, dotIdsIn, shadowRootOf } from '../interactionHelpers'
 
 interface Args {
   diagram: DiagramData
   viewMode: ViewMode
   showLabels: boolean
   colorScheme: 'original' | 'rgb' | 'grayscale'
+  disableIOBlobs: boolean
 }
 
-const renderDiagram = ({ diagram, viewMode, showLabels, colorScheme }: Args) =>
+const renderDiagram = ({ diagram, viewMode, showLabels, colorScheme, disableIOBlobs }: Args) =>
   html`<zx-diagram
     .diagram=${diagram}
     view-mode=${viewMode}
     ?show-labels=${showLabels}
     color-scheme=${colorScheme}
+    ?disable-io-blobs-in-hypergraph=${disableIOBlobs}
     style="min-height: 160px"
   ></zx-diagram>`
 
@@ -32,8 +34,14 @@ const meta: Meta<Args> = {
     },
     showLabels: { control: 'boolean' },
     colorScheme: { control: 'select', options: ['original', 'rgb', 'grayscale'] },
+    disableIOBlobs: { control: 'boolean' },
   },
-  args: { viewMode: 'hypergraph', showLabels: false, colorScheme: 'original' },
+  args: {
+    viewMode: 'hypergraph',
+    showLabels: false,
+    colorScheme: 'original',
+    disableIOBlobs: false,
+  },
   parameters: {
     docs: {
       description: {
@@ -203,4 +211,25 @@ export const LargeStrongComplementarity: StoryObj<SizedArgs> = {
   args: { zCount: 4, xCount: 5 },
   render: ({ zCount, xCount, ...rest }) =>
     renderDiagram({ ...rest, diagram: strongComplementarityOf(zCount, xCount) }),
+}
+
+export const WithoutBoundaryBlobs: Story = {
+  name: '7. Without input/output blobs',
+  parameters: {
+    docs: {
+      story: {
+        description:
+          'The same four-spider square with `disable-io-blobs-in-hypergraph`. Every input and output loses its circle; the dots stay, since a boundary leg is still a wire. What goes with the circles is the rule that reads a boundary leg apart from a self-loop — both are then a single dot held by one blob — which is why the blobs are drawn unless asked otherwise. Turn the control back off to compare.',
+      },
+    },
+  },
+  args: { diagram: fourSpiderSquare, disableIOBlobs: true },
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    // The square's boundaries are nodes 0, 1, 6 and 7; the spiders are 2 to 5,
+    // so those four blobs are what is left.
+    await waitFor(() => expect([...blobIdsIn(root)].sort()).toEqual(['e2', 'e3', 'e4', 'e5']))
+    // Every wire still has its dot, boundary legs included.
+    expect(dotIdsIn(root).length).toBe(fourSpiderSquare.edges.length)
+  },
 }
