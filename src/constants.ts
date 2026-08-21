@@ -1,4 +1,7 @@
-// Constants for presentation properties: view modes, and colour palettes
+// Constants for presentation properties: view modes and colour palettes, plus
+// the fixed colours that sit outside any palette and so stay put under every
+// `color-scheme`. Which palette entry each kind of thing is painted with is
+// `colors.ts`'s job; this is only the values.
 //
 // **This file should import nothing**
 //   This is to allow it to be imported in any context (e.g. Node for SSG)
@@ -64,3 +67,29 @@ export const COLOR_SCHEMES: Record<ColorSchemeName, Record<string, string>> = {
   rgb: RGB_COLORS,
   grayscale: GRAYSCALE_COLORS,
 }
+
+/** Fill for a node's phase text */
+export const PHASE_FILL = '#00d'
+
+/** Fill for graph node ids and hypergraph wire ids
+ *  (and the `×` in front of the scalar)
+ */
+export const LABEL_FILL = '#999'
+
+/** Stroke for whatever the last click selected — a node in the graph view, a
+ *  blob and its leader line in the hypergraph — so a selection looks the same
+ *  whichever view you are in.
+ */
+export const SELECTED_STROKE = '#00f'
+
+/** The canvas the drawing sits on: `<zx-diagram>` paints the SVG with it, and
+ *  `<zx-viewer>` strokes with it to knock a gap between a selected edge and
+ *  its casing. Shared so those two cannot drift apart — a gap in any other
+ *  colour would be a stripe rather than a gap. */
+export const CANVAS_FILL = '#fcfcfd'
+
+/** Fill for a node's vdata entries — the extra key/value lines a diagram can
+ *  hang above a node. A red, so they read as annotation rather than as part of
+ *  the diagram, and no palette entry, so they stay put under any
+ *  `color-scheme`. */
+export const VDATA_FILL = '#c66'

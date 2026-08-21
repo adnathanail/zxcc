@@ -1,5 +1,5 @@
-// Which palette entry each kind of thing is painted with, plus the handful of
-// fixed colours that sit outside any palette. The palettes themselves are in
+// Which palette entry each kind of thing is painted with. The palettes
+// themselves, and the fixed colours that sit outside any palette, are in
 // `constants.ts`. Purely presentation: the layouts never see a colour,
 // `<zx-diagram>` resolves a scheme name to a palette, and the painters use
 // whatever they are handed.
@@ -8,26 +8,6 @@
 // blob standing for the same spider cannot end up different colours.
 
 import type { DiagramEdgeKind, NodeKind } from './types'
-
-/** Fill for a node's phase text */
-export const PHASE_FILL = '#00d'
-
-/** Fill for graph node ids and hypergraph wire ids
- *  (and the `×` in front of the scalar)
- */
-export const LABEL_FILL = '#999'
-
-/** Stroke for whatever the last click selected — a node in the graph view, a
- *  blob and its leader line in the hypergraph — so a selection looks the same
- *  whichever view you are in.
- */
-export const SELECTED_STROKE = '#00f'
-
-/** The canvas the drawing sits on: `<zx-diagram>` paints the SVG with it, and
- *  `<zx-viewer>` strokes with it to knock a gap between a selected edge and
- *  its casing. Shared so those two cannot drift apart — a gap in any other
- *  colour would be a stripe rather than a gap. */
-export const CANVAS_FILL = '#fcfcfd'
 
 /** Fill for a node — and for the hypergraph blob standing for that same node,
  *  which is why this is shared rather than private to `<zx-viewer>`. */
