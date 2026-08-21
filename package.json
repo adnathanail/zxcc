@@ -1,6 +1,6 @@
 {
   "name": "@adnathanail/zxcc",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Framework-agnostic web component for rendering ZX-calculus diagrams",
   "keywords": [
     "zx-calculus",
