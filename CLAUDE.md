@@ -61,9 +61,10 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   dot on it cannot disagree.
 - `colors.ts` — the pyzx palettes, the scheme lookup, and which entry each
   kind of thing is painted with (`nodeColor`, `edgeColor`, `webColor`), plus
-  `PHASE_FILL`, `LABEL_FILL` and `SELECTED_STROKE` — the blue both painters
-  write a phase in, the grey they write an id label in, and the blue they
-  outline a selection in. None is a palette entry, so none moves with
+  `PHASE_FILL`, `LABEL_FILL`, `SELECTED_STROKE` and `VDATA_FILL` — the blue
+  both painters write a phase in, the grey they write an id label in, the blue
+  they outline a selection in, and the red a node's vdata is annotated in. None
+  is a palette entry, so none moves with
   `color-scheme`. Those
   lookups are here rather than in either painter so a spider and the blob
   standing for the same spider cannot come out different colours.
@@ -78,7 +79,12 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   painters call this one function, which is what stops a wire and the dot
   standing for it disagreeing.
 - `constants.ts` — the plain data behind the presentation properties:
-  `VIEW_MODES`/`ViewMode`, and the three palettes plus `COLOR_SCHEMES`. This is
+  `VIEW_MODES`/`ViewMode`, and the three palettes plus `COLOR_SCHEMES`. The
+  palettes are pyzx's with one key added, `Idark`, the identity Pauli-web
+  strand: pyzx has no such strand, and it is the same grey in all three schemes
+  since an identity strand is the one that names no basis. It lives in the
+  palettes rather than beside `PHASE_FILL` and friends so that every strand a
+  web can carry is looked up the same way. This is
   their single home; everything that needs one imports from here, and `index.ts`
   re-exports the lot so the package's public surface is unchanged. It is also
   published as a *second entry point*, `@adnathanail/zxcc/constants`, for
