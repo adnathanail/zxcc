@@ -92,8 +92,7 @@ export function edgeColor(
   return (key && colors[key]) || colors.edge
 }
 
-/** Pauli-web strand colour. `I` has no palette entry — pyzx draws identity
- *  strands in a flat grey. */
+/** Pauli-web strand colour. */
 export function webColor(kind: 'X' | 'Y' | 'Z' | 'I', colors: Record<string, string>): string {
   switch (kind) {
     case 'Y':
@@ -101,7 +100,7 @@ export function webColor(kind: 'X' | 'Y' | 'Z' | 'I', colors: Record<string, str
     case 'Z':
       return colors.Zdark
     case 'I':
-      return '#dddddd'
+      return colors.Idark
     default:
       return colors.Xdark
   }

@@ -8,7 +8,7 @@ export const VIEW_MODES = ['graph', 'hypergraph', 'both-vertical', 'both-horizon
 
 export type ViewMode = (typeof VIEW_MODES)[number]
 
-// pyzx.utils.original_colors
+// pyzx.utils.original_colors (plus `Idark`)
 export const ORIGINAL_COLORS: Record<string, string> = {
   edge: '#000000',
   Hedge: '#0088ff',
@@ -24,6 +24,7 @@ export const ORIGINAL_COLORS: Record<string, string> = {
   Xdark: '#ff8888',
   Ydark: '#aabbff',
   Zdark: '#99dd99',
+  Idark: '#dddddd',
 }
 
 // pyzx.utils.rgb_colors — original with Y/Z and Ydark/Zdark swapped and an
@@ -37,7 +38,7 @@ export const RGB_COLORS: Record<string, string> = {
   Zdark: ORIGINAL_COLORS.Ydark,
 }
 
-// pyzx.utils.grayscale_colors
+// pyzx.utils.grayscale_colors (plus `Idark`, and `Zdark` darkened to not collide)
 export const GRAYSCALE_COLORS: Record<string, string> = {
   edge: '#000000',
   Hedge: '#888888',
@@ -52,7 +53,8 @@ export const GRAYSCALE_COLORS: Record<string, string> = {
   Walt: '#000000',
   Xdark: '#666666',
   Ydark: '#9999dd',
-  Zdark: '#dddddd',
+  Zdark: '#aaaaaa',
+  Idark: '#dddddd',
 }
 
 export type ColorSchemeName = 'original' | 'rgb' | 'grayscale'
