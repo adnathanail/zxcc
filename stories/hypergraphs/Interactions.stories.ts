@@ -4,7 +4,7 @@ import { expect, waitFor } from 'storybook/test'
 import type { DiagramData } from '../../src/index'
 import { fourSpiderSquare, strongComplementarityOf } from '../diagrams'
 import {
-  fireMouse,
+  firePointer,
   performDrag,
   ringedDotsIn,
   selectedBlobsIn,
@@ -35,7 +35,7 @@ const meta: Meta<Args> = {
     docs: {
       description: {
         component:
-          'Interaction tests for the hypergraph view: selecting every blob a click falls inside, and dragging a dot so the blobs holding it reshape. Each play function dispatches native MouseEvents and asserts on the rendered SVG.',
+          'Interaction tests for the hypergraph view: selecting every blob a click falls inside, and dragging a dot so the blobs holding it reshape. Each play function dispatches native PointerEvents and asserts on the rendered SVG.',
       },
     },
   },
@@ -69,7 +69,7 @@ export const HypergraphBlobSelection: Story = {
     }
     const clickDot = (wire: string) => {
       const [x, y] = dotFor(wire)
-      fireMouse('mousedown', svg, box.left + x, box.top + y)
+      firePointer('pointerdown', svg, box.left + x, box.top + y)
     }
 
     // Nothing is selected to begin with, so nothing is leadered, and no dot is
@@ -133,7 +133,7 @@ export const HypergraphBlobSelection: Story = {
 
     // A click on bare canvas drops the selection, and the leaders and rings
     // with it.
-    fireMouse('mousedown', svg, box.left + 2, box.top + 2)
+    firePointer('pointerdown', svg, box.left + 2, box.top + 2)
     await waitFor(() => expect(selectedBlobsIn(root)).toEqual([]))
     expect(root.querySelectorAll('line.leader').length).toBe(0)
     expect(ringedDotsIn(root)).toEqual([])
@@ -147,7 +147,7 @@ export const HypergraphBlobSelection: Story = {
     const dot = root.querySelector<SVGGElement>('g[data-wire="w6"]')
     if (!dot) throw new Error('dot w6 not mounted')
     const [x, y] = translateOf(dot)
-    fireMouse('mousedown', dot, box.left + x, box.top + y)
+    firePointer('pointerdown', dot, box.left + x, box.top + y)
     await waitFor(() => expect(selectedBlobsIn(root)).toEqual(['e3', 'e4']))
     // The answer stops at the hyperedges. w6 itself is ringed, solid, and the
     // two blobs holding it are dashed — but the four other wires *those* hold
@@ -158,7 +158,7 @@ export const HypergraphBlobSelection: Story = {
     expect(ringedDotsIn(root, 'named')).toEqual(['w6'])
     expect(selectedBlobsIn(root, 'named')).toEqual([])
     expect(selectedBlobsIn(root, 'implied')).toEqual(['e3', 'e4'])
-    fireMouse('mouseup', window, box.left + x, box.top + y)
+    firePointer('pointerup', window, box.left + x, box.top + y)
   },
 }
 
@@ -293,8 +293,8 @@ export const LinkedSelection: StoryObj<Args> = {
     // A press is enough to select; the release ends the drag the viewers start
     // on the way in, so it can't run on into the next case.
     const press = (target: Element, x: number, y: number) => {
-      fireMouse('mousedown', target, x, y)
-      fireMouse('mouseup', window, x, y)
+      firePointer('pointerdown', target, x, y)
+      firePointer('pointerup', window, x, y)
     }
     const pressNode = (id: number) => {
       const [x, y] = translateOf(nodeFor(id))
@@ -425,8 +425,8 @@ export const BoundaryLegsAndSelfLoops: Story = {
       const dot = root.querySelector<SVGGElement>(`g[data-wire="${wire}"]`)
       if (!dot) throw new Error(`dot ${wire} not mounted`)
       const [x, y] = translateOf(dot)
-      fireMouse('mousedown', dot, box.left + x, box.top + y)
-      fireMouse('mouseup', window, box.left + x, box.top + y)
+      firePointer('pointerdown', dot, box.left + x, box.top + y)
+      firePointer('pointerup', window, box.left + x, box.top + y)
       await waitFor(() => expect(ringedDotsIn(root, 'named')).toEqual([wire]))
       return selectedBlobsIn(root)
     }

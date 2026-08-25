@@ -105,7 +105,7 @@ export class ZxViewerElement extends LitElement {
 
   // These are deliberately not `@state()`: they are mutated in place during a
   // gesture and paired with an explicit `requestUpdate()`, rather than being
-  // reallocated on every mousemove just to trip Lit's identity check.
+  // reallocated on every pointermove just to trip Lit's identity check.
 
   protected createRenderRoot() {
     return this
@@ -139,26 +139,43 @@ export class ZxViewerElement extends LitElement {
   }
 
   /** Run `onMove` for the rest of this gesture. Window-level listeners keep
-   *  the drag alive when the pointer leaves the SVG. */
-  #track(onMove: (e: MouseEvent) => void, onEnd?: () => void) {
+   *  the drag alive when the pointer leaves the SVG, and pointer events mean
+   *  one path covers mouse, pen and touch alike.
+   *
+   *  `blockScroll` suppresses the browser's own touch gesture for the length of
+   *  the drag: the SVG sits in a scroll container, so a finger that starts
+   *  moving a node pans the picture instead and the pan cancels the drag. It is
+   *  a non-passive `touchmove` handler rather than `touch-action: none` on the
+   *  shapes because the very same drag on empty canvas is *meant* to pan — the
+   *  block belongs to the gesture, not to the element. The listener goes on at
+   *  the press, while the first `touchmove` is still cancellable; once a pan
+   *  has begun it can no longer be stopped. */
+  #track(onMove: (e: PointerEvent) => void, blockScroll: boolean, onEnd?: () => void) {
     this.#endGesture?.()
     const up = () => this.#endGesture?.()
+    const hold = (e: TouchEvent) => e.preventDefault()
     this.#endGesture = () => {
-      window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup', up)
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', up)
+      window.removeEventListener('pointercancel', up)
+      window.removeEventListener('touchmove', hold)
       this.#endGesture = null
       onEnd?.()
     }
-    window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', up)
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', up)
+    window.addEventListener('pointercancel', up)
+    if (blockScroll) window.addEventListener('touchmove', hold, { passive: false })
   }
 
   #positions(): Map<number, Point> {
     return this.#topology?.resolve(this.#base, this.#lineParams) ?? new Map()
   }
 
-  #onNodeDown = (e: MouseEvent) => {
-    if (e.button !== 0) return
+  #onNodeDown = (e: PointerEvent) => {
+    // Only the first finger down drives a gesture; a second one arriving
+    // mid-drag would otherwise take the drag over.
+    if (e.button !== 0 || !e.isPrimary) return
     const group = (e.target as Element).closest('[data-node]')
     if (!group) return
     const id = Number(group.getAttribute('data-node'))
@@ -188,7 +205,7 @@ export class ZxViewerElement extends LitElement {
       lastX = move.clientX
       lastY = move.clientY
       this.#dragSelection(next, dx, dy)
-    })
+    }, true)
   }
 
   #dragSelection(nodes: ReadonlySet<number>, dx: number, dy: number) {
@@ -217,8 +234,12 @@ export class ZxViewerElement extends LitElement {
     this.requestUpdate()
   }
 
-  #onBrushDown = (e: MouseEvent) => {
-    if (e.button !== 0) return
+  // A touch drag here pans the scroll container instead of brushing, so the
+  // gesture doesn't block scrolling: on a picture wider than the screen,
+  // dragging the empty canvas is the only way to reach the rest of it. The
+  // press still lands, so a tap clears the selection either way.
+  #onBrushDown = (e: PointerEvent) => {
+    if (e.button !== 0 || !e.isPrimary) return
     const scene = this.scene
     const svgEl = (e.currentTarget as SVGElement).ownerSVGElement
     if (!scene || !svgEl) return
@@ -260,6 +281,7 @@ export class ZxViewerElement extends LitElement {
         // render that draws it; the selection arrives on the host's cycle.
         this.requestUpdate()
       },
+      false,
       () => {
         this.#brush = null
         this.requestUpdate()
@@ -408,7 +430,7 @@ export class ZxViewerElement extends LitElement {
           )}
         </g>
 
-        <g class="brush" @mousedown=${this.#onBrushDown}>
+        <g class="brush" @pointerdown=${this.#onBrushDown}>
           <rect class="overlay" x="0" y="0" width=${scene.width} height=${scene.height}
             fill="transparent" />
           ${
@@ -422,7 +444,7 @@ export class ZxViewerElement extends LitElement {
           }
         </g>
 
-        <g class="node" @mousedown=${this.#onNodeDown}>
+        <g class="node" @pointerdown=${this.#onNodeDown}>
           ${scene.nodes.map(node => this.#renderNode(node, pos, scene.nodeSize))}
         </g>
 

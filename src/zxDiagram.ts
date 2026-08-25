@@ -120,7 +120,16 @@ export class ZxDiagramElement extends LitElement {
        stretching the box. */
     .views.horizontal > .container { flex: 1 1 0; min-width: 0; }
     zx-viewer, zx-hypergraph-viewer { display: block; }
-    .container svg { display: block; background-color: ${unsafeCSS(CANVAS_FILL)}; }
+    .container svg {
+      display: block;
+      background-color: ${unsafeCSS(CANVAS_FILL)};
+      /* A drag is a drag, not a text selection: without this a gesture across
+         the picture highlights the labels it passes over, and a long press on
+         iOS opens the selection callout over whatever is being dragged. */
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
     .error { font-family: monospace; }
     .error pre { color: red; white-space: pre-wrap; word-break: break-word; margin: 0; }
     .error button { cursor: pointer; }

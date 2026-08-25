@@ -106,7 +106,7 @@ export class ZxHypergraphViewerElement extends LitElement {
 
   /** Where the dots have been dragged to. A plain field paired with an explicit
    *  `requestUpdate()`, as in `<zx-viewer>`: it is mutated in place during a
-   *  gesture rather than reallocated on every mousemove just to trip Lit's
+   *  gesture rather than reallocated on every pointermove just to trip Lit's
    *  identity check. */
   #positions = new Map<string, Point>()
   /** Tears down the in-flight drag, if any. */
@@ -174,17 +174,31 @@ export class ZxHypergraphViewerElement extends LitElement {
   }
 
   /** Run `onMove` for the rest of this gesture. Window-level listeners keep the
-   *  drag alive when the pointer leaves the SVG. */
-  #track(onMove: (e: MouseEvent) => void) {
+   *  drag alive when the pointer leaves the SVG, and pointer events mean one
+   *  path covers mouse, pen and touch alike.
+   *
+   *  The non-passive `touchmove` handler suppresses the browser's own touch
+   *  gesture for the length of the drag: the SVG sits in a scroll container, so
+   *  a finger that starts moving a dot pans the picture instead and the pan
+   *  cancels the drag. Only a drag comes through here — a press on canvas
+   *  selects and is over — so panning stays available everywhere except on a
+   *  dot. The listener goes on at the press, while the first `touchmove` is
+   *  still cancellable; once a pan has begun it can no longer be stopped. */
+  #track(onMove: (e: PointerEvent) => void) {
     this.#endGesture?.()
     const up = () => this.#endGesture?.()
+    const hold = (e: TouchEvent) => e.preventDefault()
     this.#endGesture = () => {
-      window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup', up)
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', up)
+      window.removeEventListener('pointercancel', up)
+      window.removeEventListener('touchmove', hold)
       this.#endGesture = null
     }
-    window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', up)
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', up)
+    window.addEventListener('pointercancel', up)
+    window.addEventListener('touchmove', hold, { passive: false })
   }
 
   /**
@@ -218,9 +232,11 @@ export class ZxHypergraphViewerElement extends LitElement {
    * rather than a different drawing. Selecting on the way in means the blobs
    * being reshaped are the ones picked out while you reshape them.
    */
-  #onDown = (e: MouseEvent) => {
+  #onDown = (e: PointerEvent) => {
     const scene = this.scene
-    if (!scene || e.button !== 0) return
+    // Only the first finger down drives a gesture; a second one arriving
+    // mid-drag would otherwise take the drag over.
+    if (!scene || e.button !== 0 || !e.isPrimary) return
 
     const dragged = (e.target as Element).closest('[data-wire]')?.getAttribute('data-wire')
     if (dragged) {
@@ -244,7 +260,7 @@ export class ZxHypergraphViewerElement extends LitElement {
   /** Drag one dot. The dot follows the pointer from where it was pressed rather
    *  than by accumulated steps, so a drag can't drift from the pointer over a
    *  long gesture. */
-  #dragDot(id: string, start: MouseEvent) {
+  #dragDot(id: string, start: PointerEvent) {
     const origin = this.#positions.get(id)
     if (!origin) return
     this.#track(move => {
@@ -420,7 +436,7 @@ export class ZxHypergraphViewerElement extends LitElement {
 
     return html`
       <svg width=${scene.width} height=${scene.height}
-        style="max-width: none; max-height: none" @mousedown=${this.#onDown}>
+        style="max-width: none; max-height: none" @pointerdown=${this.#onDown}>
         <!-- One clip per trespassing dot, holding the outlines of every blob it
              has strayed into: a clip path is the union of its children, so what
              comes through is the whole of the dot that is somewhere it should
