@@ -156,19 +156,25 @@ export function nodeFillsIn(root: ShadowRoot, shape?: 'circle' | 'rect'): string
   return [...root.querySelectorAll<SVGElement>(selector)].map(el => el.getAttribute('fill') ?? '')
 }
 
-export function fireMouse(
-  type: 'mousedown' | 'mousemove' | 'mouseup',
+// The viewers listen for pointer events, so that one set of handlers serves
+// mouse, pen and touch. `isPrimary` is what they check to ignore a second
+// finger arriving mid-gesture, so a synthetic press has to carry it.
+export function firePointer(
+  type: 'pointerdown' | 'pointermove' | 'pointerup',
   target: EventTarget,
   clientX: number,
   clientY: number,
   shiftKey = false,
 ): void {
   target.dispatchEvent(
-    new MouseEvent(type, {
+    new PointerEvent(type, {
       bubbles: true,
       cancelable: true,
       view: window,
       button: 0,
+      pointerId: 1,
+      pointerType: 'mouse',
+      isPrimary: true,
       clientX,
       clientY,
       shiftKey,
@@ -187,13 +193,13 @@ export function fireKey(type: 'keydown' | 'keyup', target: EventTarget, shiftKey
   )
 }
 
-// Drag a single already-selected node. mousedown lands on the node, but the
+// Drag a single already-selected node. The press lands on the node, but the
 // viewer tracks the rest of the gesture on window (`#track`), so the move and
 // up events have to be dispatched there rather than at the node.
 export function performDrag(node: SVGGElement, dx: number, dy: number): void {
   const startX = 100
   const startY = 100
-  fireMouse('mousedown', node, startX, startY)
-  fireMouse('mousemove', window, startX + dx, startY + dy)
-  fireMouse('mouseup', window, startX + dx, startY + dy)
+  firePointer('pointerdown', node, startX, startY)
+  firePointer('pointermove', window, startX + dx, startY + dy)
+  firePointer('pointerup', window, startX + dx, startY + dy)
 }

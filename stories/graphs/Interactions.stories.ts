@@ -13,7 +13,7 @@ import {
 } from '../diagrams'
 import {
   fireKey,
-  fireMouse,
+  firePointer,
   pathDataIn,
   performDrag,
   shadowRootOf,
@@ -34,7 +34,7 @@ const meta: Meta<Args> = {
     docs: {
       description: {
         component:
-          'Interaction tests guarding the drag/selection behaviour: single-node drag, shift-click multi-select drag, H-box parametric constraint, and brush-select-then-drag. Each play function dispatches native MouseEvents/KeyboardEvents and asserts on the rendered SVG.',
+          'Interaction tests guarding the drag/selection behaviour: single-node drag, shift-click multi-select drag, H-box parametric constraint, and brush-select-then-drag. Each play function dispatches native PointerEvents/KeyboardEvents and asserts on the rendered SVG.',
       },
     },
   },
@@ -85,7 +85,7 @@ export const DragSingleSpider: Story = {
 // it before the shift-click, and a keyup after to reset the state.
 // The shift-click also calls stopImmediatePropagation which prevents the
 // drag gesture from starting on that click — so we then start a fresh
-// mousedown on the first spider to drive the drag.
+// press on the first spider to drive the drag.
 // —————————————————————————————————————————————————————————————————————————
 
 export const ShiftClickMultiDrag: Story = {
@@ -109,14 +109,14 @@ export const ShiftClickMultiDrag: Story = {
     const [xx0, xy0] = translateOf(xSpider)
 
     await step('click Z spider to select it', () => {
-      fireMouse('mousedown', zSpider, 100, 100)
-      fireMouse('mouseup', window, 100, 100)
+      firePointer('pointerdown', zSpider, 100, 100)
+      firePointer('pointerup', window, 100, 100)
     })
 
     await step('shift-click X spider to add it to selection', () => {
       fireKey('keydown', container, true)
-      fireMouse('mousedown', xSpider, 200, 100, true)
-      fireMouse('mouseup', window, 200, 100, true)
+      firePointer('pointerdown', xSpider, 200, 100, true)
+      firePointer('pointerup', window, 200, 100, true)
       fireKey('keyup', container, false)
     })
 
@@ -189,7 +189,7 @@ export const HboxConstrainedDrag: Story = {
 // —————————————————————————————————————————————————————————————————————————
 // 4. Brush-select over multiple nodes, then drag one → the whole set moves.
 //
-// The brush's mousedown is delegated from `g.brush`, so the gesture has to
+// The brush's press is delegated from `g.brush`, so the gesture has to
 // start on the full-size overlay <rect>. The viewer maps client coordinates
 // through the <svg>'s bounding rect, so the test computes clientX/Y the same
 // way (svg unit == css px here — no viewBox scaling).
@@ -227,9 +227,9 @@ export const BrushSelectThenDrag: Story = {
         const brushMinY = zy0 - BRUSH_PAD_Y
         const brushMaxY = zy0 + BRUSH_PAD_Y
 
-        fireMouse('mousedown', overlay, rect.left + brushMinX, rect.top + brushMinY)
-        fireMouse('mousemove', window, rect.left + brushMaxX, rect.top + brushMaxY)
-        fireMouse('mouseup', window, rect.left + brushMaxX, rect.top + brushMaxY)
+        firePointer('pointerdown', overlay, rect.left + brushMinX, rect.top + brushMinY)
+        firePointer('pointermove', window, rect.left + brushMaxX, rect.top + brushMaxY)
+        firePointer('pointerup', window, rect.left + brushMaxX, rect.top + brushMaxY)
       },
     )
 

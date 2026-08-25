@@ -431,6 +431,24 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
 - Event listeners on the node/brush layers are delegated and bound as
   arrow-function class fields, so their identity is stable across renders and
   Lit doesn't rebind them.
+- Every gesture is **pointer events** (`pointerdown` on the layer,
+  `pointermove`/`pointerup`/`pointercancel` on window), so one set of handlers
+  serves mouse, pen and finger. A press ignores anything but the primary
+  pointer, so a second finger arriving mid-drag doesn't take the drag over.
+  `pointercancel` ends the gesture the same way an up does — the browser sends
+  it when it decides the touch was a scroll after all.
+- Both painters sit inside a scroll container (`.container` in
+  `zxDiagram.ts`), which on a touch screen is panned by dragging. That is the
+  same gesture as dragging a node, so **which one wins is decided per gesture,
+  at the press**: a drag that starts on a node or a dot adds a non-passive
+  `touchmove` handler calling `preventDefault()` for the length of the gesture,
+  and a drag that starts anywhere else does not, leaving the pan available. It
+  is done that way round rather than with `touch-action: none` on the shapes
+  because a rule on the element can't tell the two apart — a picture wider than
+  the screen is only reachable by panning the canvas, and the brush and the
+  hypergraph's canvas press both start on the canvas. The handler goes on at
+  the press because only the first `touchmove` of a gesture is cancellable;
+  once a pan has begun nothing stops it.
 - `<zx-diagram>` deliberately renders a single diagram. Layout of multiple
   panels (current vs. goal, side-by-side/stacked/hidden) lives in downstream
   consumers, not here.
@@ -464,7 +482,9 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
   with its `clipPath` id ending `-<wire id>`, and the trespass tally as
   `text.tally`. Shared
   query/gesture helpers live in
-  `stories/interactionHelpers.ts`.
+  `stories/interactionHelpers.ts`, `firePointer` among them: it builds the
+  `PointerEvent` a gesture is dispatched as, `isPrimary` included, since a
+  press without it is ignored.
 - Stories live outside `src/` so they don't get emitted by the library `tsc`
   build; `tsconfig.stories.json` type-checks them (wired into `npm run lint`).
   `.storybook/preview.ts` imports `src/index` so the element registers before

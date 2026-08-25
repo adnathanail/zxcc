@@ -44,6 +44,8 @@ npm install @adnathanail/zxcc
 
 Assign a new object to change the diagram; layout runs when the property's identity changes, so mutating the object already assigned paints nothing new. If you must mutate in place, call `el.refresh()` afterwards. Note that either way the re-layout resets the drawing: dragged nodes return to their laid-out positions and the selection is cleared.
 
+The drawing responds to mouse, pen and touch alike: press a node or a dot to select it and drag to move it. A drawing wider than its box scrolls, and on a touch screen dragging the empty canvas is what scrolls it — so the rubber-band selection over blank canvas is a mouse and pen gesture only.
+
 ## Diagram shape
 
 ```ts
