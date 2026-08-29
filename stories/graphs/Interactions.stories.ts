@@ -16,6 +16,8 @@ import {
   firePointer,
   pathDataIn,
   performDrag,
+  SECOND_POINTER,
+  selectedNodesIn,
   shadowRootOf,
   translateOf,
   waitForNode,
@@ -72,6 +74,27 @@ export const DragSingleSpider: Story = {
         const [x1, y1] = translateOf(spider)
         expect(x1 - x0).toBeCloseTo(DX, 1)
         expect(y1 - y0).toBeCloseTo(DY, 1)
+      })
+    })
+
+    // A drag is tracked on window, so every other pointer on the screen reports
+    // to the same listeners. A second finger is not this gesture: it must
+    // neither move the spider nor, by lifting, end the drag the first one is
+    // still in.
+    await step('a second pointer neither drives nor ends the drag', async () => {
+      const [x1, y1] = translateOf(spider)
+      firePointer('pointerdown', spider, 100, 100)
+      firePointer('pointermove', window, 400, 400, false, SECOND_POINTER)
+      firePointer('pointerup', window, 400, 400, false, SECOND_POINTER)
+      // The finishing position is the whole assertion, and catches both halves:
+      // had the second pointer driven the drag, the spider would be off by its
+      // travel; had its lift ended the gesture, this move would do nothing.
+      firePointer('pointermove', window, 100 + DX, 100 + DY)
+      firePointer('pointerup', window, 100 + DX, 100 + DY)
+      await waitFor(() => {
+        const [x2, y2] = translateOf(spider)
+        expect(x2 - x1).toBeCloseTo(DX, 1)
+        expect(y2 - y1).toBeCloseTo(DY, 1)
       })
     })
   },
@@ -243,6 +266,31 @@ export const BrushSelectThenDrag: Story = {
         expect(xx1 - xx0).toBeCloseTo(DX, 1)
         expect(xy1 - xy0).toBeCloseTo(DY, 1)
       })
+    })
+
+    // The brush deliberately doesn't block touch scrolling, since dragging the
+    // canvas is the only way to reach a picture wider than the screen. So on a
+    // touch screen this very sequence is a pan: the browser hands over a few
+    // moves and then takes the gesture away with a `pointercancel`. Whatever
+    // the sweep had selected by then is dropped rather than committed.
+    await step('a cancelled brush drops what it had selected', async () => {
+      const rect = svg.getBoundingClientRect()
+      const [zx1, zy1] = translateOf(zSpider)
+      const [xx1] = translateOf(xSpider)
+      const minX = Math.min(zx1, xx1) - BRUSH_PAD_X
+      const maxX = Math.max(zx1, xx1) + BRUSH_PAD_X
+
+      firePointer('pointerdown', overlay, rect.left + minX, rect.top + zy1 - BRUSH_PAD_Y)
+      firePointer('pointermove', window, rect.left + maxX, rect.top + zy1 + BRUSH_PAD_Y)
+      // Both spiders are inside the band, so there is something to drop.
+      await waitFor(() => expect(selectedNodesIn(root).length).toBe(2))
+
+      firePointer('pointercancel', window, rect.left + maxX, rect.top + zy1 + BRUSH_PAD_Y)
+      // Back to what the press established — it cleared the selection, and the
+      // cancel means the sweep never got to say otherwise.
+      await waitFor(() => expect(selectedNodesIn(root)).toEqual([]))
+      // The rubber band goes with it, leaving the full-size overlay alone.
+      expect(root.querySelectorAll('.brush rect').length).toBe(1)
     })
   },
 }

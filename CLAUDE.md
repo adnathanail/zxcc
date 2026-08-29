@@ -434,9 +434,20 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
 - Every gesture is **pointer events** (`pointerdown` on the layer,
   `pointermove`/`pointerup`/`pointercancel` on window), so one set of handlers
   serves mouse, pen and finger. A press ignores anything but the primary
-  pointer, so a second finger arriving mid-drag doesn't take the drag over.
-  `pointercancel` ends the gesture the same way an up does — the browser sends
-  it when it decides the touch was a scroll after all.
+  pointer, and `#track` then pins the gesture to that pointer's `pointerId`.
+  Both halves are needed: the listeners are on window, so every pointer on the
+  screen reports to them, and a second finger arriving mid-drag would otherwise
+  drag whatever the first one picked up to wherever it is, and end the drag by
+  lifting.
+  `pointercancel` tears a gesture down the way an up does, but is not the same
+  answer — the browser sends it once it decides the touch was a scroll after
+  all, so it says the gesture was taken away rather than finished, and `#track`
+  passes the difference to `onEnd`. The brush is what needs it: it selects as
+  it sweeps, and on a touch screen a cancelled brush *is* a pan starting on the
+  canvas, so a cancel restores the selection the press established. Committing
+  what the sweep had reached would mean panning across the picture selects
+  whatever the finger passed over, with the rubber band that would have
+  explained it already gone.
 - Both painters sit inside a scroll container (`.container` in
   `zxDiagram.ts`), which on a touch screen is panned by dragging. That is the
   same gesture as dragging a node, so **which one wins is decided per gesture,
