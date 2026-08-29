@@ -47,7 +47,7 @@
     "build-dev": "tsc && rollup -c --environment NODE_ENV:development",
     "watch": "rollup -c --environment NODE_ENV:development --watch",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build",
+    "build-storybook": "storybook build --stats-json",
     "test": "vitest run",
     "test-node-entry": "node scripts/check-node-entry.mjs",
     "coverage": "vitest run --coverage",
