@@ -100,8 +100,11 @@ export class ZxViewerElement extends LitElement {
   #lineParams = new Map<number, number>()
   #brush: Rect | null = null
   #topology: Topology | null = null
-  /** Tears down the in-flight drag or brush gesture, if any. */
-  #endGesture: (() => void) | null = null
+  /** Tears down the in-flight drag or brush gesture, if any. The argument says
+   *  whether the gesture was cancelled rather than completed; anything ending a
+   *  gesture from outside it — a new scene, an unmount — passes `false`, since
+   *  nothing is left to restore it to. */
+  #endGesture: ((cancelled: boolean) => void) | null = null
 
   // These are deliberately not `@state()`: they are mutated in place during a
   // gesture and paired with an explicit `requestUpdate()`, rather than being
@@ -116,7 +119,7 @@ export class ZxViewerElement extends LitElement {
   }
 
   disconnectedCallback() {
-    this.#endGesture?.()
+    this.#endGesture?.(false)
     super.disconnectedCallback()
   }
 
@@ -124,7 +127,7 @@ export class ZxViewerElement extends LitElement {
    *  isn't reset here — it belongs to the host, which clears it when it lays
    *  a new scene out. */
   #adoptScene() {
-    this.#endGesture?.()
+    this.#endGesture?.(false)
     const scene = this.scene
     this.#topology = scene ? new Topology(scene) : null
     this.#base = new Map(scene?.nodes.map(n => [n.id, { x: n.x, y: n.y }]) ?? [])
@@ -149,22 +152,42 @@ export class ZxViewerElement extends LitElement {
    *  shapes because the very same drag on empty canvas is *meant* to pan — the
    *  block belongs to the gesture, not to the element. The listener goes on at
    *  the press, while the first `touchmove` is still cancellable; once a pan
-   *  has begun it can no longer be stopped. */
-  #track(onMove: (e: PointerEvent) => void, blockScroll: boolean, onEnd?: () => void) {
-    this.#endGesture?.()
-    const up = () => this.#endGesture?.()
+   *  has begun it can no longer be stopped.
+   *
+   *  `onEnd` is told whether the gesture was *cancelled* — the browser taking
+   *  it away, which is what it does once it decides the touch was a scroll
+   *  after all — rather than finished with a lift. The two are different
+   *  answers: a gesture that was taken away never said what it wanted. */
+  #track(
+    start: PointerEvent,
+    onMove: (e: PointerEvent) => void,
+    blockScroll: boolean,
+    onEnd?: (cancelled: boolean) => void,
+  ) {
+    this.#endGesture?.(false)
+    // The gesture belongs to the pointer that began it. The listeners are on
+    // window, so every pointer on the screen reports to them: without this a
+    // second finger's moves would drag whatever the first one picked up to
+    // wherever the second is, and its lift would end a drag still under way.
+    const mine = (e: PointerEvent) => e.pointerId === start.pointerId
+    const move = (e: PointerEvent) => {
+      if (mine(e)) onMove(e)
+    }
+    const end = (e: PointerEvent) => {
+      if (mine(e)) this.#endGesture?.(e.type === 'pointercancel')
+    }
     const hold = (e: TouchEvent) => e.preventDefault()
-    this.#endGesture = () => {
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', up)
-      window.removeEventListener('pointercancel', up)
+    this.#endGesture = (cancelled: boolean) => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', end)
+      window.removeEventListener('pointercancel', end)
       window.removeEventListener('touchmove', hold)
       this.#endGesture = null
-      onEnd?.()
+      onEnd?.(cancelled)
     }
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', up)
-    window.addEventListener('pointercancel', up)
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', end)
+    window.addEventListener('pointercancel', end)
     if (blockScroll) window.addEventListener('touchmove', hold, { passive: false })
   }
 
@@ -199,13 +222,17 @@ export class ZxViewerElement extends LitElement {
     // which only comes back from the host on the next update.
     let lastX = e.clientX
     let lastY = e.clientY
-    this.#track(move => {
-      const dx = move.clientX - lastX
-      const dy = move.clientY - lastY
-      lastX = move.clientX
-      lastY = move.clientY
-      this.#dragSelection(next, dx, dy)
-    }, true)
+    this.#track(
+      e,
+      move => {
+        const dx = move.clientX - lastX
+        const dy = move.clientY - lastY
+        lastX = move.clientX
+        lastY = move.clientY
+        this.#dragSelection(next, dx, dy)
+      },
+      true,
+    )
   }
 
   #dragSelection(nodes: ReadonlySet<number>, dx: number, dy: number) {
@@ -253,6 +280,7 @@ export class ZxViewerElement extends LitElement {
     this.#select(kept)
 
     this.#track(
+      e,
       move => {
         const box = svgEl.getBoundingClientRect()
         const x = clamp(move.clientX - box.left, 0, scene.width)
@@ -282,8 +310,15 @@ export class ZxViewerElement extends LitElement {
         this.requestUpdate()
       },
       false,
-      () => {
+      cancelled => {
         this.#brush = null
+        // A cancelled brush is one the browser took away mid-sweep, which on a
+        // touch screen is how panning the canvas begins — the gesture this one
+        // deliberately leaves available. So the selection goes back to what the
+        // press established rather than to whatever the sweep had reached:
+        // otherwise scrolling across the picture selects what the finger passed
+        // over, and the rubber band that would have explained why is gone.
+        if (cancelled) this.#select(kept)
         this.requestUpdate()
       },
     )

@@ -7,6 +7,7 @@ import {
   firePointer,
   performDrag,
   ringedDotsIn,
+  SECOND_POINTER,
   selectedBlobsIn,
   selectedLinksIn,
   selectedNodesIn,
@@ -255,6 +256,23 @@ export const HypergraphDotDrag: Story = {
     const marks = root.querySelectorAll('g.overlap circle[data-wire]').length
     expect(tally?.text).toBe(`${marks} trespassing node${marks === 1 ? '' : 's'}`)
     expect(tally?.at).toEqual(tallyBefore.at)
+
+    // The drag is tracked on window, so a second finger's moves report to the
+    // same listeners. It is not this gesture: it must neither drag the dot nor,
+    // by lifting, end the drag the first pointer is still in. The finishing
+    // position is the whole assertion — it catches either failure.
+    const held = await dotFor('w6')
+    const [px, py] = translateOf(held)
+    firePointer('pointerdown', held, 500, 500)
+    firePointer('pointermove', window, 200, 200, false, SECOND_POINTER)
+    firePointer('pointerup', window, 200, 200, false, SECOND_POINTER)
+    firePointer('pointermove', window, 512, 508)
+    firePointer('pointerup', window, 512, 508)
+    await waitFor(async () => {
+      const [qx, qy] = translateOf(await dotFor('w6'))
+      expect(qx).toBeCloseTo(px + 12, 6)
+      expect(qy).toBeCloseTo(py + 8, 6)
+    })
   },
 }
 

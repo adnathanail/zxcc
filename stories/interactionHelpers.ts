@@ -159,12 +159,17 @@ export function nodeFillsIn(root: ShadowRoot, shape?: 'circle' | 'rect'): string
 // The viewers listen for pointer events, so that one set of handlers serves
 // mouse, pen and touch. `isPrimary` is what they check to ignore a second
 // finger arriving mid-gesture, so a synthetic press has to carry it.
+//
+// `pointerId` is what a gesture is pinned to once it has started, so passing a
+// second one is how a play function plays a second finger: a pointer other than
+// 1 is not the primary, exactly as a real one wouldn't be.
 export function firePointer(
-  type: 'pointerdown' | 'pointermove' | 'pointerup',
+  type: 'pointerdown' | 'pointermove' | 'pointerup' | 'pointercancel',
   target: EventTarget,
   clientX: number,
   clientY: number,
   shiftKey = false,
+  pointerId = 1,
 ): void {
   target.dispatchEvent(
     new PointerEvent(type, {
@@ -172,15 +177,18 @@ export function firePointer(
       cancelable: true,
       view: window,
       button: 0,
-      pointerId: 1,
+      pointerId,
       pointerType: 'mouse',
-      isPrimary: true,
+      isPrimary: pointerId === 1,
       clientX,
       clientY,
       shiftKey,
     }),
   )
 }
+
+/** A pointer id that isn't the one a gesture started on — a second finger. */
+export const SECOND_POINTER = 2
 
 export function fireKey(type: 'keydown' | 'keyup', target: EventTarget, shiftKey: boolean): void {
   target.dispatchEvent(

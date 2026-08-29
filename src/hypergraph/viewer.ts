@@ -184,18 +184,28 @@ export class ZxHypergraphViewerElement extends LitElement {
    *  selects and is over — so panning stays available everywhere except on a
    *  dot. The listener goes on at the press, while the first `touchmove` is
    *  still cancellable; once a pan has begun it can no longer be stopped. */
-  #track(onMove: (e: PointerEvent) => void) {
+  #track(start: PointerEvent, onMove: (e: PointerEvent) => void) {
     this.#endGesture?.()
-    const up = () => this.#endGesture?.()
+    // The gesture belongs to the pointer that began it. The listeners are on
+    // window, so every pointer on the screen reports to them: without this a
+    // second finger's moves would drag this dot to wherever that finger is,
+    // and its lift would end a drag still under way.
+    const mine = (e: PointerEvent) => e.pointerId === start.pointerId
+    const move = (e: PointerEvent) => {
+      if (mine(e)) onMove(e)
+    }
+    const up = (e: PointerEvent) => {
+      if (mine(e)) this.#endGesture?.()
+    }
     const hold = (e: TouchEvent) => e.preventDefault()
     this.#endGesture = () => {
-      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
       window.removeEventListener('pointercancel', up)
       window.removeEventListener('touchmove', hold)
       this.#endGesture = null
     }
-    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
     window.addEventListener('pointercancel', up)
     window.addEventListener('touchmove', hold, { passive: false })
@@ -263,7 +273,7 @@ export class ZxHypergraphViewerElement extends LitElement {
   #dragDot(id: string, start: PointerEvent) {
     const origin = this.#positions.get(id)
     if (!origin) return
-    this.#track(move => {
+    this.#track(start, move => {
       this.#positions.set(id, {
         x: origin.x + move.clientX - start.clientX,
         y: origin.y + move.clientY - start.clientY,
