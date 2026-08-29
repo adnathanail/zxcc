@@ -31,3 +31,10 @@ jobs:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           # Don't stream test results here, to save actions minutes
           exitOnceUploaded: true
+          # TurboSnap: only snapshot stories whose dependency graph changed.
+          # The graph comes from storybook-static/preview-stats.json, which
+          # `npm run build-storybook` emits via --stats-json. A commit that
+          # touches nothing in it (docs, workflows, build config) is bypassed
+          # and bills no snapshots. Requires the `push` trigger above and the
+          # full history fetched at checkout.
+          onlyChanged: true
