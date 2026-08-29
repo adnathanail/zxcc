@@ -47,6 +47,14 @@ const TIE_GAP = 3
 const T_MIN = 0.25
 const T_MAX = 0.75
 
+/** Dot radius and blob standoff for a given scale. Both hypergraph scenes are
+ *  measured through this — the one derived from a diagram's layout and the one
+ *  written out by hand (`./manual.ts`) — so a hand-written drawing comes out at
+ *  the same weights as a derived one at the same scale. */
+export function sceneMetrics(scale: number): { dotSize: number; blobRadius: number } {
+  return { dotSize: Math.max(DOT_RADIUS * scale, 2), blobRadius: BLOB_RADIUS * scale }
+}
+
 /** A dot, and the curve it is free to slide along. */
 interface Rider {
   dot: HypergraphDot
@@ -180,8 +188,7 @@ export function layoutHypergraph(
   )
 
   const scale = scene.scale
-  const blobRadius = BLOB_RADIUS * scale
-  const dotSize = Math.max(DOT_RADIUS * scale, 2)
+  const { dotSize, blobRadius } = sceneMetrics(scale)
 
   // `hg.wires` and `scene.links` are both built from `diagram.edges` in order,
   // so wire i and link i are the same edge.

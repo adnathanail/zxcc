@@ -449,7 +449,7 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
   whatever the finger passed over, with the rubber band that would have
   explained it already gone.
 - Both painters sit inside a scroll container (`.container` in
-  `zxDiagram.ts`), which on a touch screen is panned by dragging. That is the
+  `viewerHost.ts`), which on a touch screen is panned by dragging. That is the
   same gesture as dragging a node, so **which one wins is decided per gesture,
   at the press**: a drag that starts on a node or a dot adds a non-passive
   `touchmove` handler calling `preventDefault()` for the length of the gesture,
