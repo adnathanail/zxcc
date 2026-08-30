@@ -24,7 +24,7 @@ import { EMPTY_SELECTION } from './selection'
 import { type PaintedView, ZxViewerHost } from './viewerHost'
 import './hypergraph/viewer'
 
-/** Pixels per column/qubit, as `<zx-diagram>` derives from a diagram's extent.
+/** The ZX layout's unit, as `<zx-diagram>` derives one from a diagram's extent.
  *  There is no diagram here to derive one from, so this is what the grid is
  *  drawn at until `scale` says otherwise, and it is the middle of the 20–50
  *  band `layout()` clamps its derived scale to. */
@@ -38,11 +38,11 @@ export class ZxHypergraphElement extends ZxViewerHost {
    *  place. */
   @property({ attribute: false }) hypergraph: HypergraphInput | null = null
 
-  /** Pixels per column and per qubit of the grid the input is written on — the
-   *  same number `<zx-diagram>`'s `scale` means, doing the same job. It sets
-   *  how far apart the dots are drawn as well as how big one is and how far a
-   *  blob's outline stands off the dots it holds, so the whole drawing grows
-   *  and shrinks with it. */
+  /** The unit the grid the input is written on is drawn at — the same number
+   *  `<zx-diagram>`'s `scale` means, doing the same job. It sets how far apart
+   *  the dots are drawn (two `scale`s to a column, so the blobs have room) as
+   *  well as how big one is and how far a blob's outline stands off the dots it
+   *  holds, so the whole drawing grows and shrinks with it. */
   @property({ type: Number }) scale: number = DEFAULT_SCALE
 
   @state() private scene: HypergraphScene | null = null

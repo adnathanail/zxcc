@@ -31,7 +31,7 @@ const meta: Meta<Args> = {
     docs: {
       description: {
         component:
-          '`<zx-hypergraph>` draws a hypergraph given directly, rather than one derived from a ZX diagram. The input is the dots and which grid square each one goes in, plus which of them each blob holds — nothing is worked out, so the drawing is exactly what was asked for. Everything downstream is the same as in the derived view: the same painter, the same palette, the same presses. `scale` is the one number the input does not carry: it is pixels per column and per qubit, so it sets how far apart the dots are drawn as well as how big one is.',
+          '`<zx-hypergraph>` draws a hypergraph given directly, rather than one derived from a ZX diagram. The input is the dots and which grid square each one goes in, plus which of them each blob holds — nothing is worked out, so the drawing is exactly what was asked for. Everything downstream is the same as in the derived view: the same painter, the same palette, the same presses. `scale` is the one number the input does not carry: a column is two `scale`s wide, so it sets how far apart the dots are drawn as well as how big one is.',
       },
     },
   },
@@ -65,7 +65,7 @@ export const Chain: Story = {
     docs: {
       story: {
         description:
-          'The dual of `input → Z(π/2) → X → output`, written as a hypergraph instead of derived from one: three dots in a row, a blob around each pair of neighbours, and a circle round each of the two dots that hang off a boundary. Dots land on the grid squares given rather than on the midpoints of any wire — one column apart is one `scale` apart — and the canvas is measured around them.',
+          'The dual of `input → Z(π/2) → X → output`, written as a hypergraph instead of derived from one: three dots in a row, a blob around each pair of neighbours, and a circle round each of the two dots that hang off a boundary. Dots land on the grid squares given rather than on the midpoints of any wire — one column apart is two `scale`s apart, which is the room a blob needs to stand off its dots without touching its neighbour — and the canvas is measured around them.',
       },
     },
   },
@@ -79,10 +79,12 @@ export const Chain: Story = {
     }
 
     // The grid is the input's, untouched, scaled to pixels: three wires one
-    // column apart come out one `scale` apart on the same qubit line.
+    // column apart come out a grid square apart on the same qubit line, and a
+    // square is two `scale`s.
+    const step = 2 * args.scale
     const [x0, y0] = await waitFor(() => dotAt('w0'))
-    expect(dotAt('w1')).toEqual([x0 + args.scale, y0])
-    expect(dotAt('w2')).toEqual([x0 + 2 * args.scale, y0])
+    expect(dotAt('w1')).toEqual([x0 + step, y0])
+    expect(dotAt('w2')).toEqual([x0 + 2 * step, y0])
 
     // One blob per hyperedge, in the order they were listed, and each captioned
     // with the name it was given — a boundary has no letter of its own, so `in`
@@ -211,9 +213,9 @@ export const Scaling: Story = {
       ></zx-hypergraph>
     </div>`,
   play: async ({ canvasElement }) => {
-    // The gap between two dots one column apart is the scale itself, which is
-    // what "on a grid" buys: the same input reads as the same picture at any
-    // size, rather than as fixed coordinates with bigger marks on them.
+    // The gap between two dots one column apart is a grid square, two `scale`s,
+    // which is what "on a grid" buys: the same input reads as the same picture
+    // at any size, rather than as fixed coordinates with bigger marks on them.
     const step = async (id: string) => {
       const root = await shadowRootOf(canvasElement, `#${id}`)
       const dots = await waitFor(() => {
@@ -226,7 +228,7 @@ export const Scaling: Story = {
       return x1 - x0
     }
 
-    expect(await step('small')).toBe(20)
-    expect(await step('large')).toBe(50)
+    expect(await step('small')).toBe(40)
+    expect(await step('large')).toBe(100)
   },
 }
