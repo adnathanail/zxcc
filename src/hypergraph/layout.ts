@@ -5,19 +5,19 @@
 //
 // It stops at the *input*, not at the scene: a pixel-positioned
 // `HypergraphInput` is the public way of saying "these dots, exactly here", so
-// what comes out of here is the same thing a caller could have written by hand
-// and goes through the same builder and the same checks. That is what lets
+// what comes out is the same thing a caller could have written by hand and goes
+// through the same builder and the same checks. That is what lets
 // `<zx-diagram>` mount a `<zx-hypergraph>` for its dual rather than a painter.
 //
-// Positions come from that scene rather than from the hypergraph itself: a
+// Positions come from the scene rather than from the hypergraph itself: a
 // wire's dot sits at the midpoint of the edge it came from, so the two views
-// line up and the drawn hypergraph reads as an overlay on the diagram it came
-// from. The cost is that the blobs are wherever the ZX layout leaves them,
-// rather than arranged to keep the overlaps tidy.
+// line up and the dual reads as an overlay on the diagram. The cost is that the
+// blobs land wherever the ZX layout leaves them, rather than being arranged to
+// keep the overlaps tidy.
 //
-// Taking the laid-out scene rather than laying the diagram out itself is also
-// what keeps this half of `src/` independent of the other: `layout()` sits
-// above both, and the caller runs it once.
+// Taking a laid-out scene rather than laying the diagram out here also keeps
+// this half of `src/` independent of the other: `layout()` sits above both, and
+// the caller runs it once.
 
 import { type Curve, curvePointAt, type Point } from '../curves'
 import { Topology } from '../topology'
@@ -33,8 +33,8 @@ const DOT_RADIUS = 0.12
 
 /** How much roomier the hypergraph is drawn than the diagram it came from.
  *  Dots land on edge midpoints, so consecutive dots sit half a scale apart —
- *  half the ZX spacing for twice the marks. Zooming the positions (and not the
- *  blobs) spreads them back out and keeps neighbouring blobs apart.
+ *  half the ZX spacing for twice the marks. Zooming the positions, and not the
+ *  blobs, spreads them back out and keeps neighbouring blobs apart.
  *
  *  Exported because it is the factor between the two views' pixel sizes:
  *  `<zx-diagram>` lays the graph out at `scale * ZOOM` when it draws both, so
@@ -55,8 +55,8 @@ const T_MAX = 0.75
 
 /** Dot radius and blob standoff for a given scale. Every hypergraph is measured
  *  through this — `./scene.ts` for the drawing itself, and this file for the
- *  spread step and the canvas — so a hand-written drawing comes out at the same
- *  weights as a derived one at the same scale. */
+ *  spread step and the canvas — so a hand-written drawing and a derived one
+ *  come out at the same weights at the same scale. */
 export function sceneMetrics(scale: number): { dotSize: number; blobRadius: number } {
   return { dotSize: Math.max(DOT_RADIUS * scale, 2), blobRadius: BLOB_RADIUS * scale }
 }
@@ -74,37 +74,31 @@ interface Rider {
  *
  * Two edges that cross share a midpoint — in the 2-to-2 strong complementarity
  * diagram the wires 2—5 and 3—4 both sit dead centre — and one dot where there
- * should be two reads as a single wire four spiders share, which is a
- * different diagram. `layout()` already fans *parallel* edges apart through
- * `index`/`parallel`; this is the same problem for edges between different
- * pairs of nodes.
+ * should be two reads as a single wire four spiders share. `layout()` fans
+ * *parallel* edges apart through `index`/`parallel`; this is the same problem
+ * for edges between different pairs of nodes.
  *
- * Sliding is what makes the fix two-dimensional without giving up what a dot
- * means. The obvious move — push the group apart along the column — spreads
- * into the one direction that is already full: consecutive midpoints are half
- * a ZX scale apart down the same column, so a group of three or more reaches
- * into its neighbours' slots and lands on *their* dots. Measured on the n-to-m
- * story, spreading down the column re-creates exactly the collision it is
- * meant to remove, from 4-by-4 up. Each wire runs in its own direction, so
- * sliding each dot along its own wire opens the group out across the gap
- * between the ranks, which is empty.
+ * Each dot slides along its own wire rather than the group being pushed down
+ * the column. Consecutive midpoints already sit half a ZX scale apart down a
+ * column, so spreading that way reaches into the neighbouring slots and lands
+ * on their dots; the wires run in different directions, so sliding opens the
+ * group out across the empty gap between the ranks instead.
  *
- * A dot that moves off the midpoint is still *on the wire it stands for* —
- * `wireCurve` is the same curve the ZX viewer paints — which is the property
- * that matters for reading the hypergraph as an overlay on the diagram. Being
- * at the exact midpoint is not: two wires can share that point, and then it
- * says nothing.
+ * A slid dot is still on the wire it stands for, `wireCurve` being the same
+ * curve the ZX viewer paints, which is what matters for reading the hypergraph
+ * as an overlay. Sitting at the exact midpoint is not: two wires can share that
+ * point, and then it says nothing.
  *
  * The group is opened in one pass rather than nudged apart a pair at a time,
- * for the same reason `Topology.resolve` spreads parked H-boxes that way: an
- * iterative nudge settles exactly on its own threshold, and rounding then
- * decides whether another round is due.
+ * as `Topology.resolve` spreads parked H-boxes: an iterative nudge settles
+ * exactly on its own threshold, where rounding decides whether another round is
+ * due, and the dot then flicks between two spots as the diagram is dragged.
  */
 function spreadCoincident(riders: Rider[], gap: number, at: (rider: Rider) => Point): void {
-  // Groups are single-linkage within `gap` rather than exact ties. Exact is
-  // what the crossing-edge case produces on an integer grid, but a diagram
+  // Groups are single-linkage within `gap` rather than exact ties. Exact ties
+  // are what the crossing-edge case produces on an integer grid, but a diagram
   // that arrives pre-positioned from the algebraic ZX walker is on no grid at
-  // all, and two dots a pixel apart are just as unreadable as two on one spot.
+  // all, and two dots a pixel apart are as unreadable as two on one spot.
   const grouped = new Set<Rider>()
   for (const rider of riders) {
     if (grouped.has(rider)) continue
@@ -151,11 +145,10 @@ function speed(rider: Rider, at: (rider: Rider) => Point): number {
 
 /** What the caller can vary about the drawing, as opposed to about the diagram. */
 export interface HypergraphLayoutOptions {
-  /** Draw a blob (with a single node) for each input/output as well as for
-   *   each spider.
-   *  If disabled, a boundary leg and a self-loop are indistinguishable.
-   *  Required, so that `<zx-diagram>`'s `disableIOBlobsInHypergraph` is the
-   *  only place that says what gets drawn unless asked otherwise. */
+  /** Draw a single-dot blob for each input/output as well as a blob for each
+   *  spider. With it off, a boundary leg and a self-loop are indistinguishable.
+   *  Required rather than defaulted, so that `<zx-diagram>`'s
+   *  `disableIOBlobsInHypergraph` is the only place the default is stated. */
   boundaryBlobs: boolean
 }
 
@@ -186,13 +179,12 @@ export function layoutHypergraph(
   const base = new Map<number, Point>(scene.nodes.map(n => [n.id, { x: n.x, y: n.y }]))
   const resolved = topology.resolve(base, topology.initialLineParams())
 
-  // Zoomed before the curves are built, not after they are evaluated: a
-  // self-loop's arc is a fixed number of pixels above its node rather than a
-  // fraction of anything, so the loop drawn around a node at `p` is not the loop
-  // drawn around one at `p * ZOOM` scaled up. Building from these positions is
-  // what puts a self-loop's dot on the loop `<zx-viewer>` paints. Every other
-  // curve shape is proportional to the gap it spans and comes out identical
-  // either way.
+  // Zoom before building the curves, not after evaluating them: a self-loop's
+  // arc stands a fixed number of pixels above its node rather than a fraction
+  // of anything, so the loop around a node at `p` is not the loop around one at
+  // `p * ZOOM` scaled up. Building from zoomed positions is what puts a
+  // self-loop's dot on the loop `<zx-viewer>` paints. Every other curve shape
+  // is proportional to the gap it spans and comes out the same either way.
   const pos = new Map<number, Point>(
     [...resolved].map(([id, p]) => [id, { x: p.x * ZOOM, y: p.y * ZOOM }]),
   )
@@ -233,7 +225,7 @@ export function layoutHypergraph(
   })
 
   const hyperedges: HypergraphInputHyperedge[] = hg.hyperedges
-    .filter(e => boundaryBlobs || e.kind !== 'boundary') // Optionally filter out boundary blobs
+    .filter(e => boundaryBlobs || e.kind !== 'boundary')
     .map(e => ({
       kind: e.kind,
       name: e.name,
@@ -244,20 +236,17 @@ export function layoutHypergraph(
     }))
     .filter(e => e.wires.length > 0)
 
-  // The canvas starts as the scene's own, zoomed — but only the drawing is
-  // zoomed. `layout()` reserves a strip of a fixed number of pixels under the
-  // drawing for the scalar, and a fixed number of pixels is the same distance
-  // at any zoom, so the strip is carried across as it stands. That is what
-  // makes the pair come out the same height in a `both` mode, where the graph
-  // is laid out at `scale * ZOOM` and gets the same strip under it.
+  // The canvas is the scene's own, zoomed — but only the drawing is zoomed.
+  // `layout()` reserves a strip of a fixed number of pixels under the drawing
+  // for the scalar, and a fixed number of pixels is the same distance at any
+  // zoom, so the strip is carried across as it stands. That is what makes the
+  // pair come out the same height in a `both` mode, where the graph is laid out
+  // at `scale * ZOOM` and gets the same strip under it. The dual paints no
+  // scalar but keeps the strip, and writes the trespass tally in it.
   //
-  // The dual paints no scalar. It keeps the strip anyway, both so the two
-  // views are the same size and because the trespass tally is written in it.
-  //
-  // It is measured here rather than left to `hypergraphScene` for the same
-  // reason the positions are: the point of the dual is that it lines up with
-  // the diagram it came from, and a canvas measured around the dots would be
-  // whatever size the dots happened to need.
+  // Measured here rather than in `hypergraphScene` for the same reason the
+  // positions are: a canvas measured around the dots would be whatever size the
+  // dots happened to need, rather than lining up with the diagram.
   const scalarStrip = scene.height - scene.diagramHeight
   let minX = 0
   let minY = 0

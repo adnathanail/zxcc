@@ -7,24 +7,21 @@
 // Both routes into the view arrive here. A caller writing a hypergraph out by
 // hand puts every dot in a grid square; `./layout.ts` derives the dual of a ZX
 // diagram and gives every dot the pixel position of the wire it stands for.
-// This is what the two have in common — the checks, the dot and blob weights,
-// and the canvas — so a hand-written drawing and a derived one come out at the
-// same weights at the same scale, and `<zx-diagram>` can hand its dual to a
-// `<zx-hypergraph>` rather than to a painter directly.
+// What the two have in common — the checks, the dot and blob weights, and the
+// canvas — is here, so a hand-written drawing and a derived one come out at the
+// same weights at the same scale.
 //
 // The grid is the one `layout()` puts a diagram on: a column and a qubit per
 // mark, `GRID_STEP` scales apart in either direction. Positions arrive that way
 // rather than in pixels so that `scale` means the same thing on this side as on
-// the other — the whole drawing grows and shrinks with it, rather than the
-// marks growing on a canvas that stays put. A pixel-positioned input has
-// already had that decided for it, so there `scale` sets the weights alone.
+// the other — the whole drawing grows and shrinks with it. A pixel-positioned
+// input has had that decided for it already, so there `scale` sets the weights
+// alone.
 //
-// The hypergraph the caller writes is still a ZX diagram in dual clothing:
-// every wire is held by one or two hyperedge ends, because a wire stands for an
-// edge and an edge has two — one of which may be a hyperedge that isn't drawn.
-// That is checked rather than assumed: a dot's `src` and `tgt` *are* those
-// ends, so a wire held by three has no answer to give the selection, which
-// states everything in the diagram's terms.
+// Three rules are enforced, and they are what make this the dual of a ZX
+// diagram rather than a hypergraph in general: every wire is positioned the
+// same way as every other, every id is distinct, and every wire is held by one
+// or two hyperedge ends.
 
 import type { DiagramEdgeKind } from '../types'
 import { sceneMetrics } from './layout'
@@ -56,9 +53,8 @@ const DEFAULT_NAME: Record<HyperedgeKind, string> = {
 /** How far apart neighbouring columns (and qubits) are drawn, in `scale`s. The
  *  dual needs more room than the diagram it stands for: every mark carries a
  *  blob's outline standing `blobRadius` off it, so two dots a single scale
- *  apart come out with their blobs all but touching. `./layout.ts` answers the
- *  same question for a derived scene with `ZOOM`, which spreads the positions
- *  and leaves the blobs alone; this is the grid side of it. */
+ *  apart come out with their blobs all but touching. `./layout.ts`'s `ZOOM` is
+ *  the same allowance for a derived scene. */
 const GRID_STEP = 2
 
 /** Room under the lowest dot for the wire id `show-labels` writes 11px beneath
@@ -71,9 +67,8 @@ const LABEL_ROOM = 14
 const CAPTION_ROOM = 16
 
 /** The strip left below all of that, which the trespass tally is written
- *  across. `layout()` leaves one for the scalar and a derived scene carries it
- *  over; an input measured here has no scalar and would otherwise have nowhere
- *  to put the count. */
+ *  across. A derived scene inherits one from the scalar's; an input measured
+ *  here has no scalar, so it needs its own. */
 const TALLY_STRIP = 24
 
 /** Whether a wire is positioned in pixels rather than on the grid. Asked of the
@@ -94,9 +89,9 @@ function isPixelWire(wire: HypergraphInputWire): wire is HypergraphInputPixelWir
  * the positions are already fixed and it sets the weights alone.
  *
  * Throws, naming the wire or hyperedge at fault, rather than drawing something
- * the input doesn't describe: an unknown blob kind would otherwise come out the
- * colour of a boundary, and a wire held by three hyperedges would come out as a
- * dot whose ends are a guess.
+ * the input doesn't describe: an unknown blob kind would come out the colour of
+ * a boundary, and a wire held by three hyperedges a dot whose ends are a
+ * guess.
  */
 export function hypergraphScene(input: HypergraphInput, scale: number): HypergraphScene {
   const { dotSize, blobRadius } = sceneMetrics(scale)
@@ -111,22 +106,20 @@ export function hypergraphScene(input: HypergraphInput, scale: number): Hypergra
   const ends = holders(input, blobIds)
 
   const pixel = placement(input.wires)
-  // Half a grid square of padding on every side — one `scale`, which is what
-  // `layout()` leaves around a diagram — but never less than what is drawn
-  // *outside* the dots: a blob's outline stands `blobRadius` off the dot it
-  // rings, its caption goes above that, and the wire id `show-labels` writes
-  // goes below. At a small scale those two fixed text rooms are the larger of
-  // the pair, since they are a font size rather than a fraction of the grid.
+  // One `scale` of padding a side, as `layout()` leaves around a diagram, but
+  // never less than what is drawn *outside* the dots: a blob's outline stands
+  // `blobRadius` off the dot it rings, its caption goes above that, and the
+  // wire id `show-labels` writes goes below. The two text allowances are a font
+  // size rather than a fraction of the grid, so at a small scale they win.
   const padX = Math.max(scale, blobRadius)
   const padTop = Math.max(scale, blobRadius + CAPTION_ROOM)
   const padBottom = Math.max(scale, blobRadius + LABEL_ROOM)
 
   const step = scale * GRID_STEP
-  // The grid is read relative to its own lowest column and qubit, so where it
-  // starts doesn't matter: negative coordinates, and fractional ones, are
-  // positions like any other. Pixel coordinates are used as they stand — they
-  // are already where the dot goes, and subtracting an origin or adding padding
-  // would slide the drawing off the diagram it was pinned to.
+  // The grid is read relative to its own lowest column and qubit, so negative
+  // and fractional coordinates are positions like any other. Pixel coordinates
+  // are used as they stand: subtracting an origin or adding padding would slide
+  // the drawing off the diagram it was pinned to.
   const cols = span(input.wires.map(w => w.col ?? 0))
   const qubits = span(input.wires.map(w => w.qubit ?? 0))
 
@@ -136,9 +129,9 @@ export function hypergraphScene(input: HypergraphInput, scale: number): Hypergra
     y: pixel ? (wire.y as number) : ((wire.qubit as number) - qubits.min) * step + padTop,
     kind: (wire.kind ?? 'simple') as DiagramEdgeKind,
     // A dot is the wire it stands for, and a selection names that wire by the
-    // id the caller gave it. The hyperedges holding it are its ends, which is
-    // what `src` and `tgt` mean; a wire held by a single end has that one in
-    // both, since there is no second to name.
+    // id the caller gave it. `src` and `tgt` are the hyperedges holding it; a
+    // wire held by a single end has that one in both, there being no second to
+    // name.
     edge: wireIds[i],
     src: ends[i][0],
     tgt: ends[i][1] ?? ends[i][0],
@@ -155,7 +148,7 @@ export function hypergraphScene(input: HypergraphInput, scale: number): Hypergra
     dots: [...new Set(edge.wires)].map(i => `w${wireIds[i]}`),
   }))
 
-  // A canvas the input gave is used as it stands: `layoutHypergraph` measures
+  // A canvas the input gave is used as it stands. `layoutHypergraph` measures
   // the dual's from the ZX layout's own rather than from the dots, which is
   // what makes the pair the same size in a `both` mode.
   const width =
@@ -184,11 +177,10 @@ function span(values: number[]): { min: number; max: number } {
  * What a selection names each wire (or hyperedge) by: the id the caller gave
  * it, or its position in the list.
  *
- * Falling back to the position is what keeps an input that says nothing about
- * ids meaning what it looks like it means. Uniqueness is checked because the
- * ids are what everything downstream refers to a mark by — the dot's `src` and
- * `tgt`, the blob's `dots`, and the `zx-selection` event — so two marks
- * answering to one id is two marks the drawing cannot tell apart.
+ * Uniqueness is checked because the ids are what everything downstream refers
+ * to a mark by — the dot's `src` and `tgt`, the blob's `dots`, and the
+ * `zx-selection` event — so two marks answering to one id are two marks the
+ * drawing cannot tell apart.
  */
 function selectionIds(given: (number | undefined)[], what: string): number[] {
   const ids = given.map((id, i) => id ?? i)
@@ -215,8 +207,8 @@ function selectionIds(given: (number | undefined)[], what: string): number[] {
  *
  * A grid coordinate is measured from the input's own lowest column and a pixel
  * coordinate from the canvas's corner, so an input mixing them has two origins
- * and no single drawing. Half a coordinate is no position at all — the missing
- * half would silently become the top-left.
+ * and no single drawing. Half a coordinate is no position at all: the missing
+ * half would silently become 0.
  */
 function placement(wires: HypergraphInputWire[]): boolean {
   let pixel: boolean | null = null
@@ -247,12 +239,12 @@ function placement(wires: HypergraphInputWire[]): boolean {
  * so a self-loop's hyperedge appears twice, exactly as it does in the list the
  * caller wrote.
  *
- * This is where the rest of the input is checked, because every way it can be
- * wrong shows up as a count that isn't one or two: a wire nobody holds has both
- * ends nowhere, and a wire held by three is a diagram the ZX half of the
- * package couldn't have produced. One end is the legitimate short case — the
- * other hyperedge exists in the diagram but isn't being drawn, which is what
- * dropping the boundary blobs does to every leg.
+ * Every remaining way the input can be wrong shows up as a count that isn't
+ * one or two, so the checks live here: a wire nobody holds has both ends
+ * nowhere, and a wire held by three is a diagram the ZX half of the package
+ * couldn't have produced. One end is legitimate — the hyperedge at the other
+ * end exists in the diagram but isn't being drawn, which is what dropping the
+ * boundary blobs does to every leg.
  */
 function holders(input: HypergraphInput, blobIds: number[]): number[][] {
   const ends: number[][] = input.wires.map(() => [])

@@ -46,10 +46,10 @@ export interface DiagramNode {
  * Any other string is a kind of your own. A kind is only ever a *colour*: it
  * picks which entry of `edgeColors` the wire (and the dot standing for it in
  * the hypergraph view) is painted with, and nothing in the layout or the
- * geometry reads it. So a custom kind needs no support here beyond a colour,
- * and one with no colour given simply draws like a plain wire. The literals are
- * kept in the union for autocomplete; `string & {}` is what stops TypeScript
- * collapsing the whole thing to `string` and losing them.
+ * geometry reads it. A custom kind therefore needs no support beyond a colour,
+ * and one given no colour draws like a plain wire. The literals stay in the
+ * union for autocomplete; `string & {}` stops TypeScript collapsing the whole
+ * union to `string` and losing them.
  */
 export type DiagramEdgeKind = 'simple' | 'hadamard' | 'w-io' | (string & {})
 

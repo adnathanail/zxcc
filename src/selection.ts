@@ -1,14 +1,14 @@
 // What is picked out, stated in the terms the two views share.
 //
-// A selection is held in the *diagram's* language — ZX node ids, and indices
-// into `diagram.edges` — rather than in either painter's own. That is what
-// lets the two track each other: the same selection means "spider 2 and the
-// edge 1—2" to `<zx-viewer>` and "the blob standing for node 2, and the dot
-// standing for that edge" to `<zx-hypergraph-viewer>`, so neither painter has
-// to know the other exists. Translating happens where each painter draws.
+// A selection is held in the diagram's language — ZX node ids, and indices
+// into `diagram.edges` — rather than in either painter's own, so the two views
+// can track each other. The same selection means "spider 2 and the edge 1—2"
+// to `<zx-viewer>` and "the blob standing for node 2, and the dot standing for
+// that edge" to `<zx-hypergraph-viewer>`; each painter reads it in its own
+// terms, and neither has to know the other exists.
 //
-// `<zx-diagram>` owns the value and hands it down to both painters, which are
-// controlled: a painter announces the selection a gesture *would* make with
+// The host owns the value and hands it down to both painters, which are
+// controlled: a painter announces the selection a gesture would make with
 // {@link SELECTION_EVENT} and draws whatever comes back.
 
 /** ZX node ids and edge indices, the two things a selection can name. Held as

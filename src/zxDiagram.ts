@@ -7,12 +7,6 @@
 // the other — `layout()` then `layoutHypergraph()` turns a diagram into the
 // hypergraph input whose dots sit on the midpoints of its own wires — and hold
 // the selection the pair shares.
-//
-// Everything a public element does around a painter — the presentation
-// properties, the palette, the error state, the selection, and the stylesheet —
-// is `ZxViewerHost`, which all three are built on. What is here is what belongs
-// to *this* input: the diagram, the view mode, and the fact that drawing both
-// views means laying the diagram out twice.
 
 import { css, html, nothing, type PropertyValues } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
@@ -24,9 +18,6 @@ import {
 } from './hypergraph/layout'
 import type { HypergraphInput } from './hypergraph/types'
 import { layout } from './layout'
-// `@zx-selection` in the template below is `SELECTION_EVENT`, written out
-// because a Lit binding's name has to be a literal.
-import { EMPTY_SELECTION } from './selection'
 import type { DiagramData } from './types'
 import { type PaintedView, ZxViewerHost } from './viewerHost'
 import type { ZxGraphElement } from './zxGraph'
@@ -40,9 +31,11 @@ function isViewMode(mode: string): mode is ViewMode {
   return (VIEW_MODES as readonly string[]).includes(mode)
 }
 
-/** Whether a mode runs both views — the one question most of this file asks
- *  of `viewMode`, since the arrangement only matters at the point it is drawn. */
-const isBoth = (mode: ViewMode) => mode === 'both-vertical' || mode === 'both-horizontal'
+/** What to hand the mounted `<zx-hypergraph>`. */
+interface Dual {
+  hypergraph: HypergraphInput
+  scale: number
+}
 
 @customElement('zx-diagram')
 export class ZxDiagramElement extends ZxViewerHost {
@@ -66,10 +59,9 @@ export class ZxDiagramElement extends ZxViewerHost {
   disableIOBlobsInHypergraph = false
 
   /** What to mount, and what to hand each one. Which are non-null follows
-   *  `viewMode`, so in either `both` mode they are populated together and both
-   *  elements are rendered. */
+   *  `viewMode`, so in either `both` mode they are populated together. */
   @state() private graph: { diagram: DiagramData; scale: number | null } | null = null
-  @state() private dual: { hypergraph: HypergraphInput; scale: number } | null = null
+  @state() private dual: Dual | null = null
 
   /** Nothing is painted here: each mounted element carries its own picture, and
    *  its own attribution badge measured against it. */
@@ -114,18 +106,13 @@ export class ZxDiagramElement extends ZxViewerHost {
    * Build the views again, for consumers that mutate `diagram` in place rather
    * than replacing it.
    *
-   * This produces a fresh drawing, which resets everything to it: dragged nodes
-   * and dots return to their laid-out positions and the selection is cleared.
-   * That is why it isn't run on every render — replacing `diagram` is the
-   * cheaper and more predictable way to change the picture.
-   *
    * The mounted elements are told as well. The dual gets a freshly derived
    * input and would relayout on its own, but `<zx-graph>` is handed the very
-   * `diagram` object that was mutated, so nothing about it has changed
-   * identity and only being asked will do.
+   * `diagram` object that was mutated, so nothing about it has changed identity
+   * and only being asked will do.
    */
-  refresh() {
-    this.relayout()
+  override refresh() {
+    super.refresh()
     for (const child of this.renderRoot.querySelectorAll<ZxGraphElement | ZxHypergraphElement>(
       'zx-graph, zx-hypergraph',
     )) {
@@ -133,56 +120,43 @@ export class ZxDiagramElement extends ZxViewerHost {
     }
   }
 
-  protected relayout() {
+  protected clear() {
     this.graph = null
     this.dual = null
-    // A fresh layout is a fresh drawing, and the old selection names ids that
-    // may not even be in it.
-    this.selection = EMPTY_SELECTION
-    try {
-      // Check if viewMode is valid
-      if (!isViewMode(this.viewMode)) {
-        throw new Error(
-          `Unknown view-mode '${this.viewMode}'. Expected one of: ${VIEW_MODES.join(', ')}.`,
-        )
-      }
-      // The dual is derived from a `layout()` run here rather than from the one
-      // `<zx-graph>` runs, because it needs the diagram at its *own* scale: in a
-      // `both` mode the graph is drawn at `scale * ZOOM` so that the pair comes
-      // out the same size, and the dual's dots are the midpoints of the wires
-      // at the unzoomed scale, zoomed. The two are built into locals first, so
-      // a hypergraph that can't be converted leaves no half-mounted pair behind
-      // for the error state.
-      if (this.diagram) {
-        const both = isBoth(this.viewMode)
-        const dual =
-          this.viewMode === 'hypergraph' || both
-            ? (() => {
-                const scene = layout(this.diagram, { scale: this.scale ?? undefined })
-                return {
-                  scale: scene.scale,
-                  hypergraph: layoutHypergraph(this.diagram, scene, {
-                    boundaryBlobs: !this.disableIOBlobsInHypergraph,
-                  }),
-                }
-              })()
-            : null
-        if (this.viewMode !== 'hypergraph') {
-          // Drawing both means matching the hypergraph's roomier spacing; on its
-          // own the graph is drawn at whatever scale was asked for.
-          this.graph = {
-            diagram: this.diagram,
-            scale: dual ? dual.scale * HYPERGRAPH_ZOOM : this.scale,
-          }
-        }
-        this.dual = dual
-      }
-      this.error = null
-    } catch (e) {
-      this.graph = null
-      this.dual = null
-      this.error = e instanceof Error ? e.message : String(e)
+  }
+
+  protected build() {
+    if (!isViewMode(this.viewMode)) {
+      throw new Error(
+        `Unknown view-mode '${this.viewMode}'. Expected one of: ${VIEW_MODES.join(', ')}.`,
+      )
     }
+    if (!this.diagram) return
+
+    // The dual is derived from a `layout()` run here rather than from the one
+    // `<zx-graph>` runs, because it needs the diagram at its *own* scale: in a
+    // `both` mode the graph is drawn at `scale * ZOOM` so that the pair comes
+    // out the same size, and the dual's dots are the midpoints of the wires at
+    // the unzoomed scale, zoomed.
+    let dual: Dual | null = null
+    if (this.viewMode !== 'graph') {
+      const scene = layout(this.diagram, { scale: this.scale ?? undefined })
+      dual = {
+        scale: scene.scale,
+        hypergraph: layoutHypergraph(this.diagram, scene, {
+          boundaryBlobs: !this.disableIOBlobsInHypergraph,
+        }),
+      }
+    }
+    if (this.viewMode !== 'hypergraph') {
+      // Drawing both means matching the hypergraph's roomier spacing; on its
+      // own the graph is drawn at whatever scale was asked for.
+      this.graph = {
+        diagram: this.diagram,
+        scale: dual ? dual.scale * HYPERGRAPH_ZOOM : this.scale,
+      }
+    }
+    this.dual = dual
   }
 
   render() {
@@ -192,6 +166,8 @@ export class ZxDiagramElement extends ZxViewerHost {
     // Only `both-horizontal` runs the pair across; every other mode stacks,
     // which for a lone view is the same box either way.
     const direction = this.viewMode === 'both-horizontal' ? 'horizontal' : 'vertical'
+    // `@zx-selection` is `SELECTION_EVENT`, written out because a Lit binding's
+    // name has to be a literal.
     return html`
       <div class="views ${direction}">
       ${
