@@ -5,7 +5,12 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
 import { expect, waitFor } from 'storybook/test'
-import { type DiagramData, VIEW_MODES, type ZxDiagramElement } from '../../src/index'
+import {
+  type DiagramData,
+  type HypergraphInput,
+  VIEW_MODES,
+  type ZxDiagramElement,
+} from '../../src/index'
 import { fourSpiderSquare } from '../diagrams'
 import { shadowRootOf } from '../interactionHelpers'
 
@@ -26,11 +31,11 @@ export default meta
 
 type Story = StoryObj
 
-/** The three ways `<zx-diagram>` refuses to draw, in one story.
+/** The five ways the two public elements refuse to draw, in one story.
  *
  * They are together rather than one apiece because the error UI is the same
- * `<pre>` and Retry button in all three and the *message* is the whole of what
- * is being tested — three stories would be three views of the same grey box.
+ * `<pre>` and Retry button in all five and the *message* is the whole of what
+ * is being tested — five stories would be five views of the same grey box.
  */
 export const ErrorStates: Story = {
   name: 'Error states',
@@ -38,7 +43,7 @@ export const ErrorStates: Story = {
     docs: {
       story: {
         description:
-          'Three failures, one under the other: a malformed diagram, a diagram carrying a node the dual has no shape for, and a `view-mode` that is not one of the four. Each is reported rather than drawn around — an unknown `view-mode` in particular has no mode to fall back *to* that would not be a guess at which was meant, so it says so instead of quietly drawing the graph.',
+          'Five failures, one under the other: a malformed diagram, a diagram carrying a node the dual has no shape for, a `view-mode` that is not one of the four, a hypergraph naming a blob shape that does not exist, and one whose wire is held by the wrong number of hyperedges. Each is reported rather than drawn around — an unknown `view-mode` in particular has no mode to fall back *to* that would not be a guess at which was meant, so it says so instead of quietly drawing the graph.',
       },
     },
   },
@@ -65,6 +70,30 @@ export const ErrorStates: Story = {
         }
       ></zx-diagram>
       <zx-diagram id="bad-mode" view-mode="both" .diagram=${fourSpiderSquare}></zx-diagram>
+      <zx-hypergraph
+        id="bad-kind"
+        .hypergraph=${
+          {
+            wires: [{ col: 0, qubit: 0 }],
+            hyperedges: [
+              { kind: 'zspider', wires: [0] },
+              { kind: 'boundary', wires: [0] },
+            ],
+          } as unknown as HypergraphInput
+        }
+      ></zx-hypergraph>
+      <zx-hypergraph
+        id="dangling-wire"
+        .hypergraph=${
+          {
+            wires: [
+              { col: 0, qubit: 0 },
+              { col: 1, qubit: 0 },
+            ],
+            hyperedges: [{ kind: 'z-spider', wires: [0, 1] }],
+          } as HypergraphInput
+        }
+      ></zx-hypergraph>
     </div>
   `,
   play: async ({ canvasElement }) => {
@@ -100,6 +129,23 @@ export const ErrorStates: Story = {
     // mode there is, built from the same array the check reads.
     expect(await messageOf('bad-mode')).toBe(
       `Unknown view-mode 'both'. Expected one of: ${VIEW_MODES.join(', ')}.`,
+    )
+
+    // 4. A hypergraph naming a blob shape there isn't. Unchecked it would come
+    // out the colour of a boundary, since that is what the palette lookup falls
+    // back to — a picture that is wrong rather than absent.
+    expect(await messageOf('bad-kind')).toBe(
+      "Hypergraph input: hyperedge 0 has kind 'zspider', expected one of z-spider, " +
+        'x-spider, hadamard, boundary.',
+    )
+
+    // 5. A wire held by one hyperedge end rather than two. A dot *is* an edge,
+    // and an edge has two ends: the hyperedges holding a wire are what the
+    // selection reads as the nodes at either end of it, so one end is a dot
+    // whose other end is nowhere.
+    expect(await messageOf('dangling-wire')).toBe(
+      'Hypergraph input: wire 0 is held by 1 hyperedge end, and every wire is held by exactly ' +
+        'two — one per end of the edge it stands for, or the same hyperedge twice for a self-loop.',
     )
   },
 }

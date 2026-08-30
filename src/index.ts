@@ -12,6 +12,9 @@ export type {
   HyperedgeKind,
   HypergraphData,
   HypergraphEdge,
+  HypergraphInput,
+  HypergraphInputHyperedge,
+  HypergraphInputWire,
   HypergraphWire,
 } from './hypergraph/types'
 export type {
@@ -26,3 +29,4 @@ export type {
   PauliWebLink,
 } from './types'
 export { ZxDiagramElement } from './zxDiagram'
+export { ZxHypergraphElement } from './zxHypergraph'

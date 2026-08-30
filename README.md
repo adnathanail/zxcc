@@ -173,6 +173,60 @@ in this view, and a dot near one no longer counts as trespassing into it.
 You can also have both the graph & hypergraph views, by setting the `view-mode` to `both-vertical` or `both-horizontal`.
 Selections will be synced across the two viewers.
 
+## Drawing a hypergraph directly
+
+`<zx-diagram>` derives its hypergraph from a diagram, which puts every dot on the midpoint of the
+wire it stands for — that is what makes the two views line up, and it is also the only arrangement
+it will produce. `<zx-hypergraph>` is the other way in: you give it the hypergraph itself, dots and
+positions included, and it draws exactly that. There is no ZX diagram behind it and nothing is
+worked out — the positions are grid coordinates, and all the element does with them is scale the
+grid to pixels.
+
+```html
+<zx-hypergraph id="h" show-labels></zx-hypergraph>
+
+<script type="module">
+  document.getElementById('h').hypergraph = {
+    // Hypergraph nodes, drawn as dots. Each stands for a ZX wire, and says which
+    // grid square it goes in — the same column/qubit grid a ZX diagram is on.
+    wires: [
+      { col: 0, qubit: 0 },
+      { col: 1, qubit: 0, kind: 'hadamard' },   // an H-wire's dot, in H-wire blue
+      { col: 2, qubit: 0 },
+    ],
+    // Hyperedges, drawn as blobs around the dots they hold, by index into `wires`.
+    hyperedges: [
+      { kind: 'boundary', name: 'in',  wires: [0] },
+      { kind: 'z-spider', phase: 'π/2', wires: [0, 1] },
+      { kind: 'x-spider', wires: [1, 2] },
+      { kind: 'boundary', name: 'out', wires: [2] },
+    ],
+  }
+</script>
+```
+
+A hyperedge's `kind` is one of `z-spider`, `x-spider`, `hadamard` or `boundary` — the same four the
+derived view draws — and picks the palette entry its blob is filled with. `name` is written only
+when `show-labels` is on and defaults to the letter for its kind (`Z`, `X`, `H`); a boundary has no
+default, since which end of the diagram it is isn't something a hypergraph knows. `phase` is
+pre-formatted and drawn whether labels are on or off.
+
+**Every wire must be held by exactly two hyperedge ends** — the two ZX nodes its edge would run
+between, or the same hyperedge listed twice for a self-loop, or a spider and a boundary for a leg
+hanging out of the diagram. This is what a dot's two ends are read from when you select one, so a
+wire held by one or by three is an error naming the wire rather than a drawing.
+
+`col` and `qubit` are grid coordinates, not pixels: one column or one qubit is one `scale` apart,
+the same grid `<zx-diagram>` lays a diagram out on. They may be negative or fractional — the grid is
+read relative to its own lowest column and qubit, so a dot goes wherever you want it — and the
+canvas is measured around the result, with room left for the captions above and the wire ids below.
+
+The element takes the same presentation properties as `<zx-diagram>` — `show-labels`,
+`color-scheme`, `colors`, `edgeColors` and `scale` — and behaves the same way under a press or a
+drag. `scale` is pixels per column and per qubit, so it sizes the whole drawing: the dots move
+apart with it, as well as growing. It defaults to `35` — the middle of the 20–50 band a derived
+scale is clamped to — and there is no `view-mode`: a hypergraph has only the one picture.
+
 ## Exported constants
 
 The main entry defines a custom element as it loads, so it needs a DOM and won't import in Node.

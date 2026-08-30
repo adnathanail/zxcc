@@ -1,8 +1,8 @@
-// Shared DOM helpers for the story play functions. The viewer mounts into
-// <zx-diagram>'s shadow root, so every query has to go through it.
+// Shared DOM helpers for the story play functions. A painter mounts into the
+// shadow root of the element hosting it — `<zx-diagram>` or `<zx-hypergraph>` —
+// so every query has to go through one of those.
 
 import { waitFor } from 'storybook/test'
-import type { ZxDiagramElement } from '../src/index'
 
 export function parseTranslate(transform: string): [number, number] {
   const m = transform.match(/translate\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)/)
@@ -14,15 +14,22 @@ export function translateOf(g: SVGGElement): [number, number] {
   return parseTranslate(g.getAttribute('transform') ?? '')
 }
 
-/** The shadow root of the story's `<zx-diagram>`. Pass a selector when a story
- *  renders more than one of them — combining several cases into one story is
- *  how the error stories avoid a Chromatic snapshot each. */
+/** The shadow root of the story's element, `<zx-diagram>` unless a selector
+ *  says otherwise. Pass one for a `<zx-hypergraph>` story, or when a story
+ *  renders more than one element — combining several cases into one story is
+ *  how the error stories avoid a Chromatic snapshot each.
+ *
+ *  Both public elements are waited for rather than whichever the selector
+ *  names, since a selector is often an id and says nothing about the tag. */
 export async function shadowRootOf(
   canvasElement: HTMLElement,
   selector = 'zx-diagram',
 ): Promise<ShadowRoot> {
-  await customElements.whenDefined('zx-diagram')
-  const el = canvasElement.querySelector<ZxDiagramElement>(selector)
+  await Promise.all([
+    customElements.whenDefined('zx-diagram'),
+    customElements.whenDefined('zx-hypergraph'),
+  ])
+  const el = canvasElement.querySelector<HTMLElement>(selector)
   if (!el) throw new Error(`${selector} not found`)
   if (!el.shadowRoot) throw new Error(`${selector} has no shadow root`)
   return el.shadowRoot
