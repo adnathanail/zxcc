@@ -53,13 +53,10 @@ const EDGE_KEY = new Map<DiagramEdgeKind, string>([
  * given a colour to: it draws like an ordinary wire rather than failing or
  * coming out undefined.
  *
- * Both painters call this rather than reading a colour off anything of their
- * own, so a wire and the dot standing for that same wire cannot disagree.
- *
  * A kind is any string, so both lookups have to be by *own* key: `kind:
- * 'toString'` reaches `Object.prototype` through a plain object and comes back
- * as a function to paint with. Hence `Object.hasOwn` for `edgeColors`, whose
- * shape is the caller's, and a `Map` for `EDGE_KEY`, which is ours.
+ * 'toString'` would otherwise reach `Object.prototype` through a plain object
+ * and come back as a function to paint with. Hence `Object.hasOwn` for
+ * `edgeColors`, whose shape is the caller's, and a `Map` for `EDGE_KEY`.
  */
 export function edgeColor(
   kind: DiagramEdgeKind,

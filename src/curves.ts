@@ -1,16 +1,14 @@
 // The curve a wire runs along, shared by everything that has to agree on it.
 //
-// `edgeCurve` is the single answer to "where does the wire between these two
-// points go?": straight for a lone edge, a fanned quadratic arc for one of
-// several parallel edges, a loop above the node for a self-edge. `curvePath`
-// draws that curve and `curvePointAt` evaluates it — so the ZX viewer painting
-// a wire and the hypergraph parking a dot halfway along it are reading the
-// same geometry rather than two descriptions of it that have to be kept in
-// step by hand.
+// `edgeCurve` is the single answer to where the wire between two points runs:
+// straight for a lone edge, a fanned quadratic arc for one of several parallel
+// edges, a loop above the node for a self-edge. `curvePath` draws that curve
+// and `curvePointAt` evaluates it, so the ZX viewer painting a wire and the
+// hypergraph parking a dot halfway along it read the same geometry.
 //
-// Deliberately free of every other concept in the package: points and numbers
-// in, path strings and points out. `Point` lives here because it is the one
-// type both sides of the package need.
+// Points and numbers in, path strings and points out — no other concept in the
+// package appears here. `Point` lives here because it is the one type both
+// halves of the package need.
 
 export interface Point {
   x: number

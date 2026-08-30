@@ -3,8 +3,7 @@
 // pre-positioned), scales that grid to pixels, reserves the strip the scalar
 // sits in, and annotates parallel edges so the viewer can fan them into arcs.
 //
-// Pure and DOM-free — the TypeScript successor to the old zxRender.py that
-// ran pyzx under Pyodide.
+// Pure and DOM-free.
 
 import type {
   DiagramData,
@@ -67,8 +66,7 @@ function placeNodes(diagram: DiagramData): Map<number, PlacedNode> {
         text = raw === 'π' ? '' : raw
         break
       }
-      // `wire` predates the W-input concept and shares its rendering
-      // (small black circle); kept as an alias for backward compatibility.
+      // `wire` is an alias for `w-input` and draws the same small black circle.
       case 'wire':
       case 'w-input':
         kind = 'w-input'

@@ -124,6 +124,11 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   controlled: they own no selection, they announce the one a gesture makes and
   draw whatever `<zx-diagram>` hands back.
 - `attribution.ts` — the "❤️ zxcc" badge drawn into the diagram's SVG.
+- `gestures.ts` — `trackPointer`, the window-level `pointermove`/`pointerup`/
+  `pointercancel` plumbing a drag runs on, plus the non-passive `touchmove`
+  block that keeps a drag from turning into a pan. Both painters run every
+  gesture through it, which is what keeps the two-finger and cancel behaviour
+  described under *Conventions* the same in either view.
 - `viewerHost.ts` — `ZxViewerHost`, what a public element does *around* a
   painter: the presentation properties, the palette a scheme name resolves to,
   the error state, the selection, the attribution badge's measuring pass, and
@@ -131,6 +136,10 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   extend it and add only what belongs to their own input. It is in `src/`
   rather than in either subfolder because neither subfolder imports it — the
   elements do, and all of those are here as well.
+  `relayout()` is concrete and lives here alone: it clears, drops the
+  selection, builds, and turns a throw into the error state, in that order. A
+  subclass says only *what* to clear and *what* to build, so the reset ordering
+  and the error handling cannot drift between the three.
   `selection` is a `@property` rather than private state, and `onSelection`
   stores what a child announced and then announces it again as this element's
   own. Both are for the sake of nesting: `<zx-diagram>` writes the selection
@@ -388,8 +397,9 @@ What all three share is `ZxViewerHost` (`viewerHost.ts`) — the presentation
 properties, the palette, the error state and its Retry, the selection, the
 attribution measuring pass, and the stylesheet the light-DOM painters need — and
 what they add is the part that belongs to their own input. A host is defined by
-two things: `painted`, the views it has and the painter tag for each, and
-`relayout()`, how it builds them again.
+three things: `painted`, the views it has and the painter tag for each, and
+`clear()`/`build()`, how it discards and rebuilds them. `relayout()` is the
+base's own, and calls those two.
 
 `<zx-graph>` runs `layout()` in `willUpdate()` into one `@state` scene and
 renders `<zx-viewer>` inside its scroll container. `<zx-hypergraph>` is the same
@@ -404,10 +414,11 @@ derive the one picture from the other. `view-mode` picks which it mounts:
 `graph` (the default), `hypergraph`, or both — the diagram above its dual
 (`both-vertical`) or to the left of it (`both-horizontal`). The two `both` modes
 differ in one thing only, the `flex-direction` of the box holding the pair;
-everything laid out or painted is the same, which is why the code asks
-`isBoth(viewMode)` almost everywhere and reads the mode itself only in
-`render()`. Side by side the pair splits the width evenly (`flex: 1 1 0`) rather
-than sizing to the drawings, so a wide picture scrolls in its half instead of
+everything laid out or painted is the same, which is why `build()` asks only
+whether the mode is *not* `graph` (build the dual) and *not* `hypergraph`
+(build the graph), and the mode itself is read only in `render()`. Side by side
+the pair splits the width evenly (`flex: 1 1 0`) rather than sizing to the
+drawings, so a wide picture scrolls in its half instead of
 crowding the other out — the rule is on the child *elements*, each of which
 brings its own scroll container.
 
@@ -585,17 +596,19 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
   Lit doesn't rebind them.
 - Every gesture is **pointer events** (`pointerdown` on the layer,
   `pointermove`/`pointerup`/`pointercancel` on window), so one set of handlers
-  serves mouse, pen and finger. A press ignores anything but the primary
-  pointer, and `#track` then pins the gesture to that pointer's `pointerId`.
+  serves mouse, pen and finger. The plumbing is `trackPointer` in
+  `gestures.ts`, shared by both painters. A press ignores anything but the
+  primary pointer, and `trackPointer` then pins the gesture to that pointer's
+  `pointerId`.
   Both halves are needed: the listeners are on window, so every pointer on the
   screen reports to them, and a second finger arriving mid-drag would otherwise
   drag whatever the first one picked up to wherever it is, and end the drag by
   lifting.
   `pointercancel` tears a gesture down the way an up does, but is not the same
   answer — the browser sends it once it decides the touch was a scroll after
-  all, so it says the gesture was taken away rather than finished, and `#track`
-  passes the difference to `onEnd`. The brush is what needs it: it selects as
-  it sweeps, and on a touch screen a cancelled brush *is* a pan starting on the
+  all, so it says the gesture was taken away rather than finished, and
+  `trackPointer` passes the difference to `onEnd`. The brush is what needs it:
+  it selects as it sweeps, and on a touch screen a cancelled brush *is* a pan starting on the
   canvas, so a cancel restores the selection the press established. Committing
   what the sweep had reached would mean panning across the picture selects
   whatever the finger passed over, with the rubber band that would have

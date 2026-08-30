@@ -2,10 +2,10 @@
 // which, the H-box chains that runs of degree-2 H-boxes form, and the final
 // positions those H-boxes resolve to.
 //
-// Shared, because both views need positions for the H-boxes the layout leaves
-// unplaced: `<zx-viewer>` to paint them, the hypergraph layout to find the
-// midpoint of a wire that ends on one. DOM-free, and holds no drawing state —
-// it is built once per scene and reused across renders.
+// Both views need positions for the H-boxes the layout leaves unplaced:
+// `<zx-viewer>` to paint them, the hypergraph layout to find the midpoint of a
+// wire that ends on one. DOM-free, and holds no drawing state, so one instance
+// is built per scene and reused across renders.
 
 import type { Point } from './curves'
 import type { NodeKind, Scene } from './types'
@@ -20,10 +20,6 @@ export interface HboxChain {
   index: number
 }
 
-/**
- * Adjacency-derived queries over a `Scene`. Built once per scene and reused
- * across renders — it holds no mutable drawing state.
- */
 export class Topology {
   readonly #kinds = new Map<number, NodeKind>()
   readonly #adj = new Map<number, number[]>()
@@ -136,7 +132,7 @@ export class Topology {
    * Where a dragged H-box is allowed to come to rest: a clearance short of
    * whatever is next along the chain, in either direction.
    *
-   * Clearances are pixel distances — the shapes are a fixed size — while
+   * Clearances are pixel distances, since the shapes are a fixed size, while
    * `lineParam` is a fraction of the chain, so they are divided through by the
    * chain's length to convert. A flat `lineParam` margin would shrink to
    * nothing on a long chain and let the shapes intersect.
@@ -211,14 +207,10 @@ export class Topology {
       else parked.set(key, [id])
     }
 
-    // H-boxes over the same neighbours want the same point, so spread each
-    // such group along x, centred on the point they share. Solving the whole
-    // group at once keeps this a pure function of the node positions: nudging
-    // boxes one at a time until they stop colliding lands exactly on the
-    // clearance, where rounding decides whether another nudge is due, and the
-    // box visibly flicks between two spots as the diagram is dragged.
-    //
-    // Only each other is dodged: a diagram is free to pack its nodes
+    // H-boxes sharing a set of neighbours land on the same point, so spread
+    // each such group along x, centred on that point. The group is placed in
+    // one pass, which keeps the result a pure function of the node positions.
+    // Only other H-boxes are dodged: a diagram is free to pack its nodes
     // arbitrarily close, and a box that fled every spider would end up
     // somewhere less predictable.
     const clearance = 2 * this.#hboxRadius
