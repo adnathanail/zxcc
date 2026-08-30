@@ -1,10 +1,11 @@
-// What a public element does *around* a painter, shared by the two that exist:
-// `<zx-diagram>`, which takes a ZX diagram, and `<zx-hypergraph>`, which takes a
-// hypergraph. Both hold the same things — the presentation properties mirroring
-// pyzx's `draw_d3` keyword arguments, the palette a scheme name resolves to,
-// the error state, the selection, and the attribution badge that has to wait
-// for the SVG to exist before it can be measured — and differ only in what they
-// lay out and which painters they mount.
+// What a public element does *around* a painter, shared by the three that
+// exist: `<zx-graph>`, which draws a ZX diagram, `<zx-hypergraph>`, which draws
+// a hypergraph, and `<zx-diagram>`, which takes a diagram and mounts one or both
+// of the others. They hold the same things — the presentation properties
+// mirroring pyzx's `draw_d3` keyword arguments, the palette a scheme name
+// resolves to, the error state, the selection, and the attribution badge that
+// has to wait for the SVG to exist before it can be measured — and differ only
+// in what they build and what they mount.
 //
 // The stylesheet is here for the same reason: both painters render into the
 // light DOM, so it is the host's shadow root that has to carry the rules their
@@ -15,7 +16,7 @@ import { property, state } from 'lit/decorators.js'
 import { placeAttribution } from './attribution'
 import type { EdgeColors } from './colors'
 import { CANVAS_FILL, COLOR_SCHEMES, type ColorSchemeName } from './constants'
-import { EMPTY_SELECTION, type Selection } from './selection'
+import { EMPTY_SELECTION, type Selection, selectionEvent } from './selection'
 
 /** A painted view: the tag of the painter drawing it, and the pixel box the
  *  attribution badge is placed against. Both scene types have the two fields,
@@ -51,12 +52,25 @@ export abstract class ZxViewerHost extends LitElement {
   /** What is picked out, held here rather than in a painter so that two of them
    *  track each other: it is stated in the diagram's own terms — ZX node ids
    *  and edge indices — and each painter draws whatever that means in its own
-   *  picture. A painter announces the selection a gesture makes; a host is the
-   *  only thing that stores one. */
-  @state() protected selection: Selection = EMPTY_SELECTION
+   *  picture.
+   *
+   *  A property rather than private state because a host can be mounted inside
+   *  another one: `<zx-diagram>` sets this on both of its children, which is
+   *  the whole of how the two pictures track each other. Set it to pick
+   *  something out from outside; listen for `zx-selection` to hear what a
+   *  gesture picked. */
+  @property({ attribute: false }) selection: Selection = EMPTY_SELECTION
 
+  /** Take the selection a child announced, and announce it again as this
+   *  element's own. Re-dispatching is what carries a gesture up through a
+   *  nested host — a press in `<zx-graph>` has to reach the `<zx-diagram>` that
+   *  mounted it before the hypergraph beside it can be told — and it is also
+   *  what makes `zx-selection` an event a consumer can listen for on whichever
+   *  element they put in the page. */
   protected onSelection = (e: Event) => {
-    this.selection = (e as CustomEvent<Selection>).detail
+    const selection = (e as CustomEvent<Selection>).detail
+    this.selection = selection
+    this.dispatchEvent(selectionEvent(selection))
   }
 
   // Container background is Bootstrap .bg-light-subtle
@@ -114,8 +128,15 @@ export abstract class ZxViewerHost extends LitElement {
     return this.colors ?? COLOR_SCHEMES[this.colorScheme] ?? COLOR_SCHEMES.original
   }
 
+  /** Everything mounted below that renders on its own update cycle: the two
+   *  painters, and the two hosts `<zx-diagram>` mounts, which await their own
+   *  painters in turn. */
   private get painters(): LitElement[] {
-    return [...this.renderRoot.querySelectorAll<LitElement>('zx-viewer, zx-hypergraph-viewer')]
+    return [
+      ...this.renderRoot.querySelectorAll<LitElement>(
+        'zx-viewer, zx-hypergraph-viewer, zx-graph, zx-hypergraph',
+      ),
+    ]
   }
 
   private paintersComplete(): Promise<unknown> {

@@ -13,10 +13,13 @@ export type {
   HypergraphData,
   HypergraphEdge,
   HypergraphInput,
+  HypergraphInputGridWire,
   HypergraphInputHyperedge,
+  HypergraphInputPixelWire,
   HypergraphInputWire,
   HypergraphWire,
 } from './hypergraph/types'
+export type { Selection } from './selection'
 export type {
   BoxKind,
   DiagramBox,
@@ -29,4 +32,5 @@ export type {
   PauliWebLink,
 } from './types'
 export { ZxDiagramElement } from './zxDiagram'
+export { ZxGraphElement } from './zxGraph'
 export { ZxHypergraphElement } from './zxHypergraph'

@@ -5,7 +5,7 @@ import { expect, waitFor } from 'storybook/test'
 import { ZOOM } from '../../src/hypergraph/layout'
 import type { DiagramData, EdgeColors } from '../../src/index'
 import { fourSpiderSquare } from '../diagrams'
-import { blobCaptionsIn, shadowRootOf, translateOf } from '../interactionHelpers'
+import { blobCaptionsIn, shadowRootOf, translateOf, type ViewRoot } from '../interactionHelpers'
 
 interface Args {
   diagram: DiagramData
@@ -47,14 +47,14 @@ type Story = StoryObj<Args>
 /** The pair's two scroll containers on screen, in DOM order — the diagram's
  *  then the dual's. The arrangement is a fact about the boxes rather than the
  *  drawings, so this is the only place it can be read. */
-const containerBoxes = (root: ParentNode) =>
+const containerBoxes = (root: ViewRoot) =>
   [...root.querySelectorAll('.container')].map(el => el.getBoundingClientRect())
 
 /** Everything the two `both` modes share: which painters ran, that the pair is
  *  drawn at one scale, and that each badge was measured against its own view.
  *  Only the arrangement differs between them, so only that is asserted per
  *  story. */
-const expectPairDrawn = async (root: ParentNode) => {
+const expectPairDrawn = async (root: ViewRoot) => {
   // A painter each, and a badge in each of the two.
   await waitFor(() => expect(root.querySelectorAll('zx-viewer svg').length).toBe(1))
   expect(root.querySelectorAll('zx-hypergraph-viewer svg').length).toBe(1)

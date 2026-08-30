@@ -1,8 +1,39 @@
 // Shared DOM helpers for the story play functions. A painter mounts into the
-// shadow root of the element hosting it — `<zx-diagram>` or `<zx-hypergraph>` —
-// so every query has to go through one of those.
+// shadow root of the element hosting it, and `<zx-diagram>` hosts nothing
+// itself: it mounts a `<zx-graph>` and/or a `<zx-hypergraph>`, each with a
+// shadow root of its own. So a story's marks are spread over up to three roots,
+// and `shadowRootOf` hands back a {@link ViewRoot} spanning them rather than any
+// one of them — which is what keeps a selector in a play function a statement
+// about the picture rather than about how many elements deep it is drawn.
 
 import { waitFor } from 'storybook/test'
+
+/** The part of a root a play function uses: find one mark, or find them all.
+ *  Implemented over several shadow roots at once, so it is these two methods
+ *  rather than a `ShadowRoot`. `querySelectorAll` returns an array, which is
+ *  what every caller spreads it into anyway. */
+export interface ViewRoot {
+  querySelector<E extends Element>(selectors: string): E | null
+  querySelectorAll<E extends Element>(selectors: string): E[]
+}
+
+/** A `ViewRoot` over several roots, searched in order — the outer element's
+ *  own first, then each view it mounts, so the results come out in the order
+ *  the views are drawn. */
+function spanning(roots: ParentNode[]): ViewRoot {
+  return {
+    querySelector<E extends Element>(selectors: string): E | null {
+      for (const root of roots) {
+        const found = root.querySelector<E>(selectors)
+        if (found) return found
+      }
+      return null
+    },
+    querySelectorAll<E extends Element>(selectors: string): E[] {
+      return roots.flatMap(root => [...root.querySelectorAll<E>(selectors)])
+    },
+  }
+}
 
 export function parseTranslate(transform: string): [number, number] {
   const m = transform.match(/translate\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)/)
@@ -14,29 +45,37 @@ export function translateOf(g: SVGGElement): [number, number] {
   return parseTranslate(g.getAttribute('transform') ?? '')
 }
 
-/** The shadow root of the story's element, `<zx-diagram>` unless a selector
- *  says otherwise. Pass one for a `<zx-hypergraph>` story, or when a story
- *  renders more than one element — combining several cases into one story is
- *  how the error stories avoid a Chromatic snapshot each.
+/** Everywhere the story's element draws: its own shadow root, plus that of
+ *  every view it mounts. The element is `<zx-diagram>` unless a selector says
+ *  otherwise — pass one for a `<zx-graph>` or `<zx-hypergraph>` story, or when a
+ *  story renders more than one element, which is how the error stories avoid a
+ *  Chromatic snapshot each.
  *
- *  Both public elements are waited for rather than whichever the selector
- *  names, since a selector is often an id and says nothing about the tag. */
+ *  Every public element is waited for rather than whichever the selector names,
+ *  since a selector is often an id and says nothing about the tag. */
 export async function shadowRootOf(
   canvasElement: HTMLElement,
   selector = 'zx-diagram',
-): Promise<ShadowRoot> {
+): Promise<ViewRoot> {
   await Promise.all([
     customElements.whenDefined('zx-diagram'),
+    customElements.whenDefined('zx-graph'),
     customElements.whenDefined('zx-hypergraph'),
   ])
   const el = canvasElement.querySelector<HTMLElement>(selector)
   if (!el) throw new Error(`${selector} not found`)
-  if (!el.shadowRoot) throw new Error(`${selector} has no shadow root`)
-  return el.shadowRoot
+  const root = el.shadowRoot
+  if (!root) throw new Error(`${selector} has no shadow root`)
+  // Awaited so the views are mounted and have rendered before anything is
+  // looked for: `<zx-diagram>` reports complete only once every element below
+  // it has, which is what puts their SVG in the DOM.
+  await (el as HTMLElement & { updateComplete?: Promise<unknown> }).updateComplete
+  const views = [...root.querySelectorAll<HTMLElement>('zx-graph, zx-hypergraph')]
+  return spanning([root, ...views.map(v => v.shadowRoot).filter(r => r !== null)])
 }
 
 export async function waitForNode(
-  root: ShadowRoot,
+  root: ViewRoot,
   shape: 'circle' | 'rect',
   fill: string,
 ): Promise<SVGGElement> {
@@ -49,7 +88,7 @@ export async function waitForNode(
 
 /** All node <g>s carrying `shape[fill]`, in document (i.e. node-id) order. */
 export async function waitForNodes(
-  root: ShadowRoot,
+  root: ViewRoot,
   shape: 'circle' | 'rect',
   fill: string,
   count: number,
@@ -64,14 +103,14 @@ export async function waitForNodes(
 }
 
 /** The `d` of every path in a layer group, in document order. */
-export function pathDataIn(root: ShadowRoot, layer: 'link' | 'web'): string[] {
+export function pathDataIn(root: ViewRoot, layer: 'link' | 'web'): string[] {
   return [...root.querySelectorAll<SVGPathElement>(`svg g.${layer} path`)].map(
     p => p.getAttribute('d') ?? '',
   )
 }
 
 /** The `stroke` of every path in a layer group, in document order. */
-export function strokesIn(root: ShadowRoot, layer: 'link' | 'web'): string[] {
+export function strokesIn(root: ViewRoot, layer: 'link' | 'web'): string[] {
   return [...root.querySelectorAll<SVGPathElement>(`svg g.${layer} path`)].map(
     p => p.getAttribute('stroke') ?? '',
   )
@@ -82,7 +121,7 @@ export function strokesIn(root: ShadowRoot, layer: 'link' | 'web'): string[] {
  *  the path's `style`. Pass `'named'` for the ones the selection names outright
  *  (drawn solid) or `'implied'` for the ones derived from it (drawn dashed);
  *  with no argument, both. */
-export function selectedBlobsIn(root: ShadowRoot, pick?: 'named' | 'implied'): string[] {
+export function selectedBlobsIn(root: ViewRoot, pick?: 'named' | 'implied'): string[] {
   return [...root.querySelectorAll<SVGGElement>('svg g.blob g[data-hyperedge]')]
     .filter(g => {
       const path = g.querySelector('path')
@@ -95,14 +134,14 @@ export function selectedBlobsIn(root: ShadowRoot, pick?: 'named' | 'implied'): s
 
 /** Ids of the hyperedge blobs drawn, in document order — every blob, picked out
  *  or not. Paint order is depth order, so this is not node-id order. */
-export function blobIdsIn(root: ParentNode): string[] {
+export function blobIdsIn(root: ViewRoot): string[] {
   return [...root.querySelectorAll('svg g.blob g[data-hyperedge]')].map(
     g => g.getAttribute('data-hyperedge') ?? '',
   )
 }
 
 /** Ids of the wires drawn as dots, in document order. */
-export function dotIdsIn(root: ParentNode): string[] {
+export function dotIdsIn(root: ViewRoot): string[] {
   return [...root.querySelectorAll('svg g.dot g[data-wire]')].map(
     g => g.getAttribute('data-wire') ?? '',
   )
@@ -112,7 +151,7 @@ export function dotIdsIn(root: ParentNode): string[] {
  *  `<zx-viewer>` marks one with the same blue stroke the hypergraph view uses,
  *  set in the shape's `style`. Scoped to the painter, since in `both` mode the
  *  two views are in one tree. */
-export function selectedNodesIn(root: ShadowRoot): number[] {
+export function selectedNodesIn(root: ViewRoot): number[] {
   return [...root.querySelectorAll<SVGGElement>('zx-viewer g.node g[data-node]')]
     .filter(g =>
       [...g.querySelectorAll('circle, rect, path')].some(shape =>
@@ -126,7 +165,7 @@ export function selectedNodesIn(root: ShadowRoot): number[] {
  *  keeps its own colour and is cased in blue instead, so the marker is a path
  *  in `g.casing` rather than anything about the wire — it carries `data-link`,
  *  the edge's index in `diagram.edges`. */
-export function selectedLinksIn(root: ShadowRoot): number[] {
+export function selectedLinksIn(root: ViewRoot): number[] {
   return [...root.querySelectorAll<SVGPathElement>('zx-viewer g.casing path[data-link]')].map(
     path => Number(path.getAttribute('data-link')),
   )
@@ -135,7 +174,7 @@ export function selectedLinksIn(root: ShadowRoot): number[] {
 /** Ids of the wires whose dots are ringed, in document order. `'named'` is the
  *  dot the selection names — the one pressed, ringed solid — and `'implied'`
  *  the ones that follow from it, ringed dashed; with no argument, both. */
-export function ringedDotsIn(root: ShadowRoot, pick?: 'named' | 'implied'): string[] {
+export function ringedDotsIn(root: ViewRoot, pick?: 'named' | 'implied'): string[] {
   const selector =
     pick === undefined
       ? 'circle.selected'
@@ -149,7 +188,7 @@ export function ringedDotsIn(root: ShadowRoot, pick?: 'named' | 'implied'): stri
 
 /** Each blob's caption, split into its `<tspan>` pieces — `Z(`, the phase, `)`
  *  — so an assertion can tell the grey name from the blue phase. */
-export function blobCaptionsIn(root: ParentNode): (string | null)[][] {
+export function blobCaptionsIn(root: ViewRoot): (string | null)[][] {
   return [...root.querySelectorAll('svg g.blob text')].map(t =>
     [...t.querySelectorAll('tspan')].map(s => s.textContent),
   )
@@ -158,7 +197,7 @@ export function blobCaptionsIn(root: ParentNode): (string | null)[][] {
 /** The `fill` of every circular or rectangular node shape — spiders,
  *  boundaries and W-inputs (circles), H-boxes and Z-boxes (rects). Pass a
  *  shape to narrow to one of the two. */
-export function nodeFillsIn(root: ShadowRoot, shape?: 'circle' | 'rect'): string[] {
+export function nodeFillsIn(root: ViewRoot, shape?: 'circle' | 'rect'): string[] {
   const selector = shape ? `svg g.node ${shape}` : 'svg g.node circle, svg g.node rect'
   return [...root.querySelectorAll<SVGElement>(selector)].map(el => el.getAttribute('fill') ?? '')
 }
