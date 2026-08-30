@@ -31,7 +31,7 @@ const meta: Meta<Args> = {
     docs: {
       description: {
         component:
-          '`<zx-hypergraph>` draws a hypergraph given directly, rather than one derived from a ZX diagram. The input is the dots and which grid square each one goes in, plus which of them each blob holds — nothing is worked out, so the drawing is exactly what was asked for. Everything downstream is the same as in the derived view: the same painter, the same palette, the same presses. `scale` is the one number the input does not carry: a column is two `scale`s wide, so it sets how far apart the dots are drawn as well as how big one is.',
+          '`<zx-hypergraph>` draws a hypergraph given directly, rather than one derived from a ZX diagram. The input is the dots and where each one goes, plus which of them each blob holds — nothing is worked out, so the drawing is exactly what was asked for. Everything downstream is the same as in the derived view: the same painter, the same palette, the same presses. A dot goes either in a grid square (`col`/`qubit`) or at a pixel (`x`/`y`); on the grid, `scale` sets how far apart the dots are drawn as well as how big one is, and in pixels it sizes the marks alone.',
       },
     },
   },
@@ -230,5 +230,80 @@ export const Scaling: Story = {
 
     expect(await step('small')).toBe(40)
     expect(await step('large')).toBe(100)
+  },
+}
+
+/** The same three dots placed in pixels rather than on the grid. This is the
+ *  form `<zx-diagram>` hands its dual over in — every position there is pinned
+ *  to the diagram the dual came from, and a grid would have nowhere to put
+ *  them — and it is available here for a drawing whose spacing is a fact about
+ *  the picture rather than a multiple of anything. */
+const chainInPixels: HypergraphInput = {
+  wires: [
+    { x: 60, y: 60 },
+    { x: 140, y: 60 },
+    { x: 220, y: 60 },
+  ],
+  hyperedges: chain.hyperedges,
+}
+
+export const PixelPlacement: Story = {
+  name: '4. Placed in pixels',
+  parameters: {
+    docs: {
+      story: {
+        description:
+          'The same chain with `x`/`y` instead of `col`/`qubit`, drawn at `scale=20` and `scale=50`. Pixel coordinates are used as they stand, so the two pictures put their dots in the same three places and only the marks differ — `scale` still sets how big a dot is and how far a blob stands off one, which is why the outlines on the right are the looser pair. Compare with `3. One grid, two scales`, where the same two numbers move the dots as well. A wire is placed one way or the other; an input mixing the two has two origins and is refused.',
+      },
+    },
+  },
+  args: { hypergraph: chainInPixels },
+  render: ({ hypergraph, showLabels, colorScheme }) =>
+    html`<div style="display: flex; gap: 16px; align-items: flex-start">
+      <zx-hypergraph
+        id="fine"
+        .hypergraph=${hypergraph}
+        ?show-labels=${showLabels}
+        scale="20"
+        color-scheme=${colorScheme}
+      ></zx-hypergraph>
+      <zx-hypergraph
+        id="heavy"
+        .hypergraph=${hypergraph}
+        ?show-labels=${showLabels}
+        scale="50"
+        color-scheme=${colorScheme}
+      ></zx-hypergraph>
+    </div>`,
+  play: async ({ canvasElement }) => {
+    const drawn = async (id: string) => {
+      const root = await shadowRootOf(canvasElement, `#${id}`)
+      const dots = await waitFor(() => {
+        const found = [...root.querySelectorAll<SVGGElement>('svg g.dot > g[data-wire]')]
+        if (found.length !== 3) throw new Error(`#${id} has ${found.length} dots, expected 3`)
+        return found
+      })
+      return {
+        at: dots.map(translateOf),
+        radius: Number(dots[0].querySelector('circle')?.getAttribute('r')),
+      }
+    }
+
+    const fine = await drawn('fine')
+    const heavy = await drawn('heavy')
+
+    // The coordinates given, verbatim and at either scale: no origin is
+    // subtracted and no padding is added, which is what "in pixels" means.
+    const given = [
+      [60, 60],
+      [140, 60],
+      [220, 60],
+    ]
+    expect(fine.at).toEqual(given)
+    expect(heavy.at).toEqual(given)
+
+    // What `scale` is still for: the weight of a mark. A dot is 0.12 of it.
+    expect(fine.radius).toBeCloseTo(2.4, 5)
+    expect(heavy.radius).toBeCloseTo(6, 5)
   },
 }

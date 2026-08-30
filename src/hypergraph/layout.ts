@@ -1,7 +1,13 @@
 // Pixel-space layout for the hypergraph view — the stage that turns the
 // `Scene` both views are built on into the dual picture:
 //
-//   Scene --layoutHypergraph()--> HypergraphScene --<zx-hypergraph-viewer>--> SVG
+//   Scene --layoutHypergraph()--> HypergraphInput --hypergraphScene()--> …
+//
+// It stops at the *input*, not at the scene: a pixel-positioned
+// `HypergraphInput` is the public way of saying "these dots, exactly here", so
+// what comes out of here is the same thing a caller could have written by hand
+// and goes through the same builder and the same checks. That is what lets
+// `<zx-diagram>` mount a `<zx-hypergraph>` for its dual rather than a painter.
 //
 // Positions come from that scene rather than from the hypergraph itself: a
 // wire's dot sits at the midpoint of the edge it came from, so the two views
@@ -18,7 +24,7 @@ import { Topology } from '../topology'
 import type { DiagramData, Scene } from '../types'
 import { toHypergraph } from './convert'
 import { wireCurve } from './geometry'
-import type { HypergraphBlob, HypergraphDot, HypergraphScene } from './types'
+import type { HypergraphInput, HypergraphInputHyperedge, HypergraphInputPixelWire } from './types'
 
 /** Blob standoff and dot radius, as fractions of the ZX layout's scale — the
  *  *unzoomed* one, so both shrink relative to the spacing as `ZOOM` grows. */
@@ -47,17 +53,17 @@ const TIE_GAP = 3
 const T_MIN = 0.25
 const T_MAX = 0.75
 
-/** Dot radius and blob standoff for a given scale. Both hypergraph scenes are
- *  measured through this — the one derived from a diagram's layout and the one
- *  written out by hand (`./manual.ts`) — so a hand-written drawing comes out at
- *  the same weights as a derived one at the same scale. */
+/** Dot radius and blob standoff for a given scale. Every hypergraph is measured
+ *  through this — `./scene.ts` for the drawing itself, and this file for the
+ *  spread step and the canvas — so a hand-written drawing comes out at the same
+ *  weights as a derived one at the same scale. */
 export function sceneMetrics(scale: number): { dotSize: number; blobRadius: number } {
   return { dotSize: Math.max(DOT_RADIUS * scale, 2), blobRadius: BLOB_RADIUS * scale }
 }
 
-/** A dot, and the curve it is free to slide along. */
+/** A wire's dot, and the curve it is free to slide along. */
 interface Rider {
-  dot: HypergraphDot
+  wire: HypergraphInputPixelWire
   curve: Curve
   t: number
 }
@@ -158,6 +164,10 @@ export interface HypergraphLayoutOptions {
  * result of `layout(diagram)`, which the caller supplies so that both views
  * are drawn from one and the same layout.
  *
+ * The result is a pixel-positioned `HypergraphInput`, carrying its own canvas:
+ * everything about where the drawing goes is decided here, and
+ * `hypergraphScene` only measures the weights and checks it over.
+ *
  * Throws by way of `toHypergraph` on a node that has no blob shape — spiders,
  * Hadamards and boundaries have one — so everything from here on has a shape
  * and a colour to be drawn with.
@@ -166,7 +176,7 @@ export function layoutHypergraph(
   diagram: DiagramData,
   scene: Scene,
   { boundaryBlobs }: HypergraphLayoutOptions,
-): HypergraphScene {
+): HypergraphInput {
   const hg = toHypergraph(diagram, scene)
 
   // H-boxes carry no grid position, so their pixel positions are the ones the
@@ -193,24 +203,21 @@ export function layoutHypergraph(
   // `hg.wires` and `scene.links` are both built from `diagram.edges` in order,
   // so wire i and link i are the same edge.
   const riders: Rider[] = []
+  // Where each surviving wire ended up in the emitted list, by its hypergraph
+  // id: a wire whose link has no curve is dropped, so the two can diverge and a
+  // hyperedge's wire indices have to be looked up rather than assumed.
+  const index = new Map<string, number>()
   hg.wires.forEach((wire, i) => {
     const link = scene.links[i]
     const curve = link ? wireCurve(link, pos) : null
     if (!curve) return
+    index.set(wire.id, riders.length)
     riders.push({
       curve,
       t: 0.5,
-      dot: {
-        id: wire.id,
-        x: 0,
-        y: 0,
-        kind: wire.kind,
-        // The dot's own edge index, rather than its position in `dots`: a wire
-        // whose link has no curve is dropped, so the two can diverge.
-        edge: i,
-        src: wire.src,
-        tgt: wire.tgt,
-      },
+      // `id` is the wire's own edge index, which is what a selection names it
+      // by — the language `<zx-viewer>` reads the same selection in.
+      wire: { x: 0, y: 0, kind: wire.kind, id: i },
     })
   })
 
@@ -218,25 +225,24 @@ export function layoutHypergraph(
 
   spreadCoincident(riders, TIE_GAP * dotSize, at)
 
-  const dots: HypergraphDot[] = riders.map(rider => {
+  const wires: HypergraphInputPixelWire[] = riders.map(rider => {
     const p = at(rider)
-    rider.dot.x = p.x
-    rider.dot.y = p.y
-    return rider.dot
+    rider.wire.x = p.x
+    rider.wire.y = p.y
+    return rider.wire
   })
 
-  const placed = new Set(dots.map(d => d.id))
-  const blobs: HypergraphBlob[] = hg.hyperedges
+  const hyperedges: HypergraphInputHyperedge[] = hg.hyperedges
     .filter(e => boundaryBlobs || e.kind !== 'boundary') // Optionally filter out boundary blobs
     .map(e => ({
-      id: e.id,
-      nodeId: e.nodeId,
+      kind: e.kind,
       name: e.name,
       phase: e.phase,
-      kind: e.kind,
-      dots: [...new Set(e.wires)].filter(w => placed.has(w)),
+      // The ZX node id, which is what a selection names the blob by.
+      id: e.nodeId,
+      wires: [...new Set(e.wires)].map(w => index.get(w)).filter(i => i !== undefined),
     }))
-    .filter(b => b.dots.length > 0)
+    .filter(e => e.wires.length > 0)
 
   // The canvas starts as the scene's own, zoomed — but only the drawing is
   // zoomed. `layout()` reserves a strip of a fixed number of pixels under the
@@ -247,6 +253,11 @@ export function layoutHypergraph(
   //
   // The dual paints no scalar. It keeps the strip anyway, both so the two
   // views are the same size and because the trespass tally is written in it.
+  //
+  // It is measured here rather than left to `hypergraphScene` for the same
+  // reason the positions are: the point of the dual is that it lines up with
+  // the diagram it came from, and a canvas measured around the dots would be
+  // whatever size the dots happened to need.
   const scalarStrip = scene.height - scene.diagramHeight
   let minX = 0
   let minY = 0
@@ -256,28 +267,20 @@ export function layoutHypergraph(
   // self-loop's dot is the exception — it rides above its node — so grow the
   // canvas to whatever the blobs actually need.
   let maxY = scene.diagramHeight * ZOOM + scalarStrip
-  for (const d of dots) {
-    minX = Math.min(minX, d.x - blobRadius)
-    minY = Math.min(minY, d.y - blobRadius)
-    maxX = Math.max(maxX, d.x + blobRadius)
-    maxY = Math.max(maxY, d.y + blobRadius)
+  for (const w of wires) {
+    minX = Math.min(minX, w.x - blobRadius)
+    minY = Math.min(minY, w.y - blobRadius)
+    maxX = Math.max(maxX, w.x + blobRadius)
+    maxY = Math.max(maxY, w.y + blobRadius)
   }
   const shiftX = -Math.min(0, minX)
   const shiftY = -Math.min(0, minY)
   if (shiftX !== 0 || shiftY !== 0) {
-    for (const d of dots) {
-      d.x += shiftX
-      d.y += shiftY
+    for (const w of wires) {
+      w.x += shiftX
+      w.y += shiftY
     }
   }
 
-  return {
-    dots,
-    blobs,
-    width: maxX + shiftX,
-    height: maxY + shiftY,
-    scale,
-    dotSize,
-    blobRadius,
-  }
+  return { wires, hyperedges, width: maxX + shiftX, height: maxY + shiftY }
 }

@@ -95,7 +95,7 @@ _Some can be set as attributes in HTML, some must be set with JS on the element,
 | `show-labels` | `showLabels` | `false` | Draw node/wire IDs |
 | `color-scheme` | `colorScheme` | `original` | `original` / `rgb` / `grayscale` |
 | `scale` | `scale` | derived | Pixels per row/qubit |
-| `view-mode` | `viewMode` | `graph` | `graph` / `hypergraph` / `both-vertical` / `both-horizontal` - see [Hypergraph view](#hypergraph-view). |
+| `view-mode` | `viewMode` | `graph` | `graph` / `hypergraph` / `both-vertical` / `both-horizontal` - see [Hypergraph view](#hypergraph-view). `<zx-diagram>` only. |
 | `disable-io-blobs-in-hypergraph` | `disableIOBlobsInHypergraph` | `false` | Leave out the single-dot blob around each input/output in the hypergraph view. |
 | — | `colors` | `null` | Full palette override (`Record<string, string>`), overrides `color-scheme`. |
 | — | `edgeColors` | `null` | Define custom wire 'kinds', to display wires in custom colours, overrides both of the above for the kinds named. |
@@ -173,14 +173,38 @@ in this view, and a dot near one no longer counts as trespassing into it.
 You can also have both the graph & hypergraph views, by setting the `view-mode` to `both-vertical` or `both-horizontal`.
 Selections will be synced across the two viewers.
 
+## The three elements
+
+`<zx-diagram>` is the element to reach for when you have a ZX diagram, and it is built out of two
+others that you can use directly:
+
+| Element | Takes | Draws |
+| --- | --- | --- |
+| `<zx-graph>` | `diagram` (a `DiagramData`) | the ZX diagram |
+| `<zx-hypergraph>` | `hypergraph` (a `HypergraphInput`) | the hypergraph |
+| `<zx-diagram>` | `diagram` (a `DiagramData`) | mounts one or both of the above, per `view-mode` |
+
+They all take the presentation properties above, and all announce a `zx-selection` event carrying
+what a gesture picked out — ZX node ids and edge indices — which you can also write back onto the
+element's `selection` property to pick something out yourself. `<zx-diagram>` does exactly that
+between its two children, which is how the pair stays in step.
+
+```js
+document.getElementById('g').addEventListener('zx-selection', e => {
+  console.log([...e.detail.nodes], [...e.detail.edges])
+})
+```
+
+Use `<zx-graph>` when the picture you want is the diagram and only the diagram — it has no
+`view-mode` and knows nothing about the dual. Use `<zx-diagram>` when you want the dual, or the
+pair: deriving the one from the other is the thing it does that neither of the others can.
+
 ## Drawing a hypergraph directly
 
 `<zx-diagram>` derives its hypergraph from a diagram, which puts every dot on the midpoint of the
 wire it stands for — that is what makes the two views line up, and it is also the only arrangement
-it will produce. `<zx-hypergraph>` is the other way in: you give it the hypergraph itself, dots and
-positions included, and it draws exactly that. There is no ZX diagram behind it and nothing is
-worked out — the positions are grid coordinates, and all the element does with them is scale the
-grid to pixels.
+it will produce. Handing `<zx-hypergraph>` a hypergraph yourself is the other way in: you say what
+the hypergraph is and where every dot goes, and it draws exactly that. Nothing is worked out.
 
 ```html
 <zx-hypergraph id="h" show-labels></zx-hypergraph>
@@ -211,22 +235,44 @@ when `show-labels` is on and defaults to the letter for its kind (`Z`, `X`, `H`)
 default, since which end of the diagram it is isn't something a hypergraph knows. `phase` is
 pre-formatted and drawn whether labels are on or off.
 
-**Every wire must be held by exactly two hyperedge ends** — the two ZX nodes its edge would run
-between, or the same hyperedge listed twice for a self-loop, or a spider and a boundary for a leg
-hanging out of the diagram. This is what a dot's two ends are read from when you select one, so a
-wire held by one or by three is an error naming the wire rather than a drawing.
+**Every wire must be held by one or two hyperedge ends.** Two is the ordinary case — the two ZX
+nodes its edge would run between, or the same hyperedge listed twice for a self-loop, or a spider
+and a boundary for a leg hanging out of the diagram. One is what you get by leaving out a hyperedge
+you don't want drawn, which is how you'd drop the boundary circles. Three is an error naming the
+wire rather than a drawing: a dot's two ends are read from the hyperedges holding it when you select
+one, so a third has nowhere to go.
 
-`col` and `qubit` are grid coordinates, not pixels: the same column/qubit grid `<zx-diagram>` lays
-a diagram out on, drawn two `scale`s to the square — a blob's outline stands off every dot it holds,
-so the dual needs more room than the diagram would. They may be negative or fractional — the grid is
-read relative to its own lowest column and qubit, so a dot goes wherever you want it — and the
-canvas is measured around the result, with room left for the captions above and the wire ids below.
+Each wire and hyperedge may carry an `id`, which is the number a selection names it by — so a
+`zx-selection` event can hand you back your own identifiers rather than positions in a list. Left
+out, it defaults to the position in the list, and ids must be distinct.
+
+### Where the dots go
+
+A wire is placed either on the **grid** (`col` and `qubit`) or in **pixels** (`x` and `y`), never
+both and never neither, and every wire in one input has to use the same pair.
+
+`col` and `qubit` are the same column/qubit grid `<zx-diagram>` lays a diagram out on, drawn two
+`scale`s to the square — a blob's outline stands off every dot it holds, so the dual needs more room
+than the diagram would. They may be negative or fractional: the grid is read relative to its own
+lowest column and qubit, so a dot goes wherever you want it.
+
+`x` and `y` are used exactly as given — nothing is subtracted and no padding is added — for a
+drawing whose spacing is a fact about the picture rather than a multiple of anything. You can give
+the canvas as `width` and `height` alongside them; without it, one is measured around the dots.
+
+Either way the canvas leaves room for the captions above and the wire ids below.
+
+### Presentation
 
 The element takes the same presentation properties as `<zx-diagram>` — `show-labels`,
 `color-scheme`, `colors`, `edgeColors` and `scale` — and behaves the same way under a press or a
-drag. `scale` is the unit the grid is drawn at, so it sizes the whole drawing: the dots move apart
-with it, as well as growing. It defaults to `35` — the middle of the 20–50 band a derived scale is
-clamped to — and there is no `view-mode`: a hypergraph has only the one picture.
+drag. There is no `view-mode`: a hypergraph has only the one picture.
+
+`scale` sets how big a dot is drawn and how far a blob's outline stands off the dots it holds. On
+the grid it also sets how far apart the dots are, so the whole drawing grows and shrinks with it.
+**In pixels the positions are already fixed, so `scale` changes the weight of the marks alone** —
+raising it grows the dots without moving them. It defaults to `35`, the middle of the 20–50 band a
+derived scale is clamped to.
 
 ## Exported constants
 

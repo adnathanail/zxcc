@@ -15,18 +15,24 @@ If that sort of design decision context is important, put it in CLAUDE.md
 ## Layout of `src/`
 
 ```
-DiagramData  --layout()-->  Scene  --<zx-viewer>-->            SVG   (graph)
-                            Scene  --layoutHypergraph()-->  HypergraphScene
-                                   --<zx-hypergraph-viewer>-->  SVG   (hypergraph)
+DiagramData  --layout()-->  Scene  --<zx-viewer>-->  SVG  (graph)
 
-HypergraphInput  --manualScene()-->  HypergraphScene
-                                   --<zx-hypergraph-viewer>-->  SVG   (hypergraph)
+                            Scene  --layoutHypergraph()-->  HypergraphInput
+        HypergraphInput  --hypergraphScene()-->  HypergraphScene
+                                   --<zx-hypergraph-viewer>-->  SVG  (hypergraph)
 ```
 
-The second row is the same picture reached without a diagram: `<zx-hypergraph>`
-takes the hypergraph itself, dots and positions included, so `manualScene`
-measures a canvas around them rather than laying anything out. Both routes end
-in a `HypergraphScene`, which is why they share a painter.
+A `HypergraphInput` is the hypergraph *and where to draw it*, and there are two
+ways to one. A caller writes one out, putting every dot in a column/qubit grid
+square. `layoutHypergraph` derives one from a diagram and its `Scene`, in
+pixels, having taken every dot's position from the midpoint of the wire it
+stands for. Both then go through `hypergraphScene`, which checks the input and
+measures it — which is why the two share a painter, and also why `<zx-diagram>`
+can mount a `<zx-hypergraph>` for its dual rather than a painter directly.
+
+The split is at *positioning*, not at "who lays out": everything about where the
+dual goes is decided in `layoutHypergraph`, and `hypergraphScene` decides only
+the weights and, for a grid input, the spacing.
 
 `src/` has two subfolders, `graph/` and `hypergraph/`, one per way of drawing
 a diagram. **Two rules hold, and both are checkable:**
@@ -110,7 +116,7 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   *lookups* stay in `zxDiagram.ts` and `colors.ts`, since they are code the
   browser half calls and moving them would drag imports in.
 - `selection.ts` — `Selection`, what is picked out, and the `zx-selection`
-  event a painter announces one with. A selection is held in the *diagram's*
+  event a painter announces one with, and every host re-announces. A selection is held in the *diagram's*
   terms — ZX node ids and indices into `diagram.edges` — never in either
   painter's own, which is what lets the two views track each other: the same
   value means "spider 2" to one and "the blob standing for node 2" to the
@@ -121,18 +127,28 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
 - `viewerHost.ts` — `ZxViewerHost`, what a public element does *around* a
   painter: the presentation properties, the palette a scheme name resolves to,
   the error state, the selection, the attribution badge's measuring pass, and
-  the stylesheet the light-DOM painters are styled by. Both public elements
+  the stylesheet the light-DOM painters are styled by. All three public elements
   extend it and add only what belongs to their own input. It is in `src/`
   rather than in either subfolder because neither subfolder imports it — the
-  two elements do, and both of those are here as well.
-- `zxDiagram.ts` — `<zx-diagram>`, the public element for a ZX diagram, and the
-  only file that knows about both views.
-- `zxHypergraph.ts` — `<zx-hypergraph>`, the public element for a hypergraph
-  given directly. It sits beside `<zx-diagram>` rather than inside
-  `hypergraph/` for the same reason `layout()` is above the split: an element
-  is the layer over the painters, not one of them, and putting it in the
-  subfolder would leave `src/viewerHost.ts` imported by one subfolder only.
-- `index.ts` — package entry: the two elements, the palettes, and the input
+  elements do, and all of those are here as well.
+  `selection` is a `@property` rather than private state, and `onSelection`
+  stores what a child announced and then announces it again as this element's
+  own. Both are for the sake of nesting: `<zx-diagram>` writes the selection
+  onto its two children and hears their gestures back, which is the whole of
+  the linkage, and the re-dispatch makes `zx-selection` an event a consumer can
+  listen for on whichever element they put in the page.
+- `zxGraph.ts` — `<zx-graph>`, the public element for a ZX diagram drawn as
+  itself. `layout()` into `<zx-viewer>`, and nothing else; it does not know the
+  dual exists.
+- `zxHypergraph.ts` — `<zx-hypergraph>`, the public element for a hypergraph.
+  `hypergraphScene()` into `<zx-hypergraph-viewer>`, and nothing else. It sits
+  beside the others rather than inside `hypergraph/` for the same reason
+  `layout()` is above the split: an element is the layer over the painters, not
+  one of them, and putting it in the subfolder would leave `src/viewerHost.ts`
+  imported by one subfolder only.
+- `zxDiagram.ts` — `<zx-diagram>`, the element that takes a ZX diagram and
+  mounts the other two, and the only file that knows about both views.
+- `index.ts` — package entry: the three elements, the palettes, and the input
   types. `toHypergraph` is *not* exported: the dual is a way of drawing a
   diagram, not a data structure the package hands out, and keeping it internal
   is what lets it take a `Scene` (see `hypergraph/convert.ts`).
@@ -146,10 +162,18 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
 **`src/hypergraph/` — the dual: wires become dots, spiders become blobs**
 
 - `types.ts` — the dual's data contracts, `../types.ts`'s counterpart:
-  `HypergraphInput{,Wire,Hyperedge}` for the hypergraph a caller writes out,
+  `HypergraphInput{,Wire,Hyperedge}` for the hypergraph *and where to draw it*,
   `Hypergraph{Wire,Edge,Data}` for the conversion, `Hypergraph{Dot,Blob,Scene}`
   for the laid-out result. The first is public input the way `Diagram*` is; the
   other two are the package's own.
+  `HypergraphInputWire` is a union of a grid wire (`col`/`qubit`) and a pixel
+  one (`x`/`y`), each declaring the other pair `never` so the exclusivity holds
+  at compile time as well as being checked at runtime. A wire and a hyperedge
+  each carry an optional numeric `id`, which is *what a selection names it by* —
+  a ZX edge index and a ZX node id for a derived input, and the position in the
+  list when the caller says nothing. Defaulting to the position is what makes
+  the ids backwards-compatible and what makes a derived input state the
+  diagram's own terms without a translation step anywhere.
 - `convert.ts` — `toHypergraph`, turning a `DiagramData`, and the `Scene` it
   laid out to, into wires (one per ZX edge) and hyperedges (one per ZX node,
   boundaries included). A hyperedge carries
@@ -189,7 +213,9 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   it. `<zx-diagram disable-io-blobs-in-hypergraph>` drops them, for a
   diagram whose boundaries are many enough that a circle round every leg is
   more outline than information; that count is what it costs, which is why they
-  are on by default.
+  are on by default. It is answered in `layout.ts`, by leaving the boundary
+  hyperedges out of the input it emits, which is what leaves those wires held by
+  a single end.
 - `geometry.ts` — `wireCurve` (the curve a wire's dot rides), `blobHull` (the
   convex hull of a blob's dots), `hullPath` (the outline standing off that hull)
   and `hullContains` (the same shape as a hit test), plus
@@ -208,7 +234,11 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   pressed inside, cannot ring the dot it holds, and cannot have a neighbouring
   dot counted as trespassing into it. Skipping it in the viewer would have left
   all three answering about a shape that is not on screen.
-- `layout.ts` — `layoutHypergraph`. It zooms the resolved node positions by
+- `layout.ts` — `layoutHypergraph`, which produces a pixel-positioned
+  `HypergraphInput` carrying its own canvas rather than a scene. Stopping at the
+  input is what lets `<zx-diagram>` mount a `<zx-hypergraph>`: what comes out of
+  here is the same thing a caller could have written by hand, and goes through
+  the same builder and the same checks. It zooms the resolved node positions by
   `ZOOM` first — the dual has twice the marks at half the spacing, so it is
   drawn roomier — then builds each wire's curve from those and parks the dot at
   its midpoint, sliding it along the curve when two dots would land on one spot
@@ -223,36 +253,57 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   the bug was confined to loops. Nothing asserts this: to check it by hand, draw
   a diagram carrying a self-loop in a `both` mode and compare the dot's
   `translate` against `getPointAtLength(len / 2)` of the wire's path.
-- `manual.ts` — `manualScene`, the other way to a `HypergraphScene`: no
-  diagram, no layout, just the dots in the grid squares the caller put them in,
-  scaled to pixels and a canvas measured around them. The input is on the same
-  column/qubit grid `layout()` puts a diagram on, rather than in pixels, which
-  is what makes `scale` mean the same thing on this side as on the other: the
-  whole drawing grows with it, rather than the marks growing on a canvas that
-  stays put. The grid is read relative to its own lowest column and qubit, so
-  negative and fractional coordinates are positions like any other. A square is
-  `GRID_STEP` scales rather than one, because every mark in the dual carries a
-  blob's outline standing `blobRadius` off it and two dots a single scale apart
-  come out with their blobs all but touching — the same problem `ZOOM` answers
-  for a derived scene, where the spacing is spread and the blobs are left
-  alone. It shares `layout.ts`'s `sceneMetrics`, so a
-  hand-written drawing comes out at the same dot and blob weights as a derived
-  one at the same scale, and it reserves the strip at the bottom that the
-  derived scene inherits from the scalar's — a hand-written hypergraph has no
-  scalar, and the trespass tally is written there. The padding is one scale a
-  side, as `layout()` leaves, but floored at what is drawn outside the dots
-  themselves: a blob's standoff, plus the caption above it and the wire id
-  below. Those two are a font size rather than a fraction of the grid, so at a
-  small scale they are the larger of the pair — a derived scene gets the room
-  free from the ZX layout's deeper padding.
+- `scene.ts` — `hypergraphScene`, the one way to a `HypergraphScene` and where
+  every input is checked. It takes the dots wherever the input put them —
+  grid squares scaled to pixels, or pixels used verbatim — and measures the
+  weights and, unless the input gave one, a canvas.
 
-  This is also where the input is *checked*, and the one rule it enforces is
-  that every wire is held by exactly two hyperedge ends. That is not
-  fussiness: a `HypergraphDot`'s `src` and `tgt` are those two hyperedges — it
-  is how a press on a dot answers in the diagram's terms — so a wire held by
-  three has no answer to give, and one held by none has an end that is
-  nowhere. A hypergraph in general has no such rule; this package draws the
-  duals of ZX diagrams, and that is the difference written down.
+  The grid is the same column/qubit grid `layout()` puts a diagram on, rather
+  than pixels, which is what makes `scale` mean the same thing on this side as
+  on the other: the whole drawing grows with it, rather than the marks growing
+  on a canvas that stays put. The grid is read relative to its own lowest column
+  and qubit, so negative and fractional coordinates are positions like any
+  other. A square is `GRID_STEP` scales rather than one, because every mark in
+  the dual carries a blob's outline standing `blobRadius` off it and two dots a
+  single scale apart come out with their blobs all but touching — the same
+  problem `ZOOM` answers for a derived scene, where the spacing is spread and
+  the blobs are left alone.
+
+  A pixel-positioned input has had all of that decided for it already, so
+  nothing is subtracted and nothing is added: those coordinates *are* where the
+  dots go, and `scale` sets the weights alone. That is the wart in the property,
+  and it is the price of one builder — raising `scale` on a pixel input grows
+  the dots without moving them. A derived input is always in that form, because
+  its whole point is being pinned to the diagram it came from, and a canvas
+  measured around its dots would be whatever size they happened to need rather
+  than the ZX layout's own zoomed.
+
+  It shares `layout.ts`'s `sceneMetrics`, so a hand-written drawing comes out at
+  the same dot and blob weights as a derived one at the same scale. A measured
+  canvas reserves the strip at the bottom that a derived one inherits from the
+  scalar's — a hand-written hypergraph has no scalar, and the trespass tally is
+  written there. Its padding is one scale a side, as `layout()` leaves, but
+  floored at what is drawn outside the dots themselves: a blob's standoff, plus
+  the caption above it and the wire id below. Those two are a font size rather
+  than a fraction of the grid, so at a small scale they are the larger of the
+  pair — a derived scene gets the room free from the ZX layout's deeper padding.
+
+  The rules it enforces are three. Every wire is positioned one way or the
+  other, never both and never neither, and all of them the same way: the two are
+  measured from different origins, so a mixed input has no single drawing, and
+  half a coordinate would silently become the top-left. Every id is distinct,
+  since an id is what a selection names a mark by. And every wire is held by one
+  or two hyperedge ends. Two is the ordinary case; three has no meaning, because
+  a `HypergraphDot`'s `src` and `tgt` *are* those ends — it is how a press on a
+  dot answers in the diagram's terms — so a wire held by three has no answer to
+  give. One is legitimate and is what
+  `<zx-diagram disable-io-blobs-in-hypergraph>` produces: the hyperedge at the
+  wire's other end exists in the diagram but isn't being drawn. Such a dot
+  carries the one holder in both `src` and `tgt`, which is what a self-loop's
+  looks like too — nothing downstream tells them apart, and what does is the
+  drawing, and only when the boundary blobs are on. A hypergraph in general has
+  none of these rules; this package draws the duals of ZX diagrams, and that is
+  the difference written down.
 - `viewer.ts` — `<zx-hypergraph-viewer>`, the second painter. Internal and
   light DOM. One piece of interaction state of its own, a plain field paired
   with an explicit `requestUpdate()` — the dragged dot positions — plus the
@@ -328,36 +379,50 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
 
 ## The elements
 
-There are two public elements, one per way of saying what to draw:
-`<zx-diagram>` takes a ZX diagram, `<zx-hypergraph>` takes a hypergraph. What
-they share is `ZxViewerHost` (`viewerHost.ts`) — the presentation properties,
-the palette, the error state and its Retry, the selection, the attribution
-measuring pass, and the stylesheet the light-DOM painters need — and what they
-add is the part that belongs to their own input. A host is defined by two
-things: `painted`, the views it has and the painter tag for each, and
+There are three public elements. `<zx-graph>` draws a ZX diagram, and
+`<zx-hypergraph>` draws a hypergraph; each takes one input, builds one thing,
+and mounts one painter. `<zx-diagram>` takes a ZX diagram and mounts one or both
+of the others.
+
+What all three share is `ZxViewerHost` (`viewerHost.ts`) — the presentation
+properties, the palette, the error state and its Retry, the selection, the
+attribution measuring pass, and the stylesheet the light-DOM painters need — and
+what they add is the part that belongs to their own input. A host is defined by
+two things: `painted`, the views it has and the painter tag for each, and
 `relayout()`, how it builds them again.
 
-`<zx-diagram>` runs `layout()` in `willUpdate()` into `@state` (`scene` /
-`hypergraph` / `error`), then renders a painter per non-null state, each inside
-its own scroll container — `<zx-viewer>` and/or `<zx-hypergraph-viewer>`.
-`view-mode` picks which: `graph` (the default), `hypergraph`, or both — the
-diagram above its dual (`both-vertical`) or to the left of it
-(`both-horizontal`). The two `both` modes differ in one thing only, the
-`flex-direction` of the box holding the two containers; everything laid out or
-painted is the same, which is why the code asks `isBoth(viewMode)` almost
-everywhere and reads the mode itself only in `render()`. Side by side the pair
-splits the width evenly (`flex: 1 1 0`) rather than sizing to the drawings, so a
-wide picture scrolls in its half instead of crowding the other out. A `both`
-mode is the only one that builds two views, and
-is the one place `layout()` runs twice: the hypergraph is derived from the
-scene at the diagram's own scale, and the graph is then laid out *again* at
-`scale * ZOOM` — the hypergraph's zoom, exported from `hypergraph/layout.ts`
-for exactly this. Every pixel position `layout()` produces is proportional to
+`<zx-graph>` runs `layout()` in `willUpdate()` into one `@state` scene and
+renders `<zx-viewer>` inside its scroll container. `<zx-hypergraph>` is the same
+shape with `hypergraphScene(hypergraph, scale)` and
+`<zx-hypergraph-viewer>`; its `scale` defaults to 35, the middle of the 20–50
+band `layout()` clamps a derived scale to, because a hand-written hypergraph has
+no diagram extent to derive one from.
+
+`<zx-diagram>` builds nothing to paint itself — its `painted` is empty and it
+mounts no painter. What it does instead is the part neither of the others can:
+derive the one picture from the other. `view-mode` picks which it mounts:
+`graph` (the default), `hypergraph`, or both — the diagram above its dual
+(`both-vertical`) or to the left of it (`both-horizontal`). The two `both` modes
+differ in one thing only, the `flex-direction` of the box holding the pair;
+everything laid out or painted is the same, which is why the code asks
+`isBoth(viewMode)` almost everywhere and reads the mode itself only in
+`render()`. Side by side the pair splits the width evenly (`flex: 1 1 0`) rather
+than sizing to the drawings, so a wide picture scrolls in its half instead of
+crowding the other out — the rule is on the child *elements*, each of which
+brings its own scroll container.
+
+A `both` mode is the only one that mounts two views, and is the one place
+`layout()` runs twice: `<zx-diagram>` runs it once at the diagram's own scale to
+derive the hypergraph from, and the `<zx-graph>` it mounts runs it again at
+`scale * ZOOM` — the hypergraph's zoom, exported from `hypergraph/layout.ts` for
+exactly this. Every pixel position `layout()` produces is proportional to
 `scale`, so that second layout brings the pair out the same size and puts each
 dot on the same coordinates as the midpoint of the wire it stands for — under
 that wire when the pair is stacked, level with it when it is side by side. The
 alternative — scaling the painted SVG to fit — would have blown the 12px labels
-up with it.
+up with it. In `graph` mode `<zx-diagram>` runs no layout at all; the child does
+the one that is needed. So the count is the same as it ever was: one in `graph`,
+one in `hypergraph`, two in `both`.
 
 The one thing `layout()` produces that is *not* proportional to `scale` is the
 strip it reserves under the drawing for the scalar, which is a fixed number of
@@ -369,58 +434,65 @@ scalar. The dual paints no scalar and keeps the strip regardless — the pair
 being the same size is the point of the mode, and the trespass tally is written
 in that strip.
 
-A drag stays each view's own — pulling a dot about reshapes blobs
-here and nothing there — but the **selection is shared**: `<zx-diagram>` holds
-it (`@state selection`, cleared on every relayout), passes it to both painters,
-and takes a new one from whichever painter announces `zx-selection`. That is the
-whole of the linkage; the mapping between the two pictures is each painter's own
-reading of the same node ids and edge indices, not a translation step in the
-host. An unrecognised `view-mode` is an
-error and goes to the error state, named in the message alongside the four modes
-there are — unlike an unrecognised `color-scheme`, which falls back to the
+A drag stays each view's own — pulling a dot about reshapes blobs here and
+nothing there — but the **selection is shared**: `<zx-diagram>` holds it
+(cleared on every relayout), writes it onto both children, and takes a new one
+from whichever child announces `zx-selection`. A host stores what its painter
+announced and announces it again as its own, which is what carries a gesture up
+through the nesting — and also makes `zx-selection` an event a consumer can
+listen for on whichever element they put in the page. That is the whole of the
+linkage; the mapping between the two pictures is each painter's own reading of
+the same node ids and edge indices, not a translation step in any host.
+
+**Errors are reported by whichever element worked the thing out.** An
+unrecognised `view-mode`, a diagram the dual can't be built from, and the
+derivation itself are `<zx-diagram>`'s; the diagram's own layout belongs to the
+`<zx-graph>` it mounts, and a hypergraph input that doesn't check out belongs to
+the `<zx-hypergraph>`. Either way it is the same grey `<pre>` and Retry in the
+same place on the page, which is the point of the three sharing a host, and in a
+`both` mode it says which of the pair failed. An unrecognised `view-mode` is an
+error at all — unlike an unrecognised `color-scheme`, which falls back to the
 original. The asymmetry is deliberate: a scheme has an obvious thing to fall
 back *to* and the picture is still the right picture in the wrong colours,
 whereas picking one of four modes on the author's behalf means guessing which
 drawing they meant, and a typo that quietly drew something else is only found by
 noticing the picture is wrong. `VIEW_MODES` is the array both the check and the
 `ViewMode` type derive from, so the two cannot drift.
-It owns the presentation properties that mirror
-pyzx's `draw_d3` keyword arguments (`show-labels`, `color-scheme`, `scale`,
-`colors`) plus `edgeColors` and `disable-io-blobs-in-hypergraph`, which have no
-pyzx counterpart. That last one is named for what it turns *off*, against the
-grain of every other property here, because Lit's `Boolean` converter reads a
-present attribute as true and an absent one as false: a default-on `show-…`
-would have no way to say "off" in markup and would need a converter of its own,
-where a default-off `disable-…` is a bare attribute. The layout option behind
-it stays positive (`boundaryBlobs`), so the negation happens once, at the point
-the two meet. Changing it relayouts, since the flag is answered when the blobs
-are built; resolves a scheme
-name to a palette and hands both it and the wire-kind map to each painter; and
-passes the attribution
-badge down as each painter's `overlay` — one per view, placed against that
-view's own pixel bounds, since the badge is drawn inside the SVG so that it
-travels with the picture and each of a pair is copied on its own. It
-carries the stylesheet for the whole
-shadow tree, the painters' SVG included.
 
-`<zx-hypergraph>` is the same shape with almost nothing in it: one `@state`
-scene, built by `manualScene(hypergraph, scale)` rather than by a layout, and
-one painter. It has no `view-mode` — a hypergraph is one picture — and its
-`scale` does the same job it does over there, the unit a grid square is two of,
-since the input arrives on a grid rather than in pixels; it defaults to 35, the
-middle of the 20–50 band `layout()` clamps a derived scale to, because there is
-no diagram extent to derive one from. Everything else a caller touches is the host's and so is
-identical across the two, bar one: `disable-io-blobs-in-hypergraph` has no
-counterpart here, and a hand-written hypergraph cannot say the same thing
-another way — dropping a boundary hyperedge leaves its wire with one end, which
-`manualScene` rejects. Wanting it on this side means a flag of its own.
+`<zx-diagram>` owns the presentation properties that mirror pyzx's `draw_d3`
+keyword arguments (`show-labels`, `color-scheme`, `scale`, `colors`) plus
+`edgeColors` and `disable-io-blobs-in-hypergraph`, which have no pyzx
+counterpart, and passes them down — the palette already resolved, so a scheme is
+looked up once by the element it was set on. That last property is named for
+what it turns *off*, against the grain of every other property here, because
+Lit's `Boolean` converter reads a present attribute as true and an absent one as
+false: a default-on `show-…` would have no way to say "off" in markup and would
+need a converter of its own, where a default-off `disable-…` is a bare
+attribute. The layout option behind it stays positive (`boundaryBlobs`), so the
+negation happens once, at the point the two meet. Changing it relayouts, since
+the flag is answered when the input is emitted. It has no counterpart on
+`<zx-hypergraph>`, and a hand-written hypergraph says the same thing by simply
+leaving the boundary hyperedges out — which is legitimate now that a wire may be
+held by a single end.
 
-The two elements are deliberately *not* two ways of drawing the same thing.
+`refresh()` on `<zx-diagram>` calls the children's. The dual gets a freshly
+derived input and would relayout on its own, but `<zx-graph>` is handed the very
+`diagram` object that was mutated in place, so nothing about it has changed
+identity and only being asked will do.
+
 `<zx-diagram>`'s dual is pinned to the diagram it came from — a dot on the
-midpoint of its wire — which is what makes a `both` mode line up and is also
-the only arrangement it will produce. `<zx-hypergraph>` gives that up in
-exchange for saying which grid square every dot goes in. Neither can do the other's job, which
-is why the choice is which element you use rather than a flag on one of them.
+midpoint of its wire — which is what makes a `both` mode line up and is also the
+only arrangement it will produce. Writing a `HypergraphInput` by hand gives that
+up in exchange for saying where every dot goes. Which is why the derived route
+still exists at all: it is not a worse way of writing one out, it is the only
+thing that produces the pinning.
+
+Because a painter updates on its own cycle, anything that needs the SVG in the
+DOM has to await it: a host overrides `getUpdateComplete()` and awaits every
+mounted child — painters, and the two hosts `<zx-diagram>` mounts, which await
+their own painters in turn. A measuring pass only counts as done once *every*
+badge has been placed. `<zx-diagram>` places none: each element carries its own
+picture and measures its own badge against it.
 
 Both painters render into the **light DOM** (`createRenderRoot() { return
 this }`). It is an internal part of whichever element mounts it: sharing the
@@ -558,8 +630,8 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
   by its casing — `g.casing > path[data-link]`, carrying the edge's index, with
   the wire in `g.link` left untouched — and `g.attribution` carrying a `rect`
   chip. In a `both` mode the
-  two views share one tree, so anything ambiguous is scoped by painter tag
-  (`zx-viewer …` / `zx-hypergraph-viewer …`). The hypergraph view has its own:
+  two views are queried through one root, so anything ambiguous is scoped by
+  painter tag (`zx-viewer …` / `zx-hypergraph-viewer …`). The hypergraph view has its own:
   `g.blob` wrapping per-hyperedge `<g data-hyperedge>`, `g.dot` wrapping
   per-wire `<g data-wire>`, a selected blob marked by `#00f` in its path's
   `style` and its leader as `line.leader[data-hyperedge]`, a picked dot
@@ -576,7 +648,17 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
   `stories/interactionHelpers.ts`, `firePointer` among them: it builds the
   `PointerEvent` a gesture is dispatched as, `isPrimary` included, since a
   press without it is ignored. `shadowRootOf` takes a selector because a
-  story may render `<zx-hypergraph>`, or several elements at once.
+  story may render a `<zx-graph>` or a `<zx-hypergraph>`, or several elements
+  at once.
+- A story's marks are spread over up to three shadow roots: `<zx-diagram>`'s
+  own, and one for each element it mounts. `shadowRootOf` hands back a
+  `ViewRoot` spanning them — `querySelector`/`querySelectorAll` across the lot,
+  outer root first and then each view in the order it is drawn — rather than
+  any one of them. That is what keeps a selector in a play function a statement
+  about the picture rather than about how many elements deep it is drawn, and
+  it is why the helpers take a `ViewRoot` and not a `ShadowRoot`. It awaits the
+  element's `updateComplete` before looking for the views, since a host reports
+  complete only once everything below it has.
 - A press is read from what it *landed on*, so a play function that means to
   press a dot has to dispatch on the dot's `<g data-wire>` rather than on the
   SVG: a press whose target is the canvas asks which blobs contain the point,
@@ -590,12 +672,19 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
   groups them, plus `stories/other/` (`Other/…`) for what belongs to neither
   view. `Hypergraphs/Direct input` is the group under `<zx-hypergraph>` — the
   same view, reached with no diagram behind it — and is where a picture no
-  layout would produce belongs. Its third story is the same hypergraph drawn at
-  two scales side by side, which is what being on a grid rather than in pixels
-  buys: it is the one property that has nothing to check in the derived view,
-  where `scale` comes from the diagram. The shared `diagrams.ts`/`interactionHelpers.ts` and the `Playground`
+  layout would produce belongs. Its third and fourth stories are the same
+  hypergraph drawn at two scales side by side, once placed on the grid and once
+  in pixels: on the grid `scale` moves the dots as well as sizing them, in
+  pixels it sizes them alone. That pair is what the two placements are *for*,
+  and it is the one property with nothing to check in the derived view, where
+  `scale` comes from the diagram. The shared `diagrams.ts`/`interactionHelpers.ts` and the `Playground`
   story sit at the top level. The sidebar order is pinned by `storySort` in
   `.storybook/preview.ts`.
+- `Other/Elements` is the element layer itself: `<zx-graph>` used on its own,
+  drawing and announcing `zx-selection` from the element rather than from the
+  painter inside it, and `<zx-diagram>` shown to mount the two public elements
+  and pass a resolved palette down to both. It is the one story that asserts on
+  the composition rather than on a drawing.
 - `Other/Both viewers` is the pair drawn together: the two arrangements, and the
   properties that do different work in each view — `show-labels` (node ids over
   there, blob names and wire ids here) and `scale`. Each runs `both-vertical`,
@@ -603,13 +692,16 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
 - `Other/Tests` is the group whose stories exist for their play function rather
   than their picture, and the whole group carries
   `chromatic: { disableSnapshot: true }` on its `meta`. It holds `Error states`:
-  all five failure cases — malformed diagram, a node the dual has no shape for,
+  all six failure cases — malformed diagram, a node the dual has no shape for,
   an unknown `view-mode`, a hypergraph naming a blob shape that doesn't exist,
-  and one whose wire is held by the wrong number of hyperedges — in one story,
-  since the UI is the same grey `<pre>` and Retry button whatever caused it and
-  the *message* is the whole of what is being tested, so five stories would be
-  five snapshots of one box. Both elements report through it, which is the
-  point of them sharing a host.
+  one whose wire is held by three hyperedges, and one whose wire is only half
+  placed — in one story, since the UI is the same grey `<pre>` and Retry button
+  whatever caused it and the *message* is the whole of what is being tested, so
+  six stories would be six snapshots of one box. All three elements report
+  through it, which is the point of them sharing a host — and the malformed
+  diagram is the case where the report comes from a `<zx-graph>` mounted inside
+  the `<zx-diagram>` the story wrote, since the diagram's own layout is the
+  child's to run.
 - `color-scheme` is the one presentation property *not* under `Other/Both
   viewers`, and the reason is the palette: `Zalt`, `W` and `Walt` belong to node
   types the dual has no blob shape for, so a both-view colour story would have
@@ -669,6 +761,13 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
   is whether you can see that there are two of them. A diagram that arrives
   pre-positioned from the algebraic walker is on no grid at all, so exact ties
   are not the only way two dots become one blot.
+- `scale` does two jobs on a `HypergraphInput`, and only one of them on a
+  pixel-positioned one. On the grid it sets the spacing *and* the weight of
+  every mark, so the whole drawing grows with it. In pixels the positions are
+  already fixed, so raising it grows the dots and the blob standoffs without
+  moving anything — which looks like a bug the first time you try it. That is
+  the price of one builder serving both routes, and the derived route is always
+  the pixel one.
 - Spreading dots does *not* reduce the trespass tally, and isn't meant to. Every
   trespass at rest is a coincidence — measured, the whole tally — and separating
   the dots converts each one into a dot sitting inside a neighbouring hull

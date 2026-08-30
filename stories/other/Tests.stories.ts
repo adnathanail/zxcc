@@ -31,11 +31,17 @@ export default meta
 
 type Story = StoryObj
 
-/** The five ways the two public elements refuse to draw, in one story.
+/** The six ways the public elements refuse to draw, in one story.
  *
  * They are together rather than one apiece because the error UI is the same
- * `<pre>` and Retry button in all five and the *message* is the whole of what
- * is being tested — five stories would be five views of the same grey box.
+ * `<pre>` and Retry button in all six and the *message* is the whole of what
+ * is being tested — six stories would be six views of the same grey box.
+ *
+ * Which element reports one follows which element worked it out. `<zx-diagram>`
+ * derives the dual, so a diagram the dual can't be built from is its error; the
+ * diagram's own layout belongs to the `<zx-graph>` it mounts, and that is where
+ * a malformed diagram is caught. Either way it is the same box in the same
+ * place on the page, which is the point of the three sharing a host.
  */
 export const ErrorStates: Story = {
   name: 'Error states',
@@ -43,7 +49,7 @@ export const ErrorStates: Story = {
     docs: {
       story: {
         description:
-          'Five failures, one under the other: a malformed diagram, a diagram carrying a node the dual has no shape for, a `view-mode` that is not one of the four, a hypergraph naming a blob shape that does not exist, and one whose wire is held by the wrong number of hyperedges. Each is reported rather than drawn around — an unknown `view-mode` in particular has no mode to fall back *to* that would not be a guess at which was meant, so it says so instead of quietly drawing the graph.',
+          'Six failures, one under the other: a malformed diagram, a diagram carrying a node the dual has no shape for, a `view-mode` that is not one of the four, a hypergraph naming a blob shape that does not exist, one whose wire is held by three hyperedges, and one whose wire is only half placed. Each is reported rather than drawn around — an unknown `view-mode` in particular has no mode to fall back *to* that would not be a guess at which was meant, so it says so instead of quietly drawing the graph.',
       },
     },
   },
@@ -83,15 +89,28 @@ export const ErrorStates: Story = {
         }
       ></zx-hypergraph>
       <zx-hypergraph
-        id="dangling-wire"
+        id="over-held"
         .hypergraph=${
           {
-            wires: [
-              { col: 0, qubit: 0 },
-              { col: 1, qubit: 0 },
+            wires: [{ col: 0, qubit: 0 }],
+            hyperedges: [
+              { kind: 'z-spider', wires: [0] },
+              { kind: 'x-spider', wires: [0] },
+              { kind: 'z-spider', wires: [0] },
             ],
-            hyperedges: [{ kind: 'z-spider', wires: [0, 1] }],
           } as HypergraphInput
+        }
+      ></zx-hypergraph>
+      <zx-hypergraph
+        id="half-placed"
+        .hypergraph=${
+          {
+            wires: [{ col: 0 }],
+            hyperedges: [
+              { kind: 'z-spider', wires: [0] },
+              { kind: 'boundary', wires: [0] },
+            ],
+          } as unknown as HypergraphInput
         }
       ></zx-hypergraph>
     </div>
@@ -139,13 +158,24 @@ export const ErrorStates: Story = {
         'x-spider, hadamard, boundary.',
     )
 
-    // 5. A wire held by one hyperedge end rather than two. A dot *is* an edge,
-    // and an edge has two ends: the hyperedges holding a wire are what the
-    // selection reads as the nodes at either end of it, so one end is a dot
-    // whose other end is nowhere.
-    expect(await messageOf('dangling-wire')).toBe(
-      'Hypergraph input: wire 0 is held by 1 hyperedge end, and every wire is held by exactly ' +
-        'two — one per end of the edge it stands for, or the same hyperedge twice for a self-loop.',
+    // 5. A wire held by three hyperedge ends. A dot *is* an edge, and an edge
+    // has two ends: `src` and `tgt` are the hyperedges holding it, which is how
+    // a press on it answers in the diagram's terms, so a third has nowhere to
+    // go. One end is allowed and is not an error — that is what is left of a
+    // boundary leg when the boundary's own blob isn't being drawn.
+    expect(await messageOf('over-held')).toBe(
+      'Hypergraph input: wire 0 is held by 3 hyperedge ends, and every wire is held by one or ' +
+        'two — one per end of the edge it stands for, or the same hyperedge twice for a ' +
+        "self-loop, or just the one when the hyperedge at its other end isn't being drawn.",
+    )
+
+    // 6. Half a position. A wire goes either in a grid square (`col`/`qubit`)
+    // or at a pixel (`x`/`y`), and the missing half of either would silently
+    // become the top-left rather than the position that was meant.
+    expect(await messageOf('half-placed')).toBe(
+      'Hypergraph input: wire 0 sits at column 0, qubit undefined, and a wire is positioned ' +
+        'either on the grid (`col` and `qubit`) or in pixels (`x` and `y`) — both numbers, ' +
+        'and one pair or the other.',
     )
   },
 }

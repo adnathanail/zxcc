@@ -1,22 +1,22 @@
-// `<zx-hypergraph>` — the public element for a hypergraph given directly, as
-// opposed to one derived from a ZX diagram.
+// `<zx-hypergraph>` — the public element for a hypergraph: the dual picture,
+// where wires become dots and spiders become blobs.
 //
-// `<zx-diagram>` takes a `DiagramData`, lays it out, and can draw the dual of
-// what it laid out. That route puts every dot on the midpoint of the wire it
-// stands for, which is what makes the two pictures line up — and is also the
-// whole of what it will do. This element is the other way in: the caller says
-// what the hypergraph is and which grid square each dot goes in, and the same
-// painter draws it. Nothing here works out where anything goes; `manualScene`
-// only scales the given grid to pixels.
+// Nothing here works out where anything goes. The input says what the
+// hypergraph is *and* where each dot goes, and `hypergraphScene` only measures
+// it into pixels. Which is what lets the same element serve both ways of
+// arriving at one: a caller writing a hypergraph out by hand puts every dot in
+// a grid square, and `<zx-diagram>` mounts one of these for its dual, having
+// already worked out every position from the diagram's own layout and handed
+// them over in pixels.
 //
-// It is the second host built on `ZxViewerHost`, and holds only what is its
-// own: the input, the scale that grid is drawn at, and the one scene it
-// paints.
+// It is one of the three hosts built on `ZxViewerHost`, `<zx-graph>`'s opposite
+// number, and holds only what is its own: the input, the scale it is drawn at,
+// and the one scene it paints.
 
 import { html, nothing, type PropertyValues } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { attributionTemplate } from './attribution'
-import { manualScene } from './hypergraph/manual'
+import { hypergraphScene } from './hypergraph/scene'
 import type { HypergraphInput, HypergraphScene } from './hypergraph/types'
 // `@zx-selection` in the template below is `SELECTION_EVENT`, written out
 // because a Lit binding's name has to be a literal.
@@ -32,17 +32,21 @@ const DEFAULT_SCALE = 35
 
 @customElement('zx-hypergraph')
 export class ZxHypergraphElement extends ZxViewerHost {
-  /** The hypergraph to draw. Replace the object to change it — the scene is
-   *  measured on a new identity, so mutating the one already assigned paints
-   *  nothing new. {@link refresh} is the escape hatch if you must mutate in
-   *  place. */
+  /** The hypergraph to draw, and where to draw it — see {@link HypergraphInput}.
+   *  Replace the object to change it: the scene is measured on a new identity,
+   *  so mutating the one already assigned paints nothing new. {@link refresh}
+   *  is the escape hatch if you must mutate in place. */
   @property({ attribute: false }) hypergraph: HypergraphInput | null = null
 
-  /** The unit the grid the input is written on is drawn at — the same number
-   *  `<zx-diagram>`'s `scale` means, doing the same job. It sets how far apart
-   *  the dots are drawn (two `scale`s to a column, so the blobs have room) as
-   *  well as how big one is and how far a blob's outline stands off the dots it
-   *  holds, so the whole drawing grows and shrinks with it. */
+  /** The unit the drawing is measured in — the same number `<zx-diagram>`'s
+   *  `scale` means, doing the same job. It sets how big a dot is drawn and how
+   *  far a blob's outline stands off the dots it holds.
+   *
+   *  For an input written on the grid it also sets how far apart the dots are
+   *  (two `scale`s to a column, so the blobs have room), so the whole drawing
+   *  grows and shrinks with it. For one written in pixels the positions are
+   *  already fixed and this changes the weights alone — raising it there grows
+   *  the dots without moving them. */
   @property({ type: Number }) scale: number = DEFAULT_SCALE
 
   @state() private scene: HypergraphScene | null = null
@@ -72,7 +76,7 @@ export class ZxHypergraphElement extends ZxViewerHost {
     // hyperedges that may not even be in it.
     this.selection = EMPTY_SELECTION
     try {
-      this.scene = this.hypergraph ? manualScene(this.hypergraph, this.scale) : null
+      this.scene = this.hypergraph ? hypergraphScene(this.hypergraph, this.scale) : null
       this.error = null
     } catch (e) {
       this.scene = null
