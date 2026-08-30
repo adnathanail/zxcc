@@ -1,14 +1,79 @@
 // Data contracts for the hypergraph view, the way `src/types.ts` holds the
-// ones for the diagram itself:
+// ones for the diagram itself. There are two ways to a `HypergraphScene`, one
+// per way of saying what the hypergraph is:
 //
 //   DiagramData + Scene --toHypergraph()--> HypergraphData
-//                        --layoutHypergraph()--> HypergraphScene --<zx-hypergraph-viewer>--> SVG
+//                        --layoutHypergraph()--> HypergraphScene
+//   HypergraphInput      --manualScene()-->  HypergraphScene
+//                        --<zx-hypergraph-viewer>--> SVG
 //
-// `Hypergraph{Wire,Edge,Data}` is the conversion's output: the dual as pure
-// combinatorics, with no coordinates. `Hypergraph{Dot,Blob,Scene}` is that
-// laid out in pixel space, and is internal to the package.
+// `HypergraphInput` is the public input shape a caller hands `<zx-hypergraph>`:
+// the hypergraph written out directly, dots and all, rather than derived from a
+// ZX diagram. `Hypergraph{Wire,Edge,Data}` is `toHypergraph`'s output — the
+// dual of a diagram as pure combinatorics, with no coordinates.
+// `Hypergraph{Dot,Blob,Scene}` is either of those laid out in pixel space, and
+// is internal to the package.
 
 import type { DiagramEdgeKind, NodeKind } from '../types'
+
+// —————————————————————————————————————————————————————————————————————————
+// Hand-written input
+// —————————————————————————————————————————————————————————————————————————
+
+/** A hypergraph node, drawn as a dot. It stands for a wire, which is what a ZX
+ *  edge becomes in the dual, so it is one here too — `<zx-hypergraph-viewer>`
+ *  paints it with an edge's colour and `show-labels` writes an edge's id under
+ *  it. */
+export interface HypergraphInputWire {
+  /** Which grid square the dot goes in — the same grid `layout()` puts a ZX
+   *  diagram on, one `scale` apart in either direction, and turned into pixels
+   *  by `<zx-hypergraph>`'s `scale`. The grid is read relative to its own
+   *  lowest column and qubit, so negative coordinates are fine, and fractional
+   *  ones put a dot between two squares. */
+  col: number
+  qubit: number
+  /** Which colour the dot takes, as a wire kind — `hadamard` for the blue an
+   *  H-wire's dot is filled with, or a kind of your own named in
+   *  `<zx-hypergraph>`'s `edgeColors`. Defaults to a plain wire. */
+  kind?: DiagramEdgeKind
+}
+
+/** A hyperedge, drawn as a blob around the dots of the wires it holds. */
+export interface HypergraphInputHyperedge {
+  /** Which shape and colour the blob takes — the same palette entry the ZX node
+   *  it stands for would be painted with. */
+  kind: HyperedgeKind
+  /** Indices into `HypergraphInput.wires`, in any order. A wire listed twice is
+   *  a self-loop: both of its ends are this hyperedge, and it is drawn as one
+   *  dot. */
+  wires: number[]
+  /** What the blob is called — `Z`, `X`, `H`, `in`, `out`. Written only when
+   *  `show-labels` is on. Defaults to the letter for its kind, and to nothing
+   *  for a boundary, which is the one kind that doesn't say which end of the
+   *  diagram it is. */
+  name?: string
+  /** The phase, pre-formatted (`π/2`), drawn under the blob whether labels are
+   *  on or off — the same split `<zx-viewer>` makes between a node's id and the
+   *  phase written under it. Empty for a node carrying none. */
+  phase?: string
+}
+
+/**
+ * A hypergraph written out directly, as `<zx-hypergraph>` takes it: the dots and
+ * which grid square each goes in, and which of them each blob holds.
+ *
+ * Every wire is held by exactly two hyperedge ends — the two ZX nodes its edge
+ * would run between, or one hyperedge twice for a self-loop, or a spider and a
+ * boundary for a leg hanging out of the diagram. That is what makes this a ZX
+ * diagram written the other way round rather than a hypergraph in general, and
+ * `manualScene` checks it: a wire held by three is a picture the ZX half of the
+ * package has no counterpart for, and a wire held by one has an end that is
+ * nowhere.
+ */
+export interface HypergraphInput {
+  wires: HypergraphInputWire[]
+  hyperedges: HypergraphInputHyperedge[]
+}
 
 // —————————————————————————————————————————————————————————————————————————
 // The dual, as combinatorics
