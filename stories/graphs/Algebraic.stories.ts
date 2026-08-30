@@ -9,7 +9,7 @@ interface Args {
 const meta: Meta<Args> = {
   title: 'Graphs/Algebraic',
   render: ({ diagram }) =>
-    html`<zx-diagram .diagram=${diagram} style="min-height: 120px"></zx-diagram>`,
+    html`<zx-graph .diagram=${diagram} style="min-height: 120px"></zx-graph>`,
   parameters: {
     docs: {
       description: {

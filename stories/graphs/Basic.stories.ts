@@ -12,7 +12,7 @@ interface Args {
 const meta: Meta<Args> = {
   title: 'Graphs/Basic',
   render: ({ diagram }) =>
-    html`<zx-diagram .diagram=${diagram} style="min-height: 120px"></zx-diagram>`,
+    html`<zx-graph .diagram=${diagram} style="min-height: 120px"></zx-graph>`,
   parameters: {
     docs: {
       description: {
@@ -50,7 +50,7 @@ export const SingleZSpider: Story = {
   // This diagram carries no `scalar`, so the equal top/bottom padding also
   // pins down that no scalar strip is reserved when there is nothing to show.
   play: async ({ canvasElement }) => {
-    const root = await shadowRootOf(canvasElement)
+    const root = await shadowRootOf(canvasElement, 'zx-graph')
     const svg = root.querySelector<SVGSVGElement>('svg')
     if (!svg) throw new Error('svg not found')
 
@@ -99,7 +99,7 @@ export const BellStatePrep: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const root = await shadowRootOf(canvasElement)
+    const root = await shadowRootOf(canvasElement, 'zx-graph')
     // A phase of 0 draws no text, the way an H-box's default π draws none, so
     // every node here is bare: with labels off there is nothing to write at all.
     await waitFor(() => expect(root.querySelectorAll('svg g.node g').length).toBe(7))
@@ -177,7 +177,7 @@ export const ChainedHboxes: Story = {
   name: '8. Chained H-boxes',
   args: { diagram: zHHzChain },
   play: async ({ canvasElement }) => {
-    const root = await shadowRootOf(canvasElement)
+    const root = await shadowRootOf(canvasElement, 'zx-graph')
     const spiders = await waitForNodes(root, 'circle', ORIGINAL_COLORS.Z, 2)
     const hboxes = await waitForNodes(root, 'rect', ORIGINAL_COLORS.H, 2)
 

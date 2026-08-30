@@ -3,9 +3,16 @@ import { html } from 'lit'
 import { ifDefined } from 'lit/directives/if-defined.js'
 import { expect, waitFor } from 'storybook/test'
 import { ZOOM } from '../../src/hypergraph/layout'
-import type { DiagramData, EdgeColors } from '../../src/index'
+import { type DiagramData, type EdgeColors, RGB_COLORS } from '../../src/index'
 import { fourSpiderSquare } from '../diagrams'
-import { blobCaptionsIn, shadowRootOf, translateOf, type ViewRoot } from '../interactionHelpers'
+import {
+  blobCaptionsIn,
+  blobIdsIn,
+  dotIdsIn,
+  shadowRootOf,
+  translateOf,
+  type ViewRoot,
+} from '../interactionHelpers'
 
 interface Args {
   diagram: DiagramData
@@ -17,16 +24,22 @@ interface Args {
   edgeColors?: EdgeColors
   /** Only the two arrangement stories differ here. */
   viewMode?: 'both-vertical' | 'both-horizontal'
+  /** Omitted by the stories that want pyzx's original palette. */
+  colorScheme?: 'original' | 'rgb' | 'grayscale'
+  /** Omitted by every story but the one it belongs to. */
+  disableIOBlobs?: boolean
 }
 
 const meta: Meta<Args> = {
   title: 'Other/Both viewers',
-  render: ({ diagram, scale, showLabels, edgeColors, viewMode }) =>
+  render: ({ diagram, scale, showLabels, edgeColors, viewMode, colorScheme, disableIOBlobs }) =>
     html`<zx-diagram
       .diagram=${diagram}
       .edgeColors=${edgeColors ?? null}
       view-mode=${viewMode ?? 'both-vertical'}
+      color-scheme=${colorScheme ?? 'original'}
       scale=${ifDefined(scale)}
+      ?disable-io-blobs-in-hypergraph=${disableIOBlobs === true}
       ?show-labels=${showLabels === true}
       style="min-height: 160px"
     ></zx-diagram>`,
@@ -34,7 +47,7 @@ const meta: Meta<Args> = {
     docs: {
       description: {
         component:
-          'The diagram and its dual drawn together: the two arrangements, and the properties that do different work in each view — `show-labels`, `scale`.',
+          'The diagram and its dual drawn together: the two arrangements, and the `<zx-diagram>` properties whose work only shows up when both views are on screen — `show-labels` and `scale`, which do different things in each view; `color-scheme`, which has to reach both; and `disable-io-blobs-in-hypergraph`, which has no counterpart on `<zx-hypergraph>` at all.',
       },
     },
   },
@@ -276,5 +289,68 @@ export const ScaleOverride: Story = {
     for (let i = 0; i < dots.length; i++) {
       expect(dots[i]).toBeCloseTo((xs[i] + xs[i + 1]) / 2, 5)
     }
+  },
+}
+
+export const SharedPalette: Story = {
+  name: '5. Shared palette',
+  parameters: {
+    docs: {
+      story: {
+        description:
+          '`<zx-diagram>` mounts a `<zx-graph>` and a `<zx-hypergraph>` — the same two elements you could have written yourself — and passes the presentation properties down, the palette already resolved, so a scheme set once here reaches both pictures. `color-scheme="rgb"` paints the Z spiders green in the diagram and their blobs the same green in the dual: a spider and the blob standing for it cannot come out different colours, because both painters read one lookup.',
+      },
+    },
+  },
+  args: { diagram: fourSpiderSquare, colorScheme: 'rgb' },
+  play: async ({ canvasElement }) => {
+    const el = canvasElement.querySelector('zx-diagram')
+    if (!el?.shadowRoot) throw new Error('zx-diagram not found')
+    await el.updateComplete
+
+    // The pair is two public elements, one per view, rather than two painters
+    // mounted directly — which is what makes each of them usable on its own.
+    expect(el.shadowRoot.querySelectorAll('zx-graph').length).toBe(1)
+    expect(el.shadowRoot.querySelectorAll('zx-hypergraph').length).toBe(1)
+
+    const root = await shadowRootOf(canvasElement)
+    const green = (selector: string) =>
+      [...root.querySelectorAll<SVGElement>(selector)]
+        .map(el => el.getAttribute('fill'))
+        .filter(fill => fill === RGB_COLORS.Z).length
+
+    const spiders = await waitFor(() => {
+      const count = green('zx-viewer g.node circle')
+      expect(count).toBeGreaterThan(0)
+      return count
+    })
+    expect(green('zx-hypergraph-viewer g.blob path')).toBe(spiders)
+  },
+}
+
+export const WithoutBoundaryBlobs: Story = {
+  name: '6. Without input/output blobs',
+  argTypes: { disableIOBlobs: { control: 'boolean' } },
+  parameters: {
+    docs: {
+      story: {
+        description:
+          "The four-spider square with `disable-io-blobs-in-hypergraph`. Every input and output loses its circle in the dual; the dots stay, since a boundary leg is still a wire. What goes with the circles is the rule that reads a boundary leg apart from a self-loop — both are then a single dot held by one blob — which is why the blobs are drawn unless asked otherwise. The property is `<zx-diagram>`'s alone: a hypergraph written out by hand says the same thing by leaving those hyperedges out, which is why the pair is the place to see what it costs. Turn the control off to compare.",
+      },
+    },
+  },
+  args: { diagram: fourSpiderSquare, disableIOBlobs: true },
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    // The square's boundaries are nodes 0, 1, 6 and 7; the spiders are 2 to 5,
+    // so those four blobs are what is left.
+    await waitFor(() => expect([...blobIdsIn(root)].sort()).toEqual(['e2', 'e3', 'e4', 'e5']))
+    // Every wire still has its dot, boundary legs included.
+    expect(dotIdsIn(root).length).toBe(fourSpiderSquare.edges.length)
+    // The boundaries are still drawn over in the diagram — only the dual's
+    // circles went, which is the whole of what the property does.
+    expect(root.querySelectorAll('zx-viewer g.node g[data-node]').length).toBe(
+      fourSpiderSquare.nodes.length,
+    )
   },
 }
