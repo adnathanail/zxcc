@@ -216,16 +216,17 @@ between, or the same hyperedge listed twice for a self-loop, or a spider and a b
 hanging out of the diagram. This is what a dot's two ends are read from when you select one, so a
 wire held by one or by three is an error naming the wire rather than a drawing.
 
-`col` and `qubit` are grid coordinates, not pixels: one column or one qubit is one `scale` apart,
-the same grid `<zx-diagram>` lays a diagram out on. They may be negative or fractional — the grid is
+`col` and `qubit` are grid coordinates, not pixels: the same column/qubit grid `<zx-diagram>` lays
+a diagram out on, drawn two `scale`s to the square — a blob's outline stands off every dot it holds,
+so the dual needs more room than the diagram would. They may be negative or fractional — the grid is
 read relative to its own lowest column and qubit, so a dot goes wherever you want it — and the
 canvas is measured around the result, with room left for the captions above and the wire ids below.
 
 The element takes the same presentation properties as `<zx-diagram>` — `show-labels`,
 `color-scheme`, `colors`, `edgeColors` and `scale` — and behaves the same way under a press or a
-drag. `scale` is pixels per column and per qubit, so it sizes the whole drawing: the dots move
-apart with it, as well as growing. It defaults to `35` — the middle of the 20–50 band a derived
-scale is clamped to — and there is no `view-mode`: a hypergraph has only the one picture.
+drag. `scale` is the unit the grid is drawn at, so it sizes the whole drawing: the dots move apart
+with it, as well as growing. It defaults to `35` — the middle of the 20–50 band a derived scale is
+clamped to — and there is no `view-mode`: a hypergraph has only the one picture.
 
 ## Exported constants
 

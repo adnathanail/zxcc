@@ -25,11 +25,11 @@ import type { DiagramEdgeKind, NodeKind } from '../types'
  *  paints it with an edge's colour and `show-labels` writes an edge's id under
  *  it. */
 export interface HypergraphInputWire {
-  /** Which grid square the dot goes in — the same grid `layout()` puts a ZX
-   *  diagram on, one `scale` apart in either direction, and turned into pixels
-   *  by `<zx-hypergraph>`'s `scale`. The grid is read relative to its own
-   *  lowest column and qubit, so negative coordinates are fine, and fractional
-   *  ones put a dot between two squares. */
+  /** Which grid square the dot goes in — the same column/qubit grid `layout()`
+   *  puts a ZX diagram on, drawn two `scale`s to the square so that
+   *  neighbouring blobs have room to stand off their dots. The grid is read
+   *  relative to its own lowest column and qubit, so negative coordinates are
+   *  fine, and fractional ones put a dot between two squares. */
   col: number
   qubit: number
   /** Which colour the dot takes, as a wire kind — `hadamard` for the blue an

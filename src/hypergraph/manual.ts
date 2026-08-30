@@ -9,10 +9,10 @@
 // produce is the same shape, so they paint through the same viewer.
 //
 // The grid is the one `layout()` puts a diagram on: a column and a qubit per
-// mark, one `scale` apart in either direction. Positions arrive that way rather
-// than in pixels so that `scale` means the same thing on this side as on the
-// other — the whole drawing grows and shrinks with it, rather than the marks
-// growing on a canvas that stays put.
+// mark, `GRID_STEP` scales apart in either direction. Positions arrive that way
+// rather than in pixels so that `scale` means the same thing on this side as on
+// the other — the whole drawing grows and shrinks with it, rather than the
+// marks growing on a canvas that stays put.
 //
 // The hypergraph the caller writes is still a ZX diagram in dual clothing:
 // every wire is held by exactly two hyperedge ends, because a wire stands for
@@ -45,6 +45,14 @@ const DEFAULT_NAME: Record<HyperedgeKind, string> = {
   boundary: '',
 }
 
+/** How far apart neighbouring columns (and qubits) are drawn, in `scale`s. The
+ *  dual needs more room than the diagram it stands for: every mark carries a
+ *  blob's outline standing `blobRadius` off it, so two dots a single scale
+ *  apart come out with their blobs all but touching. `./layout.ts` answers the
+ *  same question for a derived scene with `ZOOM`, which spreads the positions
+ *  and leaves the blobs alone; this is the hand-written side of it. */
+const GRID_STEP = 2
+
 /** Room under the lowest dot for the wire id `show-labels` writes 11px beneath
  *  it, so a label is inside the canvas rather than clipped by its edge. */
 const LABEL_ROOM = 14
@@ -63,10 +71,11 @@ const TALLY_STRIP = 24
 /**
  * Measure a hand-written hypergraph into a scene the viewer can paint.
  *
- * `scale` is pixels per column and per qubit, the same thing it is to
- * `<zx-diagram>`: it sets where the dots land as well as how big one is drawn
- * and how far a blob's outline stands off the dots it holds, so the drawing
- * comes out at one size or another without anything in the input changing.
+ * `scale` is the ZX layout's own unit, the same thing it is to `<zx-diagram>`:
+ * it sets where the dots land — `GRID_STEP` of them to a column — as well as
+ * how big one is drawn and how far a blob's outline stands off the dots it
+ * holds, so the drawing comes out at one size or another without anything in
+ * the input changing.
  *
  * Throws, naming the wire or hyperedge at fault, rather than drawing something
  * the input doesn't describe: an unknown blob kind would otherwise come out the
@@ -93,20 +102,22 @@ export function manualScene(input: HypergraphInput, scale: number): HypergraphSc
   const cols = span(input.wires.map(w => w.col))
   const qubits = span(input.wires.map(w => w.qubit))
 
-  // One scale of padding on every side, as `layout()` leaves around a diagram,
-  // but never less than what is drawn *outside* the dots: a blob's outline
-  // stands `blobRadius` off the dot it rings, its caption goes above that, and
-  // the wire id `show-labels` writes goes below. At a small scale those two
-  // fixed text rooms are the larger of the pair, since they are a font size
-  // rather than a fraction of the grid.
+  // Half a grid square of padding on every side — one `scale`, which is what
+  // `layout()` leaves around a diagram — but never less than what is drawn
+  // *outside* the dots: a blob's outline stands `blobRadius` off the dot it
+  // rings, its caption goes above that, and the wire id `show-labels` writes
+  // goes below. At a small scale those two fixed text rooms are the larger of
+  // the pair, since they are a font size rather than a fraction of the grid.
   const padX = Math.max(scale, blobRadius)
   const padTop = Math.max(scale, blobRadius + CAPTION_ROOM)
   const padBottom = Math.max(scale, blobRadius + LABEL_ROOM)
 
+  const step = scale * GRID_STEP
+
   const dots: HypergraphDot[] = input.wires.map((wire, i) => ({
     id: `w${i}`,
-    x: (wire.col - cols.min) * scale + padX,
-    y: (wire.qubit - qubits.min) * scale + padTop,
+    x: (wire.col - cols.min) * step + padX,
+    y: (wire.qubit - qubits.min) * step + padTop,
     kind: (wire.kind ?? 'simple') as DiagramEdgeKind,
     // A dot is the wire it stands for, and a selection names that wire by its
     // index — the same index the caller listed it at. The hyperedges holding it
@@ -130,8 +141,8 @@ export function manualScene(input: HypergraphInput, scale: number): HypergraphSc
   return {
     dots,
     blobs,
-    width: (cols.max - cols.min) * scale + 2 * padX,
-    height: (qubits.max - qubits.min) * scale + padTop + padBottom + TALLY_STRIP,
+    width: (cols.max - cols.min) * step + 2 * padX,
+    height: (qubits.max - qubits.min) * step + padTop + padBottom + TALLY_STRIP,
     scale,
     dotSize,
     blobRadius,

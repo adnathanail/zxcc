@@ -226,12 +226,16 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
 - `manual.ts` — `manualScene`, the other way to a `HypergraphScene`: no
   diagram, no layout, just the dots in the grid squares the caller put them in,
   scaled to pixels and a canvas measured around them. The input is on the same
-  column/qubit grid `layout()` puts a diagram on — a `scale` apart in either
-  direction — rather than in pixels, which is what makes `scale` mean the same
-  thing on this side as on the other: the whole drawing grows with it, rather
-  than the marks growing on a canvas that stays put. The grid is read relative
-  to its own lowest column and qubit, so negative and fractional coordinates
-  are positions like any other. It shares `layout.ts`'s `sceneMetrics`, so a
+  column/qubit grid `layout()` puts a diagram on, rather than in pixels, which
+  is what makes `scale` mean the same thing on this side as on the other: the
+  whole drawing grows with it, rather than the marks growing on a canvas that
+  stays put. The grid is read relative to its own lowest column and qubit, so
+  negative and fractional coordinates are positions like any other. A square is
+  `GRID_STEP` scales rather than one, because every mark in the dual carries a
+  blob's outline standing `blobRadius` off it and two dots a single scale apart
+  come out with their blobs all but touching — the same problem `ZOOM` answers
+  for a derived scene, where the spacing is spread and the blobs are left
+  alone. It shares `layout.ts`'s `sceneMetrics`, so a
   hand-written drawing comes out at the same dot and blob weights as a derived
   one at the same scale, and it reserves the strip at the bottom that the
   derived scene inherits from the scalar's — a hand-written hypergraph has no
@@ -402,7 +406,7 @@ shadow tree, the painters' SVG included.
 `<zx-hypergraph>` is the same shape with almost nothing in it: one `@state`
 scene, built by `manualScene(hypergraph, scale)` rather than by a layout, and
 one painter. It has no `view-mode` — a hypergraph is one picture — and its
-`scale` does the same job it does over there, pixels per column and per qubit,
+`scale` does the same job it does over there, the unit a grid square is two of,
 since the input arrives on a grid rather than in pixels; it defaults to 35, the
 middle of the 20–50 band `layout()` clamps a derived scale to, because there is
 no diagram extent to derive one from. Everything else a caller touches is the host's and so is
