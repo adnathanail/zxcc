@@ -670,25 +670,35 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
 - `stories/` mirrors the `src/` split: `stories/graphs/` and
   `stories/hypergraphs/`, titled `Graphs/…` and `Hypergraphs/…` so Storybook
   groups them, plus `stories/other/` (`Other/…`) for what belongs to neither
-  view. `Hypergraphs/Direct input` is the group under `<zx-hypergraph>` — the
-  same view, reached with no diagram behind it — and is where a picture no
-  layout would produce belongs. Its third and fourth stories are the same
+  view. **A story uses the narrowest element that draws its picture**, which is
+  what keeps each group about one thing: every `Graphs/…` story renders a
+  `<zx-graph>`, and `Hypergraphs/Basic` a `<zx-hypergraph>`. `<zx-diagram>` is
+  reached for only where the point *is* the diagram behind the dual —
+  `Hypergraphs/From graph` and `Other/Both viewers` — and in `Other/Tests`,
+  where the element that reports an error is half of what is being tested.
+  `Hypergraphs/Basic` is the hypergraph written out, and is where a picture no
+  layout would produce belongs; its third and fourth stories are the same
   hypergraph drawn at two scales side by side, once placed on the grid and once
   in pixels: on the grid `scale` moves the dots as well as sizing them, in
   pixels it sizes them alone. That pair is what the two placements are *for*,
-  and it is the one property with nothing to check in the derived view, where
-  `scale` comes from the diagram. The shared `diagrams.ts`/`interactionHelpers.ts` and the `Playground`
-  story sit at the top level. The sidebar order is pinned by `storySort` in
-  `.storybook/preview.ts`.
-- `Other/Elements` is the element layer itself: `<zx-graph>` used on its own,
-  drawing and announcing `zx-selection` from the element rather than from the
-  painter inside it, and `<zx-diagram>` shown to mount the two public elements
-  and pass a resolved palette down to both. It is the one story that asserts on
-  the composition rather than on a drawing.
-- `Other/Both viewers` is the pair drawn together: the two arrangements, and the
-  properties that do different work in each view — `show-labels` (node ids over
-  there, blob names and wire ids here) and `scale`. Each runs `both-vertical`,
-  since one view would check half of what the property does.
+  and it is the one property with nothing to check in `From graph`, where
+  `scale` comes from the diagram. `Hypergraphs/From graph` is the same element
+  reached the other way, and what it has to show that `Basic` doesn't is the
+  pinning. The shared `diagrams.ts`/`interactionHelpers.ts` and the `Playground`
+  story sit at the top level; `Playground` keeps its `<zx-diagram>`, since a
+  `view-mode` control is the whole of it. The sidebar order is pinned by
+  `storySort` in `.storybook/preview.ts`.
+- `Other/Both viewers` is the pair drawn together, and the home of every
+  `<zx-diagram>` property whose work only shows up with both views on screen:
+  the two arrangements; `show-labels` and `scale`, which do different things in
+  each view (node ids over there, blob names and wire ids here); `Shared
+  palette`, which is also where the composition itself is asserted — that the
+  element mounts a `<zx-graph>` and a `<zx-hypergraph>` and hands both the same
+  resolved palette; and `Without input/output blobs`, which lives here rather
+  than under `Hypergraphs/` because `disable-io-blobs-in-hypergraph` is
+  `<zx-diagram>`'s alone and what it costs is read off the pair. Every story
+  runs `both-vertical`, since one view would check half of what a property
+  does.
 - `Other/Tests` is the group whose stories exist for their play function rather
   than their picture, and the whole group carries
   `chromatic: { disableSnapshot: true }` on its `meta`. It holds `Error states`:

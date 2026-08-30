@@ -12,7 +12,7 @@ interface Args {
 }
 
 const meta: Meta<Args> = {
-  title: 'Hypergraphs/Direct input',
+  title: 'Hypergraphs/Basic',
   render: ({ hypergraph, showLabels, scale, colorScheme }) =>
     html`<zx-hypergraph
       .hypergraph=${hypergraph}
@@ -31,7 +31,7 @@ const meta: Meta<Args> = {
     docs: {
       description: {
         component:
-          '`<zx-hypergraph>` draws a hypergraph given directly, rather than one derived from a ZX diagram. The input is the dots and where each one goes, plus which of them each blob holds — nothing is worked out, so the drawing is exactly what was asked for. Everything downstream is the same as in the derived view: the same painter, the same palette, the same presses. A dot goes either in a grid square (`col`/`qubit`) or at a pixel (`x`/`y`); on the grid, `scale` sets how far apart the dots are drawn as well as how big one is, and in pixels it sizes the marks alone.',
+          '`<zx-hypergraph>` draws a hypergraph: wires are dots, hyperedges are blobs around the dots they hold. The input says what the hypergraph is *and* where every dot goes, and nothing is worked out — the drawing is exactly what was asked for. A dot goes either in a grid square (`col`/`qubit`) or at a pixel (`x`/`y`); on the grid, `scale` sets how far apart the dots are drawn as well as how big one is, and in pixels it sizes the marks alone. `From graph` is the same element reached the other way, with a ZX diagram behind it deciding the positions.',
       },
     },
   },

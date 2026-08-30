@@ -29,12 +29,12 @@ interface Args {
 const meta: Meta<Args> = {
   title: 'Graphs/Advanced',
   render: ({ diagram, colorScheme, edgeColors }) =>
-    html`<zx-diagram
+    html`<zx-graph
       .diagram=${diagram}
       .edgeColors=${edgeColors ?? null}
       color-scheme=${colorScheme ?? 'original'}
       style="min-height: 160px"
-    ></zx-diagram>`,
+    ></zx-graph>`,
   parameters: {
     docs: {
       description: {
@@ -70,7 +70,7 @@ export const WInputOutputPair: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const root = await shadowRootOf(canvasElement)
+    const root = await shadowRootOf(canvasElement, 'zx-graph')
     // The connector is gray (Xedge); the ordinary wires either side are black.
     expect(strokesIn(root, 'link')).toEqual([
       ORIGINAL_COLORS.edge,
@@ -119,7 +119,7 @@ export const HadamardEdge: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const root = await shadowRootOf(canvasElement)
+    const root = await shadowRootOf(canvasElement, 'zx-graph')
     expect(strokesIn(root, 'link')).toEqual([
       ORIGINAL_COLORS.edge,
       ORIGINAL_COLORS.Hedge,
@@ -165,7 +165,7 @@ export const WireColorOverrides: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const root = await shadowRootOf(canvasElement)
+    const root = await shadowRootOf(canvasElement, 'zx-graph')
     expect(strokesIn(root, 'link')).toEqual([
       // No kind: the palette's plain wire.
       ORIGINAL_COLORS.edge,
@@ -203,7 +203,7 @@ export const GroundedSpider: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const root = await shadowRootOf(canvasElement)
+    const root = await shadowRootOf(canvasElement, 'zx-graph')
     // The stem and the ground symbol are two extra selectable paths on the
     // node group, on top of the spider's own circle.
     const stems = root.querySelectorAll('svg g.node path.selectable')
@@ -238,7 +238,7 @@ export const VertexData: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const root = await shadowRootOf(canvasElement)
+    const root = await shadowRootOf(canvasElement, 'zx-graph')
     const spans = [...root.querySelectorAll('svg g.node tspan')].map(t => t.textContent)
     expect(spans).toEqual(['depth: 3', 'tag: pivot'])
   },
@@ -264,7 +264,7 @@ export const Scalar: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const root = await shadowRootOf(canvasElement)
+    const root = await shadowRootOf(canvasElement, 'zx-graph')
     const svg = root.querySelector<SVGSVGElement>('svg')
     if (!svg) throw new Error('svg not found')
 
@@ -309,7 +309,7 @@ export const SelfLoops: Story = {
   name: 'Self-loops',
   args: { diagram: selfLoopSpiders },
   play: async ({ canvasElement }) => {
-    const root = await shadowRootOf(canvasElement)
+    const root = await shadowRootOf(canvasElement, 'zx-graph')
     const ds = pathDataIn(root, 'link')
     expect(ds.length).toBe(6)
     // Three links are cubic arcs — one loop left, two right; the other three
@@ -334,7 +334,7 @@ export const OriginalScheme: Story = {
   name: 'Colour scheme: original',
   args: { diagram: paletteShowcase, colorScheme: 'original' },
   play: async ({ canvasElement }) => {
-    const root = await shadowRootOf(canvasElement)
+    const root = await shadowRootOf(canvasElement, 'zx-graph')
     const fills = nodeFillsIn(root)
     // Pale green Z spiders and a blue Hadamard edge — the two things the
     // other schemes move away from.
@@ -352,7 +352,7 @@ export const RgbScheme: Story = {
   name: 'Colour scheme: rgb',
   args: { diagram: paletteShowcase, colorScheme: 'rgb' },
   play: async ({ canvasElement }) => {
-    const root = await shadowRootOf(canvasElement)
+    const root = await shadowRootOf(canvasElement, 'zx-graph')
     const fills = nodeFillsIn(root)
     // Round Z spiders repaint; X and H don't...
     expect(nodeFillsIn(root, 'circle')).toContain(RGB_COLORS.Z)
@@ -379,7 +379,7 @@ export const GrayscaleScheme: Story = {
   name: 'Colour scheme: grayscale',
   args: { diagram: paletteShowcase, colorScheme: 'grayscale' },
   play: async ({ canvasElement }) => {
-    const root = await shadowRootOf(canvasElement)
+    const root = await shadowRootOf(canvasElement, 'zx-graph')
     const fills = nodeFillsIn(root)
     expect(fills).toContain(GRAYSCALE_COLORS.Z)
     expect(fills).toContain(GRAYSCALE_COLORS.X)

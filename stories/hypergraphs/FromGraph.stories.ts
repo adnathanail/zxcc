@@ -4,28 +4,26 @@ import { expect, waitFor } from 'storybook/test'
 import type { ViewMode } from '../../src/index'
 import type { DiagramData } from '../../src/types'
 import { fourSpiderSquare, strongComplementarityOf } from '../diagrams'
-import { blobCaptionsIn, blobIdsIn, dotIdsIn, shadowRootOf } from '../interactionHelpers'
+import { blobCaptionsIn, shadowRootOf } from '../interactionHelpers'
 
 interface Args {
   diagram: DiagramData
   viewMode: ViewMode
   showLabels: boolean
   colorScheme: 'original' | 'rgb' | 'grayscale'
-  disableIOBlobs: boolean
 }
 
-const renderDiagram = ({ diagram, viewMode, showLabels, colorScheme, disableIOBlobs }: Args) =>
+const renderDiagram = ({ diagram, viewMode, showLabels, colorScheme }: Args) =>
   html`<zx-diagram
     .diagram=${diagram}
     view-mode=${viewMode}
     ?show-labels=${showLabels}
     color-scheme=${colorScheme}
-    ?disable-io-blobs-in-hypergraph=${disableIOBlobs}
     style="min-height: 160px"
   ></zx-diagram>`
 
 const meta: Meta<Args> = {
-  title: 'Hypergraphs/Basic',
+  title: 'Hypergraphs/From graph',
   render: renderDiagram,
   argTypes: {
     viewMode: {
@@ -34,19 +32,17 @@ const meta: Meta<Args> = {
     },
     showLabels: { control: 'boolean' },
     colorScheme: { control: 'select', options: ['original', 'rgb', 'grayscale'] },
-    disableIOBlobs: { control: 'boolean' },
   },
   args: {
     viewMode: 'hypergraph',
     showLabels: false,
     colorScheme: 'original',
-    disableIOBlobs: false,
   },
   parameters: {
     docs: {
       description: {
         component:
-          'With `view-mode="hypergraph"`, the element draws the diagram\'s hypergraph dual: every ZX edge becomes a dot, and every ZX node becomes a blob enclosing the dots of its incident wires — a boundary holds one wire, so its blob is a circle around a single dot. Dots sit at the midpoint of the edge they came from, so the two views line up — switch the control to `both-vertical` or `both-horizontal` to see them together and compare. A blob is filled with the same palette entry its spider would be, so `color-scheme` applies to both views.',
+          'The dual of a ZX diagram rather than a hypergraph written out: `<zx-diagram view-mode="hypergraph">` mounts a `<zx-hypergraph>` for the dual of what it laid out. Every ZX edge becomes a dot and every ZX node a blob enclosing the dots of its incident wires — a boundary holds one wire, so its blob is a circle around a single dot. What this route adds over writing the input yourself is the *pinning*: every dot sits at the midpoint of the edge it came from, so the two pictures line up. Switch the control to `both-vertical` or `both-horizontal` to see them together. A blob is filled with the same palette entry its spider would be, so `color-scheme` applies to both views.',
       },
     },
   },
@@ -211,25 +207,4 @@ export const LargeStrongComplementarity: StoryObj<SizedArgs> = {
   args: { zCount: 4, xCount: 5 },
   render: ({ zCount, xCount, ...rest }) =>
     renderDiagram({ ...rest, diagram: strongComplementarityOf(zCount, xCount) }),
-}
-
-export const WithoutBoundaryBlobs: Story = {
-  name: '7. Without input/output blobs',
-  parameters: {
-    docs: {
-      story: {
-        description:
-          'The same four-spider square with `disable-io-blobs-in-hypergraph`. Every input and output loses its circle; the dots stay, since a boundary leg is still a wire. What goes with the circles is the rule that reads a boundary leg apart from a self-loop — both are then a single dot held by one blob — which is why the blobs are drawn unless asked otherwise. Turn the control back off to compare.',
-      },
-    },
-  },
-  args: { diagram: fourSpiderSquare, disableIOBlobs: true },
-  play: async ({ canvasElement }) => {
-    const root = await shadowRootOf(canvasElement)
-    // The square's boundaries are nodes 0, 1, 6 and 7; the spiders are 2 to 5,
-    // so those four blobs are what is left.
-    await waitFor(() => expect([...blobIdsIn(root)].sort()).toEqual(['e2', 'e3', 'e4', 'e5']))
-    // Every wire still has its dot, boundary legs included.
-    expect(dotIdsIn(root).length).toBe(fourSpiderSquare.edges.length)
-  },
 }
