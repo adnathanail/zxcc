@@ -97,22 +97,52 @@ export interface HypergraphInputHyperedge {
 }
 
 /**
+ * An input or output that is *not* drawn as a blob, and the wire hanging off
+ * it.
+ *
+ * A boundary that is drawn is a hyperedge like any other and belongs in
+ * `hyperedges`. This list is for the ones left out —
+ * `<zx-diagram disable-io-blobs-in-hypergraph>` produces it, and a hand-written
+ * input can write it for the same reason. Naming one here is not the same as
+ * leaving it out altogether: nothing is painted either way, but an end that is
+ * named is still an end, so the leg's dot knows the node at its outer end and
+ * answers a selection of it. Selecting an input over in the diagram view
+ * therefore still rings its leg, and an identity wire — whose two ends are both
+ * boundaries — is still a wire held at both.
+ */
+export interface HypergraphInputBoundary {
+  /** What a selection names it by — a ZX node id when the input came from a
+   *  diagram. Required, unlike a hyperedge's: a position in *this* list is not
+   *  a position in `hyperedges`, so falling back to it would collide with a
+   *  blob's id as often as not. Must be distinct from every hyperedge id and
+   *  from every other boundary's. */
+  id: number
+  /** Indices into `HypergraphInput.wires`, as a hyperedge's are — one of them,
+   *  for the leg the boundary hangs off. */
+  wires: number[]
+}
+
+/**
  * A hypergraph and where to draw it, as `<zx-hypergraph>` takes it: the dots
  * and where each goes, and which of them each blob holds.
  *
- * Every wire is held by one or two hyperedge ends, which `hypergraphScene`
- * checks. Two is the ordinary case: the two ZX nodes its edge runs between, or
- * one hyperedge twice for a self-loop, or a spider and a boundary for a leg
- * hanging out of the diagram. One is what is left when a hyperedge that would
- * have held it isn't drawn, as under
- * `<zx-diagram disable-io-blobs-in-hypergraph>`. Three has no meaning here: a
- * dot's `src` and `tgt` *are* the hyperedges holding it, so a wire held by
- * three has nothing to answer a press with. This is a ZX diagram written the
- * other way round, not a hypergraph in general.
+ * Every wire is held by one or two ends, which `hypergraphScene` checks,
+ * counting `boundaries` alongside `hyperedges` — an end that isn't drawn is
+ * still an end. Two is the ordinary case: the two ZX nodes its edge runs
+ * between, or one hyperedge twice for a self-loop, or a spider and a boundary
+ * for a leg hanging out of the diagram. One is what is left when the thing at
+ * the wire's other end is neither drawn nor named. Three has no meaning here: a
+ * dot's `src` and `tgt` are the two ends it answers a press with, so a wire
+ * held by three has nothing to give. This is a ZX diagram written the other way
+ * round, not a hypergraph in general.
  */
 export interface HypergraphInput {
   wires: HypergraphInputWire[]
   hyperedges: HypergraphInputHyperedge[]
+  /** The inputs and outputs that aren't drawn as blobs. Nothing is painted for
+   *  one; what it does is keep the wire hanging off it held at both ends — see
+   *  {@link HypergraphInputBoundary}. */
+  boundaries?: HypergraphInputBoundary[]
   /** The canvas to draw on, in pixels. Given, it is used as it stands; left
    *  out, one is measured around the dots with room for what is drawn outside
    *  them. `layoutHypergraph` gives it, since the dual's canvas is the ZX
@@ -195,11 +225,12 @@ export interface HypergraphDot {
    *  the diagram's own terms, the language the other view reads, rather than in
    *  wire ids. */
   edge: number
-  /** The two hyperedges holding it, by their own selection ids — the ZX nodes
-   *  its edge runs between. A wire held by a single hyperedge end has that one
-   *  in both, so a boundary leg whose boundary blob isn't drawn reads here the
-   *  way a self-loop does. Only the drawing tells the two apart, and only when
-   *  the boundary blobs are on. */
+  /** The two ends, by their own selection ids — the ZX nodes its edge runs
+   *  between. Either may be a boundary that isn't drawn (see
+   *  `HypergraphInput.boundaries`), in which case a selection naming it still
+   *  rings this dot, there being no blob to outline. A self-loop has the one
+   *  hyperedge in both, and so does a wire whose other end is neither drawn nor
+   *  named. */
   src: number
   tgt: number
 }

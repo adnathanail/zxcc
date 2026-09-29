@@ -9,6 +9,10 @@ import {
   blobCaptionsIn,
   blobIdsIn,
   dotIdsIn,
+  firePointer,
+  ringedDotsIn,
+  selectedBlobsIn,
+  selectedNodesIn,
   shadowRootOf,
   translateOf,
   type ViewRoot,
@@ -352,5 +356,19 @@ export const WithoutBoundaryBlobs: Story = {
     expect(root.querySelectorAll('zx-viewer g.node g[data-node]').length).toBe(
       fourSpiderSquare.nodes.length,
     )
+
+    // Input 0 is still a node to press in the diagram, and its leg is still a
+    // dot over here, so the selection still crosses: every wire says which
+    // nodes are at its ends whether or not both are drawn. What is missing is
+    // the blob — nothing is named in the dual, and the leg's dot is dashed, the
+    // way it would be under a boundary blob that was there.
+    const input0 = root.querySelector<SVGGElement>('zx-viewer g[data-node="0"]')
+    if (!input0) throw new Error('input 0 not mounted')
+    const [x, y] = translateOf(input0)
+    firePointer('pointerdown', input0, x, y)
+    firePointer('pointerup', window, x, y)
+    await waitFor(() => expect(selectedNodesIn(root)).toEqual([0]))
+    expect(selectedBlobsIn(root)).toEqual([])
+    expect(ringedDotsIn(root, 'implied')).toEqual(['w0'])
   },
 }

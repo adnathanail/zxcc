@@ -12,7 +12,16 @@ import {
   type ZxDiagramElement,
 } from '../../src/index'
 import { fourSpiderSquare } from '../diagrams'
-import { shadowRootOf } from '../interactionHelpers'
+import {
+  blobIdsIn,
+  dotIdsIn,
+  firePointer,
+  ringedDotsIn,
+  selectedBlobsIn,
+  selectedNodesIn,
+  shadowRootOf,
+  translateOf,
+} from '../interactionHelpers'
 
 const meta: Meta = {
   title: 'Other/Tests',
@@ -158,15 +167,16 @@ export const ErrorStates: Story = {
         'x-spider, hadamard, boundary.',
     )
 
-    // 5. A wire held by three hyperedge ends. A dot *is* an edge, and an edge
-    // has two ends: `src` and `tgt` are the hyperedges holding it, which is how
-    // a press on it answers in the diagram's terms, so a third has nowhere to
-    // go. One end is allowed and is not an error — that is what is left of a
-    // boundary leg when the boundary's own blob isn't being drawn.
+    // 5. A wire held by three ends. A dot *is* an edge, and an edge has two
+    // ends: `src` and `tgt` are what is at them, which is how a press on it
+    // answers in the diagram's terms, so a third has nowhere to go. One end is
+    // allowed and is not an error — that is what is left of a boundary leg when
+    // the boundary is neither drawn nor named in `boundaries`.
     expect(await messageOf('over-held')).toBe(
-      'Hypergraph input: wire 0 is held by 3 hyperedge ends, and every wire is held by one or ' +
+      'Hypergraph input: wire 0 is held by 3 ends, and every wire is held by one or ' +
         'two — one per end of the edge it stands for, or the same hyperedge twice for a ' +
-        "self-loop, or just the one when the hyperedge at its other end isn't being drawn.",
+        'self-loop. A boundary left out of `hyperedges` counts as an end if it is named in ' +
+        "`boundaries`, which is how a leg keeps both of its ends when its blob isn't drawn.",
     )
 
     // 6. Half a position. A wire goes either in a grid square (`col`/`qubit`)
@@ -177,6 +187,65 @@ export const ErrorStates: Story = {
         'either on the grid (`col` and `qubit`) or in pixels (`x` and `y`) — both numbers, ' +
         'and one pair or the other.',
     )
+  },
+}
+
+/**
+ * An identity wire — an input joined straight to an output — with the boundary
+ * blobs dropped. Both of the wire's ends are boundaries, so this is the one
+ * diagram where dropping them leaves a dot with no blob anywhere near it.
+ *
+ * A picture of a single dot is not worth a snapshot, but two things about it
+ * are worth pinning. It draws at all: a wire whose ends are neither drawn nor
+ * named would be a wire held by nothing, which the builder refuses. And the
+ * selection still crosses — the boundaries are named in the input's
+ * `boundaries`, so the dot knows the nodes at its ends even though neither has
+ * a blob, and pressing the input over in the diagram rings it.
+ */
+export const IdentityWireWithoutBoundaryBlobs: Story = {
+  name: 'Identity wire with the boundary blobs dropped',
+  parameters: {
+    docs: {
+      story: {
+        description:
+          'An input wired straight to an output, drawn with `disable-io-blobs-in-hypergraph`. Both ends of the one wire are boundaries, so the dual is a single dot with no blob at either end — and pressing the input in the diagram still rings it, since a dot answers a selection with the nodes at its ends rather than with the blobs around it.',
+      },
+    },
+  },
+  render: () => html`
+    <zx-diagram
+      view-mode="both-vertical"
+      disable-io-blobs-in-hypergraph
+      .diagram=${
+        {
+          nodes: [
+            { id: 0, type: 'input', ioId: 0 },
+            { id: 1, type: 'output', ioId: 0 },
+          ],
+          edges: [{ src: 0, tgt: 1 }],
+        } as DiagramData
+      }
+    ></zx-diagram>
+  `,
+  play: async ({ canvasElement }) => {
+    const root = await shadowRootOf(canvasElement)
+    // Drawn rather than reported: the pair is on screen and the error box is
+    // not.
+    await waitFor(() => expect(dotIdsIn(root)).toEqual(['w0']))
+    expect(root.querySelector('.error pre')).toBe(null)
+    expect(blobIdsIn(root)).toEqual([])
+
+    // The input is still a node to press in the diagram, and the dot is still
+    // at its end, so it is ringed — dashed, since the selection named the node
+    // rather than the wire.
+    const input = root.querySelector<SVGGElement>('zx-viewer g[data-node="0"]')
+    if (!input) throw new Error('input 0 not mounted')
+    const [x, y] = translateOf(input)
+    firePointer('pointerdown', input, x, y)
+    firePointer('pointerup', window, x, y)
+    await waitFor(() => expect(selectedNodesIn(root)).toEqual([0]))
+    expect(selectedBlobsIn(root)).toEqual([])
+    expect(ringedDotsIn(root, 'implied')).toEqual(['w0'])
   },
 }
 

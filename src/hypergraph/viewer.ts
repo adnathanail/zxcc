@@ -139,7 +139,10 @@ export class ZxHypergraphViewerElement extends LitElement {
    * `implied` is what follows from it. A blob is implied when it *holds* a
    * selected wire, which is what a press on a dot produces. A dot is implied
    * when the selection names either of the ZX nodes it runs between — a
-   * selected node's own legs, the same set as the dots of its blob.
+   * selected node's own legs, the same set as the dots of its blob when that
+   * node has one. A dot knows what is at its ends whether or not both are
+   * drawn, so with the boundary blobs off, selecting an input in the diagram
+   * view still rings its leg here; there is simply no blob to outline.
    *
    * It stops there. The wires an implied blob holds are a further step out, and
    * marking them would bury the dot that was pressed in its own answer.

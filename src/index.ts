@@ -13,6 +13,7 @@ export type {
   HypergraphData,
   HypergraphEdge,
   HypergraphInput,
+  HypergraphInputBoundary,
   HypergraphInputGridWire,
   HypergraphInputHyperedge,
   HypergraphInputPixelWire,
