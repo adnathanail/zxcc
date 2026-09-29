@@ -1,9 +1,9 @@
 // Geometry for the ZX diagram itself: the SVG path strings for edges, Pauli
 // strands, boxes and the ground symbol, plus the H-box drag arithmetic.
 //
-// Nothing here touches the DOM. `<zx-viewer>` keeps only the *inputs* to these
-// functions as state (dragged positions, H-box line parameters, selection) and
-// derives every coordinate it paints by calling them.
+// Nothing here touches the DOM. `<zx-viewer>` keeps only the inputs to these
+// functions as state — dragged positions, H-box line parameters, the brush
+// rect — and derives every coordinate it paints by calling them.
 
 import { curvePath, edgeCurve, type Point } from '../curves'
 import type { SceneBox, SceneLink, SceneWeb } from '../types'

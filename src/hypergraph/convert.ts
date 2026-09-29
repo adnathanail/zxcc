@@ -7,8 +7,7 @@
 // blobs, one per end of the wire it stands for — except a self-loop's, whose
 // two ends are the same node and which is in one.
 //
-// Pure and DOM-free, and the counterpart of `src/layout.ts` in this half of
-// the package: `./layout.ts` is what gives the result coordinates.
+// Pure and DOM-free: `./layout.ts` is what gives the result coordinates.
 
 import type { DiagramData, DiagramNode, Scene } from '../types'
 import type { HyperedgeKind, HypergraphData, HypergraphEdge, HypergraphWire } from './types'
@@ -30,7 +29,7 @@ function blobKind(n: DiagramNode): HyperedgeKind {
 /** What the node is, without its phase — `Z`, `X`, `H`, or which end of the
  *  diagram a boundary is. Kept apart from the phase because the two are drawn
  *  differently: the viewer paints the name grey and the phase in the same blue
- *  `<zx-viewer>` uses, and drops the name alone when labels are off. */
+ *  `<zx-viewer>` uses, and `show-labels` drops the name alone. */
 function nameFor(n: DiagramNode, kind: HyperedgeKind): string {
   switch (kind) {
     case 'z-spider':
@@ -44,9 +43,9 @@ function nameFor(n: DiagramNode, kind: HyperedgeKind): string {
   }
 }
 
-/** The two joined back up, `Z(π/2)` — the one-string form, for a caller of
- *  `toHypergraph` that wants a label rather than the pieces. A node with no
- *  phase to show is just its name, as it is in the diagram view. */
+/** The two joined back up, `Z(π/2)` — the one-string form, for a caller that
+ *  wants a label rather than the pieces. A node with no phase to show is just
+ *  its name. */
 function labelFor(name: string, phase: string): string {
   return phase ? `${name}(${phase})` : name
 }

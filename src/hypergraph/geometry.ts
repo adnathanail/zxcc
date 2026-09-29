@@ -1,17 +1,16 @@
 // Geometry for the hypergraph view: where a wire's dot sits, and the outline
 // that encloses the dots of one hyperedge.
 //
-// DOM-free, and the counterpart of `src/geometry.ts`, which stays the geometry
-// of the ZX diagram itself. The two share `src/curves.ts` and nothing else:
-// `wireCurve` hands back the very curve the ZX viewer paints a wire as, rather
-// than a second opinion about where that wire runs.
+// DOM-free, and the counterpart of `src/graph/geometry.ts`. The two share
+// `src/curves.ts` and nothing else: `wireCurve` hands back the very curve the
+// ZX viewer paints a wire as, so the dot and the wire it sits on cannot
+// disagree.
 //
-// A blob is asked several questions per render — draw your outline, does this
-// point fall in you, does this dot's circle meet you — and all of them are
-// answered from its convex hull. So the hull is computed once by `blobHull` and
-// handed to the functions that need it, rather than each deriving its own. What
-// a function takes says which it depends on: `hull*` takes the hull, `blob*`
-// takes the blob and the dot positions.
+// Every question about a blob — draw its outline, does this point fall inside
+// it, does this dot's circle meet it — is answered from its convex hull, which
+// is the expensive step. So `blobHull` computes it once and the caller passes
+// it down. What a function takes says what it depends on: `hull*` takes the
+// hull, `blob*` takes the blob and the dot positions.
 
 import { type Curve, edgeCurve, type Point } from '../curves'
 import type { SceneLink } from '../types'
@@ -21,12 +20,11 @@ import type { HypergraphBlob } from './types'
  *  Null when either endpoint is off the diagram.
  *
  *  The curve rather than a point, because where on it the dot goes is not
- *  fixed. Halfway along is the default — which is why parallel edges get
- *  distinct dots, they are drawn as a fan of arcs, and why a self-loop's dot
- *  sits inside its loop — but two crossing edges share that point, and one dot
- *  where there should be two is a different diagram, so the layout slides such
- *  a dot along this same curve until they read as two. Handing back the curve
- *  is what keeps that slide on the wire the viewer actually paints. */
+ *  fixed. Halfway along is the default — which is why parallel edges, drawn as
+ *  a fan of arcs, get distinct dots, and why a self-loop's dot sits inside its
+ *  loop. Two crossing edges share that midpoint, though, so the layout slides
+ *  one of the dots along this same curve until the pair reads as two marks;
+ *  handing back the curve keeps that slide on the wire the viewer paints. */
 export function wireCurve(link: SceneLink, pos: Map<number, Point>): Curve | null {
   const s = pos.get(link.source)
   const t = pos.get(link.target)
@@ -58,7 +56,7 @@ function convexHull(points: Point[]): Point[] {
 }
 
 /** Shoelace, in screen axes. Positive means the polygon runs clockwise as
- *  drawn, which is the orientation {@link blobPath} offsets outwards from. */
+ *  drawn, which is the orientation {@link hullPath} offsets outwards from. */
 function signedArea(polygon: Point[]): number {
   let sum = 0
   for (let i = 0; i < polygon.length; i++) {
@@ -79,14 +77,9 @@ function orientedHull(points: Point[]): Point[] {
   return hull
 }
 
-/**
- * The hull of one blob's dots, from the live dot positions.
- *
- * This is the expensive step — a sort and a monotone chain — and the shape
- * every other question about a blob is answered from, so a caller drawing a
- * whole scene computes it once per blob and passes it to the functions below
- * rather than letting each of them derive it again.
- */
+/** The hull of one blob's dots, from the live dot positions: a sort and a
+ *  monotone chain. Compute it once per blob per render and pass it to the
+ *  functions below. */
 export function blobHull(blob: HypergraphBlob, pos: Map<string, Point>): Point[] {
   return orientedHull(dotPoints(blob, pos))
 }
@@ -136,8 +129,8 @@ function dotPoints(blob: HypergraphBlob, pos: Map<string, Point>): Point[] {
   return points
 }
 
-/** Mean of the points — inside the hull of them, and so inside the outline
- *  `blobPath` draws around it. */
+/** Mean of the points — inside their hull, and so inside the outline
+ *  {@link hullPath} draws around it. */
 function centroid(points: Point[]): Point {
   const x = points.reduce((sum, p) => sum + p.x, 0) / points.length
   const y = points.reduce((sum, p) => sum + p.y, 0) / points.length
@@ -159,8 +152,8 @@ export function blobLabelAnchor(
 
 /** The middle of a blob — the point a leader line from its caption is aimed
  *  at. Inside the outline by construction, and far enough from the caption to
- *  be worth drawing a line to: the caption is parked a few pixels off the top
- *  of the outline, so a line to the boundary would be too short to see. */
+ *  be worth drawing a line to; the caption sits only a few pixels off the top
+ *  of the outline. */
 export function blobCentre(blob: HypergraphBlob, pos: Map<string, Point>): Point | null {
   const points = dotPoints(blob, pos)
   return points.length === 0 ? null : centroid(points)
@@ -180,12 +173,11 @@ function distanceToSegment(p: Point, a: Point, b: Point): number {
  * Whether `point` falls inside the outline {@link hullPath} draws — that is,
  * within `radius` of the hull.
  *
- * Tested against the geometry rather than by asking the DOM what was clicked,
- * because blobs overlap: SVG hit-testing reports only the topmost path, and
- * which one that is says nothing about the others under the pointer.
+ * Used for hit testing instead of asking the DOM what was clicked, because
+ * blobs overlap and SVG reports only the topmost path.
  *
  * `radius` is a parameter rather than the blob's own standoff because the same
- * hull is asked two questions: whether a press landed inside the outline, and
+ * hull answers two questions: whether a press landed inside the outline, and
  * whether a dot's circle meets it, which is the same test with the radius
  * fattened by the dot.
  */

@@ -9,7 +9,7 @@ export default {
           'Graphs',
           ['Basic', 'Algebraic', 'Advanced', 'Interactions'],
           'Hypergraphs',
-          ['Basic', 'Interactions'],
+          ['Basic', 'From graph', 'Interactions'],
           'Other',
           ['Both viewers', 'Tests']
         ],

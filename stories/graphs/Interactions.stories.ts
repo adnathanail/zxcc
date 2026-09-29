@@ -31,7 +31,7 @@ interface Args {
 const meta: Meta<Args> = {
   title: 'Graphs/Interactions',
   render: ({ diagram }) =>
-    html`<zx-diagram .diagram=${diagram} style="min-height: 160px"></zx-diagram>`,
+    html`<zx-graph .diagram=${diagram} style="min-height: 160px"></zx-graph>`,
   parameters: {
     docs: {
       description: {
@@ -61,7 +61,7 @@ export const DragSingleSpider: Story = {
     const DX = 40
     const DY = 30
 
-    const root = await shadowRootOf(canvasElement)
+    const root = await shadowRootOf(canvasElement, 'zx-graph')
     let spider!: SVGGElement
     await step('wait for Z spider to mount', async () => {
       spider = await waitForNode(root, 'circle', Z_FILL)
@@ -118,7 +118,7 @@ export const ShiftClickMultiDrag: Story = {
     const DX = 25
     const DY = 15
 
-    const root = await shadowRootOf(canvasElement)
+    const root = await shadowRootOf(canvasElement, 'zx-graph')
     const container = root.querySelector('.container')
     if (!container) throw new Error('.container not found')
 
@@ -176,7 +176,7 @@ export const HboxConstrainedDrag: Story = {
     const ALONG_LINE_DX = 30
     const ALONG_LINE_DY = 0
 
-    const root = await shadowRootOf(canvasElement)
+    const root = await shadowRootOf(canvasElement, 'zx-graph')
     let hbox!: SVGGElement
     await step('wait for H-box to mount', async () => {
       hbox = await waitForNode(root, 'rect', H_FILL)
@@ -227,7 +227,7 @@ export const BrushSelectThenDrag: Story = {
     const DX = 20
     const DY = 20
 
-    const root = await shadowRootOf(canvasElement)
+    const root = await shadowRootOf(canvasElement, 'zx-graph')
     const svg = root.querySelector<SVGSVGElement>('svg')
     const overlay = root.querySelector<SVGRectElement>('.brush .overlay')
     if (!svg || !overlay) throw new Error('svg/brush overlay not found')
@@ -310,7 +310,7 @@ export const HboxBarycentreFallback: Story = {
   name: '5. Degree-3 H-box falls back to barycentre',
   args: { diagram: hboxFanout },
   play: async ({ canvasElement, step }) => {
-    const root = await shadowRootOf(canvasElement)
+    const root = await shadowRootOf(canvasElement, 'zx-graph')
 
     let hbox!: SVGGElement
     let spiders!: SVGGElement[]
@@ -375,7 +375,7 @@ export const HboxBarycentreCollision: Story = {
   name: '6. Colliding fallback H-boxes are nudged apart',
   args: { diagram: hboxFanoutCollision },
   play: async ({ canvasElement, step }) => {
-    const root = await shadowRootOf(canvasElement)
+    const root = await shadowRootOf(canvasElement, 'zx-graph')
 
     let hboxes!: SVGGElement[]
     await step('wait for both H-boxes to mount', async () => {
@@ -435,7 +435,7 @@ export const HboxChainClampForward: Story = {
   name: '7. Chained H-box clamps against the next H-box',
   args: { diagram: zHHzChain },
   play: async ({ canvasElement, step }) => {
-    const root = await shadowRootOf(canvasElement)
+    const root = await shadowRootOf(canvasElement, 'zx-graph')
 
     let hboxes!: SVGGElement[]
     await step('wait for both H-boxes to mount', async () => {
@@ -470,7 +470,7 @@ export const HboxChainClampBackward: Story = {
   name: '8. Chained H-box clamps against the previous H-box',
   args: { diagram: zHHzChain },
   play: async ({ canvasElement, step }) => {
-    const root = await shadowRootOf(canvasElement)
+    const root = await shadowRootOf(canvasElement, 'zx-graph')
 
     let hboxes!: SVGGElement[]
     await step('wait for both H-boxes to mount', async () => {
@@ -512,7 +512,7 @@ export const PauliWebFollowsDrag: Story = {
     const DX = 35
     const DY = 25
 
-    const root = await shadowRootOf(canvasElement)
+    const root = await shadowRootOf(canvasElement, 'zx-graph')
 
     let zSpider!: SVGGElement
     await step('wait for the Z spider to mount', async () => {

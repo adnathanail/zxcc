@@ -2,16 +2,14 @@
 // interactions (drag, shift/brush selection).
 //
 // The whole SVG is a Lit template derived from four pieces of interaction
-// state: dragged positions, H-box line parameters, the selection, and the
-// live brush rect. Nothing else is stored — H-box positions, box bounds and
-// edge paths are all recomputed from those in `render()`, which is why
-// there is no imperative "sync the DOM to the model" pass. Three of the four
-// are the viewer's own; the selection is the host's, so that the two views can
-// share one (see `src/selection.ts`).
+// state: dragged positions, H-box line parameters, the live brush rect, and the
+// selection. The first three are the viewer's own; the selection is the host's,
+// so that the two views can share one (see `src/selection.ts`). Nothing else is
+// stored — H-box positions, box bounds and edge paths are all recomputed in
+// `render()`, so there is no imperative "sync the DOM to the model" pass.
 //
-// Internal to the package: it renders into the light DOM so it shares
-// `<zx-diagram>`'s stylesheet and leaves the SVG reachable from the host's
-// shadow root.
+// Internal to the package: it renders into the light DOM so it shares its
+// host's stylesheet and leaves the SVG reachable from the host's shadow root.
 
 import { html, LitElement, nothing, type PropertyValues, type SVGTemplateResult, svg } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
@@ -25,6 +23,7 @@ import {
   VDATA_FILL,
 } from '../constants'
 import type { Point } from '../curves'
+import { trackPointer } from '../gestures'
 import { EMPTY_SELECTION, nodeSelection, type Selection, selectionEvent } from '../selection'
 import { Topology } from '../topology'
 import type { BoxKind, NodeKind, Scene, SceneNode } from '../types'
@@ -41,20 +40,17 @@ const SELECTED_STYLE = `stroke-width: 2px; stroke: ${SELECTED_STROKE}`
 const NODE_STYLE = 'stroke-width: 1.5px'
 const LINK_WIDTH = 1.5
 /** A selected edge is cased rather than recoloured: the same path painted
- *  underneath, wide enough to show either side of the wire. An edge's colour
- *  is what it *is* — an H-edge is `Hedge` blue, `#0088ff` in pyzx's original
- *  palette, which taking the selection blue over the top would be all but
- *  indistinguishable from. So the blue goes round it instead, which is the
- *  same move the other two marks make: a node keeps its fill and takes a blue
- *  stroke, a dot keeps its fill and takes a blue ring standing off it.
+ *  underneath, wide enough to show either side of the wire. An edge's colour is
+ *  what it *is* — an H-edge is `Hedge` blue, `#0088ff` in pyzx's original
+ *  palette, which the selection blue over the top would be all but
+ *  indistinguishable from. So the blue goes round it, as a node's blue stroke
+ *  and a dot's blue ring do.
  *
- *  The casing stands *off* the wire rather than touching it, again as the
- *  dot's ring does: a band of canvas between the two is what keeps the blue
- *  reading as a surround at any edge colour, and it is the H-edge — light blue
- *  inside dark blue — that needs it most. The band is opaque, so it knocks out
- *  whatever is painted below along that stretch; the layer sits above the
- *  boxes and webs rather than below them so the highlight isn't itself buried,
- *  and that is the cost of the gap. */
+ *  The casing stands *off* the wire rather than touching it: a band of canvas
+ *  between the two is what keeps the blue reading as a surround at any edge
+ *  colour, and the light-blue-inside-dark-blue H-edge needs it most. The band
+ *  is opaque, so it knocks out whatever is painted below along that stretch —
+ *  a Pauli-web strand under a selected edge disappears. */
 const CASING_GAP_WIDTH = 5
 const CASING_WIDTH = 3 + CASING_GAP_WIDTH
 const LINK_STYLE = `stroke-width: ${LINK_WIDTH}px`
@@ -102,13 +98,12 @@ export class ZxViewerElement extends LitElement {
   #topology: Topology | null = null
   /** Tears down the in-flight drag or brush gesture, if any. The argument says
    *  whether the gesture was cancelled rather than completed; anything ending a
-   *  gesture from outside it — a new scene, an unmount — passes `false`, since
-   *  nothing is left to restore it to. */
+   *  gesture from outside it — a new scene, an unmount — passes `false`. */
   #endGesture: ((cancelled: boolean) => void) | null = null
 
-  // These are deliberately not `@state()`: they are mutated in place during a
-  // gesture and paired with an explicit `requestUpdate()`, rather than being
-  // reallocated on every pointermove just to trip Lit's identity check.
+  // The four above are deliberately not `@state()`: they are mutated in place
+  // during a gesture and paired with an explicit `requestUpdate()`, rather than
+  // being reallocated on every pointermove just to trip Lit's identity check.
 
   protected createRenderRoot() {
     return this
@@ -141,23 +136,9 @@ export class ZxViewerElement extends LitElement {
     this.dispatchEvent(selectionEvent(nodeSelection(nodes)))
   }
 
-  /** Run `onMove` for the rest of this gesture. Window-level listeners keep
-   *  the drag alive when the pointer leaves the SVG, and pointer events mean
-   *  one path covers mouse, pen and touch alike.
-   *
-   *  `blockScroll` suppresses the browser's own touch gesture for the length of
-   *  the drag: the SVG sits in a scroll container, so a finger that starts
-   *  moving a node pans the picture instead and the pan cancels the drag. It is
-   *  a non-passive `touchmove` handler rather than `touch-action: none` on the
-   *  shapes because the very same drag on empty canvas is *meant* to pan — the
-   *  block belongs to the gesture, not to the element. The listener goes on at
-   *  the press, while the first `touchmove` is still cancellable; once a pan
-   *  has begun it can no longer be stopped.
-   *
-   *  `onEnd` is told whether the gesture was *cancelled* — the browser taking
-   *  it away, which is what it does once it decides the touch was a scroll
-   *  after all — rather than finished with a lift. The two are different
-   *  answers: a gesture that was taken away never said what it wanted. */
+  /** Run `onMove` for the rest of this gesture, replacing any gesture already
+   *  under way. See {@link trackPointer} for what `blockScroll` and `onEnd`
+   *  mean. */
   #track(
     start: PointerEvent,
     onMove: (e: PointerEvent) => void,
@@ -165,30 +146,13 @@ export class ZxViewerElement extends LitElement {
     onEnd?: (cancelled: boolean) => void,
   ) {
     this.#endGesture?.(false)
-    // The gesture belongs to the pointer that began it. The listeners are on
-    // window, so every pointer on the screen reports to them: without this a
-    // second finger's moves would drag whatever the first one picked up to
-    // wherever the second is, and its lift would end a drag still under way.
-    const mine = (e: PointerEvent) => e.pointerId === start.pointerId
-    const move = (e: PointerEvent) => {
-      if (mine(e)) onMove(e)
-    }
-    const end = (e: PointerEvent) => {
-      if (mine(e)) this.#endGesture?.(e.type === 'pointercancel')
-    }
-    const hold = (e: TouchEvent) => e.preventDefault()
-    this.#endGesture = (cancelled: boolean) => {
-      window.removeEventListener('pointermove', move)
-      window.removeEventListener('pointerup', end)
-      window.removeEventListener('pointercancel', end)
-      window.removeEventListener('touchmove', hold)
-      this.#endGesture = null
-      onEnd?.(cancelled)
-    }
-    window.addEventListener('pointermove', move)
-    window.addEventListener('pointerup', end)
-    window.addEventListener('pointercancel', end)
-    if (blockScroll) window.addEventListener('touchmove', hold, { passive: false })
+    this.#endGesture = trackPointer(start, onMove, {
+      blockScroll,
+      onEnd: cancelled => {
+        this.#endGesture = null
+        onEnd?.(cancelled)
+      },
+    })
   }
 
   #positions(): Map<number, Point> {
@@ -314,10 +278,10 @@ export class ZxViewerElement extends LitElement {
         this.#brush = null
         // A cancelled brush is one the browser took away mid-sweep, which on a
         // touch screen is how panning the canvas begins — the gesture this one
-        // deliberately leaves available. So the selection goes back to what the
-        // press established rather than to whatever the sweep had reached:
-        // otherwise scrolling across the picture selects what the finger passed
-        // over, and the rubber band that would have explained why is gone.
+        // deliberately leaves available. The selection goes back to what the
+        // press established rather than to whatever the sweep had reached, so
+        // that panning across the picture doesn't select what the finger passed
+        // over with the rubber band that would have explained it already gone.
         if (cancelled) this.#select(kept)
         this.requestUpdate()
       },
@@ -389,10 +353,10 @@ export class ZxViewerElement extends LitElement {
       </g>`
   }
 
-  /** pyzx pins the scalar at a fixed x: 60 / y: 40, which lands off to the
-   *  left on any diagram wider than ~120px and sits above the diagram. This
-   *  centres it in the strip `layout()` reserves below, in the same monospace
-   *  family as the phase and vdata labels. */
+  /** The scalar, centred in the strip `layout()` reserves below the diagram,
+   *  in the same monospace family as the phase and vdata labels. pyzx instead
+   *  pins it at a fixed x: 60 / y: 40, which sits above the diagram and lands
+   *  off to the left on anything wider than ~120px. */
   #renderScalar(scene: Scene) {
     if (scene.scalar === '') return nothing
     // No whitespace inside <text>: SVG would render it, off-centring the
@@ -437,15 +401,15 @@ export class ZxViewerElement extends LitElement {
           )}
         </g>
 
-        <!-- The casings for the selected edges are a layer of their own,
-             *under* every wire rather than under their own: inside g.link a
-             casing would be painted over whichever edges come after it, and
-             cover the ones that cross it. Down here it reads as a highlight
-             on the canvas that the whole diagram is drawn over.
+        <!-- Casings are a layer of their own, under *every* wire rather than
+             under their own: inside g.link a casing would be painted over by
+             whichever edges come after it, and would cover the ones crossing
+             it. Down here it reads as a highlight on the canvas the whole
+             diagram is drawn over.
 
-             Every blue is painted before every gap, so that two selected edges
-             crossing don't knock holes in each other's casing — within one
-             edge the gap has to come second, but across edges it must not. -->
+             Every blue is painted before every gap, so two selected edges
+             crossing don't knock holes in each other's casing. Within one edge
+             the gap has to come second; across edges it must not. -->
         <g class="casing">
           ${cased.map(
             ({ link, i }) => svg`<path class="selected" data-link=${i} d=${linkPath(link, pos)}

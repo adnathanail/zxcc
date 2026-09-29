@@ -2,21 +2,21 @@
 // and a blob around the dots of each ZX node's incident wires.
 //
 // The second painter alongside `<zx-viewer>`, and internal in the same way: it
-// renders into the light DOM so it shares `<zx-diagram>`'s stylesheet and
-// leaves the SVG reachable from the host's shadow root.
+// renders into the light DOM so it shares its host's stylesheet and leaves the
+// SVG reachable from the host's shadow root.
 //
-// Blob outlines are derived in `render()` from the dot positions rather than
-// stored, so a drag only has to move a dot for every blob holding it to
-// reshape. There is one piece of interaction state of its own — the dragged dot
-// positions — plus the selection, which belongs to `<zx-diagram>` so that this
-// view and the diagram view can share one. Everything else on screen, the
-// outlined blobs and the ringed dots included, is derived from those two.
+// It keeps one piece of interaction state of its own, the dragged dot
+// positions, plus the selection the host owns. Everything else on screen — blob
+// outlines, dot rings, trespass marks — is derived from those two in
+// `render()`, so a drag only has to move a dot for every blob holding it to
+// reshape.
 
 import { html, LitElement, nothing, type PropertyValues, type SVGTemplateResult, svg } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 import { type EdgeColors, edgeColor, nodeColor } from '../colors'
 import { LABEL_FILL, ORIGINAL_COLORS, PHASE_FILL, SELECTED_STROKE } from '../constants'
 import type { Point } from '../curves'
+import { trackPointer } from '../gestures'
 import {
   EMPTY_SELECTION,
   edgeSelection,
@@ -33,19 +33,11 @@ import type { HypergraphBlob, HypergraphScene } from './types'
  *  two of them — so an overlap reads as the two colours over each other. */
 const BLOB_FILL_OPACITY = '0.4'
 const BLOB_STYLE = 'stroke-width: 1.5px; stroke: black'
-/**
- * Solid for what the press named, dashed for what that implies.
- *
- * One press picks out a whole neighbourhood — press a dot and you get the
- * hyperedges holding that wire and every other wire in them — and drawn in one
- * weight the neighbourhood swallows the thing at the middle of it, which is the
- * one mark you know is right. A dash is the usual way of saying "derived":
- * unbroken is what you pointed at, broken is what followed from it.
- *
- * The dashes are measured for the shape they go round — a blob's outline is a
- * long hull, a dot's ring is a circle a few pixels across, and one pattern
- * across both would read as coarse on one and as a solid line on the other.
- */
+/** Solid for what the selection named, dashed for what it implies. One press
+ *  picks out a whole neighbourhood, and in a single weight the neighbourhood
+ *  swallows the mark at the middle of it. The dash lengths differ between a
+ *  blob's outline and a dot's ring because one pattern across a long hull and a
+ *  circle a few pixels across reads as coarse on one and solid on the other. */
 const SELECTED_STYLE = `stroke-width: 2px; stroke: ${SELECTED_STROKE}`
 const IMPLIED_STYLE = `${SELECTED_STYLE}; stroke-dasharray: 6 4`
 /** The leader line from a selected blob's caption to the blob itself. Dashed
@@ -138,23 +130,22 @@ export class ZxHypergraphViewerElement extends LitElement {
    * What the current selection picks out here: the blobs to outline and the
    * dots to ring, each with *how* it was picked.
    *
-   * All of it is derived rather than stored, so the same selection reads the
-   * same whether it was made in this view or in the diagram beside it.
+   * Derived rather than stored, so the same selection reads the same whether it
+   * was made in this view or in the diagram beside it.
    *
-   * `named` is what the selection actually says — the blob standing for a
-   * selected ZX node, the dot standing for a selected ZX edge. It is drawn
-   * solid, and it is the thing that was pressed, in whichever view.
+   * `named` is what the selection says outright: the blob standing for a
+   * selected ZX node, the dot standing for a selected ZX edge.
    *
-   * `implied` is everything that follows, drawn dashed. A blob is implied when
-   * it merely *holds* a selected wire, which is what a press on a dot produces:
-   * that press asks which hyperedges the wire is part of, and the hyperedges
-   * are the whole of the answer. The wires *those* hold are a further step out
-   * again and are not marked — a press on one dot reaching a ring on five is
-   * more than was asked, and it buries the dot you pressed in its own answer.
+   * `implied` is what follows from it. A blob is implied when it *holds* a
+   * selected wire, which is what a press on a dot produces. A dot is implied
+   * when the selection names either of the ZX nodes it runs between — a
+   * selected node's own legs, the same set as the dots of its blob when that
+   * node has one. A dot knows what is at its ends whether or not both are
+   * drawn, so with the boundary blobs off, selecting an input in the diagram
+   * view still rings its leg here; there is simply no blob to outline.
    *
-   * A dot is implied when the selection names either of the ZX nodes it runs
-   * between — a selected node's own legs, which is the same set as the dots of
-   * the blob standing for it.
+   * It stops there. The wires an implied blob holds are a further step out, and
+   * marking them would bury the dot that was pressed in its own answer.
    */
   #picked(scene: HypergraphScene): { blobs: Map<string, Pick>; dots: Map<string, Pick> } {
     const { nodes, edges } = this.selection
@@ -173,74 +164,43 @@ export class ZxHypergraphViewerElement extends LitElement {
     return { blobs, dots }
   }
 
-  /** Run `onMove` for the rest of this gesture. Window-level listeners keep the
-   *  drag alive when the pointer leaves the SVG, and pointer events mean one
-   *  path covers mouse, pen and touch alike.
-   *
-   *  The non-passive `touchmove` handler suppresses the browser's own touch
-   *  gesture for the length of the drag: the SVG sits in a scroll container, so
-   *  a finger that starts moving a dot pans the picture instead and the pan
-   *  cancels the drag. Only a drag comes through here — a press on canvas
-   *  selects and is over — so panning stays available everywhere except on a
-   *  dot. The listener goes on at the press, while the first `touchmove` is
-   *  still cancellable; once a pan has begun it can no longer be stopped. */
+  /** Run `onMove` for the rest of this gesture, replacing any gesture already
+   *  under way. Only a dot drag comes through here — a press on canvas selects
+   *  and is over — so the browser's own touch gesture is always blocked, which
+   *  leaves panning available everywhere except on a dot. */
   #track(start: PointerEvent, onMove: (e: PointerEvent) => void) {
     this.#endGesture?.()
-    // The gesture belongs to the pointer that began it. The listeners are on
-    // window, so every pointer on the screen reports to them: without this a
-    // second finger's moves would drag this dot to wherever that finger is,
-    // and its lift would end a drag still under way.
-    const mine = (e: PointerEvent) => e.pointerId === start.pointerId
-    const move = (e: PointerEvent) => {
-      if (mine(e)) onMove(e)
-    }
-    const up = (e: PointerEvent) => {
-      if (mine(e)) this.#endGesture?.()
-    }
-    const hold = (e: TouchEvent) => e.preventDefault()
-    this.#endGesture = () => {
-      window.removeEventListener('pointermove', move)
-      window.removeEventListener('pointerup', up)
-      window.removeEventListener('pointercancel', up)
-      window.removeEventListener('touchmove', hold)
-      this.#endGesture = null
-    }
-    window.addEventListener('pointermove', move)
-    window.addEventListener('pointerup', up)
-    window.addEventListener('pointercancel', up)
-    window.addEventListener('touchmove', hold, { passive: false })
+    const stop = trackPointer(start, onMove, {
+      blockScroll: true,
+      onEnd: () => {
+        this.#endGesture = null
+      },
+    })
+    this.#endGesture = () => stop(false)
   }
 
   /**
    * A press on a dot selects the blobs that hold that wire and then drags it; a
    * press anywhere else selects whatever the point falls inside.
    *
-   * Both are selections, but they answer different questions, so they are
-   * tested differently. Pressing bare canvas or a blob asks "what is here?",
-   * which is a question about the drawing — geometry. Pressing a *dot* asks
-   * "which hyperedges is this wire part of?", which is a question about the
-   * hypergraph — membership. A dot can easily sit inside a blob that doesn't
-   * hold it, since a blob is a hull around its own dots and the drawing is
-   * crowded; highlighting that blob would be answering with an accident of the
-   * layout.
+   * The two answer different questions and so are tested differently. A press
+   * on canvas or on a blob asks what is *here*, which is geometry. A press on a
+   * dot asks which hyperedges that wire is *part of*, which is membership. The
+   * hulls are crowded, so a dot often sits inside a blob that doesn't hold it;
+   * testing that press geometrically would report an accident of the layout as
+   * a fact about the hypergraph.
    *
-   * What each press *names*, though, differs, and that is what the diagram
-   * beside it reads. A press on canvas names the ZX nodes the blobs it hit
-   * stand for, so those spiders come out selected in the diagram view. A press
-   * on a dot names the ZX edge — the dot is that edge — so the wire is what
-   * gets picked out over there, not the spiders at its ends. The blobs holding
-   * it are still outlined here, because that is the question this view answers
-   * about a wire; they are derived from the selected edge rather than named by
-   * it (see `#picked`). Those blobs are as far as it goes, though: the *other*
-   * wires they hold are a step further out again and get no mark, so the dot
-   * pressed stays the one solid thing in its own answer.
+   * What each press *names* differs too, and that is what the diagram view
+   * reads. A press on canvas names the ZX nodes its blobs stand for. A press on
+   * a dot names the ZX edge, since the dot is that edge, so it is the wire that
+   * lights up over there rather than the spiders at its ends. The blobs holding
+   * the dot are still outlined here, derived from the selected edge rather than
+   * named by it — see {@link #picked}.
    *
-   * Dragging is what makes the view explorable: the blobs are derived from the
-   * dot positions on every render, so pulling a dot about reshapes every blob
-   * that holds it, live. Nothing is re-laid-out — the node a blob reaches from
-   * stays where the diagram put it — so this shows the drawing under strain
-   * rather than a different drawing. Selecting on the way in means the blobs
-   * being reshaped are the ones picked out while you reshape them.
+   * Dragging reshapes every blob holding the dragged dot, live, since the blobs
+   * are derived from the dot positions on every render. Nothing is laid out
+   * again, so this shows the same drawing under strain. Selecting on the way in
+   * means the blobs being reshaped are the ones picked out.
    */
   #onDown = (e: PointerEvent) => {
     const scene = this.scene
@@ -310,13 +270,12 @@ export class ZxHypergraphViewerElement extends LitElement {
    *
    * Captions sit a few pixels off the top of their outline and the blobs
    * overlap, so in a crowded drawing a caption appears to sit on several shapes
-   * at once — which one it belongs to is exactly what is unclear. The line runs
-   * all the way to the middle of the blob rather than stopping at its edge,
-   * both because a line to the edge would be a few pixels long and because
+   * at once. The line runs all the way to the middle of the blob rather than
+   * stopping at its edge: a line to the edge would be a few pixels long, and
    * ending inside the shape is what makes it unambiguous.
    *
-   * Only the selection gets one: a line per blob would be as much clutter as
-   * the ambiguity it fixes.
+   * Only picked blobs get one; a line per blob would be as much clutter as the
+   * ambiguity it fixes.
    */
   #renderLeader(scene: HypergraphScene, blob: HypergraphBlob) {
     const anchor = this.#captionAnchor(scene, blob)
@@ -360,8 +319,8 @@ export class ZxHypergraphViewerElement extends LitElement {
    * asked with a fattened radius — the same predicate the outline is drawn
    * with, so a dot cannot be marked as overlapping something it visibly clears.
    *
-   * This asks every dot about every blob, so it is the reason the hulls are
-   * computed once by the caller: derived per call it would be a hull per pair.
+   * This asks every dot about every blob, which is why the caller passes the
+   * hulls in: derived per call it would be a hull per pair.
    */
   #trespasses(
     scene: HypergraphScene,
@@ -384,23 +343,15 @@ export class ZxHypergraphViewerElement extends LitElement {
    * How many dots are trespassing, written across the strip of canvas below the
    * drawing.
    *
-   * The count is the one thing about the trespasses that the red marks
-   * themselves can't say: each mark is local, and a dot half-buried under a
-   * neighbouring blob is easy to miss entirely. It is painted in the same red
-   * so the tally and the marks it counts read as one thing.
+   * Each red mark is local and a dot half-buried under a neighbouring blob is
+   * easy to miss, so the count is worth stating. It is painted in the same red
+   * as the marks it counts.
    *
-   * `layout()` leaves padding under the diagram and `layoutHypergraph` grows
-   * the canvas to whatever the blobs need, so the strip between the bottom of
-   * the drawing and the bottom of the SVG is where the drawing isn't — the
-   * tally goes in the middle of it.
-   *
-   * Measured from where the layout *put* the dots, not from where they have
-   * been dragged to, so the text stays where it started for as long as the
-   * scene does. It reads as a caption on the drawing rather than part of it,
-   * and a caption that slid up and down while you dragged a dot would pull the
-   * eye away from the thing being dragged. That also makes the position
-   * independent of the interaction state, so it can't be chased off the canvas
-   * by a dot dragged past the bottom edge.
+   * The strip between the bottom of the drawing and the bottom of the SVG is
+   * where the drawing isn't, so the tally goes in the middle of it, measured
+   * from where the layout *put* the dots rather than from where they have been
+   * dragged to. That keeps the text still while a dot is dragged, and stops it
+   * being chased off the canvas by a dot dragged past the bottom edge.
    */
   #renderTally(scene: HypergraphScene, count: number) {
     if (count === 0) return nothing
@@ -420,25 +371,21 @@ export class ZxHypergraphViewerElement extends LitElement {
     const scene = this.scene
     if (!scene) return nothing
     const pos = this.#positions
-    // An outline says which shapes are picked out, but a blob's hull is a
-    // drawing decision — it is drawn round the dots it holds and will happily
-    // enclose ones it doesn't — so the outline alone doesn't say which wires
-    // are *in* them. Ringing the dots states that membership directly, and is
-    // what makes the hyperedge's actual extent legible where the hulls overlap.
+    // An outline says which shapes are picked out, but a hull is drawn round
+    // the dots a blob holds and will happily enclose ones it doesn't, so the
+    // outline alone doesn't say which wires are *in* the blob. Ringing the dots
+    // states that membership directly.
     const picked = this.#picked(scene)
     // Each blob's hull and the outline drawn from it, computed once and shared
-    // by everything below. Three things want them — the painted outline, the
-    // clip path a trespassing dot is masked to, and the trespass test itself,
-    // which asks every dot about every blob — and deriving the hull inside each
-    // would make that last one a sort per pair.
+    // by the three things that want them: the painted outline, the clip path a
+    // trespassing dot is masked to, and the trespass test, which asks every dot
+    // about every blob.
     const hulls = new Map(scene.blobs.map(b => [b.id, blobHull(b, pos)]))
     const hullOf = (blob: HypergraphBlob) => hulls.get(blob.id) ?? []
     const outlines = new Map(scene.blobs.map(b => [b.id, hullPath(hullOf(b), scene.blobRadius)]))
     const outlineOf = (blob: HypergraphBlob) => outlines.get(blob.id) ?? ''
     // Picked blobs paint last so their outline isn't buried under a
-    // neighbour's fill — with this much overlap that is the difference
-    // between seeing the highlighted shape and guessing at it — and the named
-    // one last of all, since it is the one mark that is certainly right.
+    // neighbour's fill, and the named one last of all.
     const depth = (blob: HypergraphBlob) =>
       picked.blobs.get(blob.id) === 'named' ? 2 : picked.blobs.has(blob.id) ? 1 : 0
     const blobs = [...scene.blobs].sort((a, b) => depth(a) - depth(b))
@@ -448,9 +395,9 @@ export class ZxHypergraphViewerElement extends LitElement {
       <svg width=${scene.width} height=${scene.height}
         style="max-width: none; max-height: none" @pointerdown=${this.#onDown}>
         <!-- One clip per trespassing dot, holding the outlines of every blob it
-             has strayed into: a clip path is the union of its children, so what
-             comes through is the whole of the dot that is somewhere it should
-             not be, however many blobs it overlaps at once. -->
+             has strayed into. A clip path is the union of its children, so a
+             dot overlapping several blobs at once still shows the whole of the
+             part that is somewhere it shouldn't be. -->
         <defs>
           ${trespasses.map(
             ({ dot, blobs: wrong }) => svg`
@@ -507,11 +454,11 @@ export class ZxHypergraphViewerElement extends LitElement {
 
         <!-- The red goes over the dot rather than replacing it, so a dot half
              inside a blob it doesn't belong to reads as half red. These sit in
-             absolute coordinates, not in the dot's translated group, because a
-             clip path is resolved in the coordinate system of whatever
-             references it — inside the group the outlines would be shifted by
-             the dot's own position. They carry data-wire so pressing the red
-             part still drags and selects the dot underneath. -->
+             absolute coordinates, not in the dot's translated group: a clip
+             path resolves in the coordinate system of whatever references it,
+             so inside the group the outlines would be shifted by the dot's own
+             position. They carry data-wire so pressing the red part still drags
+             and selects the dot underneath. -->
         <g class="overlap">
           ${trespasses.map(
             ({ dot, centre }) => svg`
