@@ -183,6 +183,16 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   list when the caller says nothing. Defaulting to the position is what makes
   the ids backwards-compatible and what makes a derived input state the
   diagram's own terms without a translation step anywhere.
+  `HypergraphInputBoundary` is the third list, `boundaries` — the inputs and
+  outputs that are *not* drawn as blobs, each naming its id and the wire hanging
+  off it. Nothing is painted for one, so `hyperedges` stays exactly "what is
+  drawn as a blob"; what a boundary buys is that the leg is still held at both
+  ends. A dot answers a selection with what is at its ends rather than with the
+  blobs around it, so that leg is still ringed when its input is selected in the
+  diagram view, and an identity wire — whose two ends are both boundaries — is a
+  wire held at all rather than one held by nothing. Its id is said outright
+  rather than taken from its position, since a position in `boundaries` is not a
+  position in `hyperedges` and the two lists share one pool of ids.
 - `convert.ts` — `toHypergraph`, turning a `DiagramData`, and the `Scene` it
   laid out to, into wires (one per ZX edge) and hyperedges (one per ZX node,
   boundaries included). A hyperedge carries
@@ -222,9 +232,11 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   it. `<zx-diagram disable-io-blobs-in-hypergraph>` drops them, for a
   diagram whose boundaries are many enough that a circle round every leg is
   more outline than information; that count is what it costs, which is why they
-  are on by default. It is answered in `layout.ts`, by leaving the boundary
-  hyperedges out of the input it emits, which is what leaves those wires held by
-  a single end.
+  are on by default. It is answered in `layout.ts`, by moving the boundary
+  hyperedges out of the input's `hyperedges` and into its `boundaries`, which is
+  what leaves those legs with a blob at one end only. The boundary is still
+  named, so a boundary selected over in the diagram rings its leg's dot here
+  with nothing drawn round it.
 - `geometry.ts` — `wireCurve` (the curve a wire's dot rides), `blobHull` (the
   convex hull of a blob's dots), `hullPath` (the outline standing off that hull)
   and `hullContains` (the same shape as a hit test), plus
@@ -301,18 +313,22 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   other, never both and never neither, and all of them the same way: the two are
   measured from different origins, so a mixed input has no single drawing, and
   half a coordinate would silently become the top-left. Every id is distinct,
-  since an id is what a selection names a mark by. And every wire is held by one
-  or two hyperedge ends. Two is the ordinary case; three has no meaning, because
-  a `HypergraphDot`'s `src` and `tgt` *are* those ends — it is how a press on a
-  dot answers in the diagram's terms — so a wire held by three has no answer to
-  give. One is legitimate and is what
-  `<zx-diagram disable-io-blobs-in-hypergraph>` produces: the hyperedge at the
-  wire's other end exists in the diagram but isn't being drawn. Such a dot
-  carries the one holder in both `src` and `tgt`, which is what a self-loop's
-  looks like too — nothing downstream tells them apart, and what does is the
-  drawing, and only when the boundary blobs are on. A hypergraph in general has
-  none of these rules; this package draws the duals of ZX diagrams, and that is
-  the difference written down.
+  since an id is what a selection names a mark by, and the `boundaries` share
+  that one pool with the hyperedges. And every wire is held by one or two ends,
+  counting a boundary as an end: nothing is drawn for one, but a
+  `HypergraphDot`'s `src` and `tgt` are what is at its ends rather than what is
+  drawn around it, so a named boundary is an end the dot can answer a press
+  with. Two is the ordinary case; three has no meaning, because those two fields
+  *are* the ends — it is how a press on a dot answers in the diagram's terms —
+  so a wire held by three has no answer to give. One is what is left when
+  whatever is at the wire's other end is neither drawn nor named, which is a
+  hand-written input's way of saying the same thing
+  `<zx-diagram disable-io-blobs-in-hypergraph>` says with its `boundaries`. Such
+  a wire carries its one end in both `src` and `tgt`, which is what a
+  self-loop's looks like too — nothing downstream tells those two apart, and
+  what does is the drawing, and only when the boundary blobs are on. A
+  hypergraph in general has none of these rules; this package draws the duals of
+  ZX diagrams, and that is the difference written down.
 - `viewer.ts` — `<zx-hypergraph-viewer>`, the second painter. Internal and
   light DOM. One piece of interaction state of its own, a plain field paired
   with an explicit `requestUpdate()` — the dragged dot positions — plus the
@@ -341,9 +357,11 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   and implied dashed, since a press reaches things it didn't point at and in
   one weight they read as equally certain. `#picked` has no case for boundaries:
   a boundary is a hyperedge like any other, so selecting one names its blob and
-  implies its one dot, exactly as selecting a spider does. The dash patterns
-  differ between a blob's hull and a dot's ring, since one pattern across both
-  reads as coarse on the small shape or as solid on the large one.
+  implies its one dot, exactly as selecting a spider does. With the boundary
+  blobs dropped there is no blob to name and the dot is implied on its own,
+  since a dot knows what is at its ends whether or not both are drawn. The
+  dash patterns differ between a blob's hull and a dot's ring, since one pattern
+  across both reads as coarse on the small shape or as solid on the large one.
   How far a press reaches is deliberately short. A press on a dot marks the dot
   and the blobs holding it, and stops: the other wires *those* blobs hold are a
   step further out again, and one dot pressed lighting up five is more than was
@@ -709,7 +727,9 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
   element mounts a `<zx-graph>` and a `<zx-hypergraph>` and hands both the same
   resolved palette; and `Without input/output blobs`, which lives here rather
   than under `Hypergraphs/` because `disable-io-blobs-in-hypergraph` is
-  `<zx-diagram>`'s alone and what it costs is read off the pair. Every story
+  `<zx-diagram>`'s alone and what it costs is read off the pair — the blobs
+  that went, and the one thing that survives them: an input pressed in the
+  diagram still rings its leg in the dual. Every story
   runs `both-vertical`, since one view would check half of what a property
   does.
 - `Other/Tests` is the group whose stories exist for their play function rather
@@ -724,7 +744,11 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
   through it, which is the point of them sharing a host — and the malformed
   diagram is the case where the report comes from a `<zx-graph>` mounted inside
   the `<zx-diagram>` the story wrote, since the diagram's own layout is the
-  child's to run.
+  child's to run. It also holds `Identity wire with the boundary blobs dropped`,
+  the one diagram where dropping them leaves a dot with a blob at neither end:
+  the picture is a single dot and not worth a snapshot, but that it draws at all
+  — rather than being a wire held by nothing — and that pressing the input still
+  rings it are what the `boundaries` list is for.
 - `color-scheme` is the one presentation property *not* under `Other/Both
   viewers`, and the reason is the palette: `Zalt`, `W` and `Walt` belong to node
   types the dual has no blob shape for, so a both-view colour story would have

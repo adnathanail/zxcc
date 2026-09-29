@@ -24,7 +24,12 @@ import { Topology } from '../topology'
 import type { DiagramData, Scene } from '../types'
 import { toHypergraph } from './convert'
 import { wireCurve } from './geometry'
-import type { HypergraphInput, HypergraphInputHyperedge, HypergraphInputPixelWire } from './types'
+import type {
+  HypergraphInput,
+  HypergraphInputBoundary,
+  HypergraphInputHyperedge,
+  HypergraphInputPixelWire,
+} from './types'
 
 /** Blob standoff and dot radius, as fractions of the ZX layout's scale — the
  *  *unzoomed* one, so both shrink relative to the spacing as `ZOOM` grows. */
@@ -146,7 +151,9 @@ function speed(rider: Rider, at: (rider: Rider) => Point): number {
 /** What the caller can vary about the drawing, as opposed to about the diagram. */
 export interface HypergraphLayoutOptions {
   /** Draw a single-dot blob for each input/output as well as a blob for each
-   *  spider. With it off, a boundary leg and a self-loop are indistinguishable.
+   *  spider. With it off, a boundary leg and a self-loop are indistinguishable;
+   *  the boundaries themselves are still named, in the input's `boundaries`, so
+   *  what goes is the drawing of them and not the fact of them.
    *  Required rather than defaulted, so that `<zx-diagram>`'s
    *  `disableIOBlobsInHypergraph` is the only place the default is stated. */
   boundaryBlobs: boolean
@@ -224,6 +231,11 @@ export function layoutHypergraph(
     return rider.wire
   })
 
+  // Deduplicated, so a self-loop is the one dot it is drawn as, and looked up
+  // rather than assumed, a wire whose link had no curve having been dropped.
+  const held = (ids: string[]): number[] =>
+    [...new Set(ids)].map(w => index.get(w)).filter(i => i !== undefined)
+
   const hyperedges: HypergraphInputHyperedge[] = hg.hyperedges
     .filter(e => boundaryBlobs || e.kind !== 'boundary')
     .map(e => ({
@@ -232,9 +244,21 @@ export function layoutHypergraph(
       phase: e.phase,
       // The ZX node id, which is what a selection names the blob by.
       id: e.nodeId,
-      wires: [...new Set(e.wires)].map(w => index.get(w)).filter(i => i !== undefined),
+      wires: held(e.wires),
     }))
     .filter(e => e.wires.length > 0)
+
+  // The boundaries whose blobs were dropped are still named. Nothing is drawn
+  // for one; what it buys is that its leg is still held at both ends — so a
+  // selection of an input, made over in the diagram view where it is still a
+  // node to press, reaches the leg's dot, and an identity wire, whose two ends
+  // are both boundaries, is a wire held at all rather than one held by nothing.
+  const boundaries: HypergraphInputBoundary[] = boundaryBlobs
+    ? []
+    : hg.hyperedges
+        .filter(e => e.kind === 'boundary')
+        .map(e => ({ id: e.nodeId, wires: held(e.wires) }))
+        .filter(b => b.wires.length > 0)
 
   // The canvas is the scene's own, zoomed — but only the drawing is zoomed.
   // `layout()` reserves a strip of a fixed number of pixels under the drawing
@@ -271,5 +295,5 @@ export function layoutHypergraph(
     }
   }
 
-  return { wires, hyperedges, width: maxX + shiftX, height: maxY + shiftY }
+  return { wires, hyperedges, boundaries, width: maxX + shiftX, height: maxY + shiftY }
 }

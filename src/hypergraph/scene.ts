@@ -21,7 +21,7 @@
 // Three rules are enforced, and they are what make this the dual of a ZX
 // diagram rather than a hypergraph in general: every wire is positioned the
 // same way as every other, every id is distinct, and every wire is held by one
-// or two hyperedge ends.
+// or two ends.
 
 import type { DiagramEdgeKind } from '../types'
 import { sceneMetrics } from './layout'
@@ -103,7 +103,7 @@ export function hypergraphScene(input: HypergraphInput, scale: number): Hypergra
     input.hyperedges.map(e => e.id),
     'hyperedge',
   )
-  const ends = holders(input, blobIds)
+  const ends = holders(input, blobIds, boundaryIds(input, blobIds))
 
   const pixel = placement(input.wires)
   // One `scale` of padding a side, as `layout()` leaves around a diagram, but
@@ -129,9 +129,9 @@ export function hypergraphScene(input: HypergraphInput, scale: number): Hypergra
     y: pixel ? (wire.y as number) : ((wire.qubit as number) - qubits.min) * step + padTop,
     kind: (wire.kind ?? 'simple') as DiagramEdgeKind,
     // A dot is the wire it stands for, and a selection names that wire by the
-    // id the caller gave it. `src` and `tgt` are the hyperedges holding it; a
-    // wire held by a single end has that one in both, there being no second to
-    // name.
+    // id the caller gave it. `src` and `tgt` are what is at its two ends, drawn
+    // or not; a wire with a single end has that one in both, there being no
+    // second to name.
     edge: wireIds[i],
     src: ends[i][0],
     tgt: ends[i][1] ?? ends[i][0],
@@ -235,19 +235,33 @@ function placement(wires: HypergraphInputWire[]): boolean {
 }
 
 /**
- * The hyperedges holding each wire, by selection id and one entry per *end* —
- * so a self-loop's hyperedge appears twice, exactly as it does in the list the
+ * What is at each wire's ends, by selection id and one entry per *end* — so a
+ * self-loop's hyperedge appears twice, exactly as it does in the list the
  * caller wrote.
  *
- * Every remaining way the input can be wrong shows up as a count that isn't
- * one or two, so the checks live here: a wire nobody holds has both ends
- * nowhere, and a wire held by three is a diagram the ZX half of the package
- * couldn't have produced. One end is legitimate — the hyperedge at the other
- * end exists in the diagram but isn't being drawn, which is what dropping the
- * boundary blobs does to every leg.
+ * Boundaries count alongside hyperedges. Nothing is drawn for one, but a dot
+ * answers a press with the ends of its wire rather than with the blobs around
+ * it, so an end that is named is an end it can answer with. That is what keeps
+ * a leg reachable from a selection of its own input once the boundary blobs
+ * have been dropped, and what keeps an identity wire — both of whose ends are
+ * boundaries — held at all.
+ *
+ * Every remaining way the input can be wrong shows up as a count that isn't one
+ * or two, so the checks live here: a wire with nothing at either end, and a
+ * wire held by three, which is a diagram the ZX half of the package couldn't
+ * have produced. One end is legitimate — whatever is at the other end is
+ * neither drawn nor named.
  */
-function holders(input: HypergraphInput, blobIds: number[]): number[][] {
+function holders(input: HypergraphInput, blobIds: number[], boundaries: number[]): number[][] {
   const ends: number[][] = input.wires.map(() => [])
+  const wireIndex = (i: number, whose: string) => {
+    if (!Number.isInteger(i) || i < 0 || i >= input.wires.length) {
+      throw new Error(
+        `Hypergraph input: ${whose} holds wire ${i}, ` +
+          `but the input has ${input.wires.length} wires.`,
+      )
+    }
+  }
 
   input.hyperedges.forEach((edge, j) => {
     if (!KINDS.includes(edge.kind)) {
@@ -262,26 +276,63 @@ function holders(input: HypergraphInput, blobIds: number[]): number[][] {
       )
     }
     for (const i of edge.wires) {
-      if (!Number.isInteger(i) || i < 0 || i >= input.wires.length) {
-        throw new Error(
-          `Hypergraph input: hyperedge ${j} holds wire ${i}, ` +
-            `but the input has ${input.wires.length} wires.`,
-        )
-      }
+      wireIndex(i, `hyperedge ${j}`)
       ends[i].push(blobIds[j])
+    }
+  })
+
+  // A boundary is an end the drawing doesn't show. It is checked the same way,
+  // a wire index out of range being the same mistake wherever it is written.
+  input.boundaries?.forEach((boundary, k) => {
+    for (const i of boundary.wires) {
+      wireIndex(i, `boundary ${k}`)
+      ends[i].push(boundaries[k])
     }
   })
 
   ends.forEach((holding, i) => {
     if (holding.length < 1 || holding.length > 2) {
       throw new Error(
-        `Hypergraph input: wire ${i} is held by ${holding.length} hyperedge ` +
+        `Hypergraph input: wire ${i} is held by ${holding.length} ` +
           `end${holding.length === 1 ? '' : 's'}, and every wire is held by one or two — one ` +
-          `per end of the edge it stands for, or the same hyperedge twice for a self-loop, or ` +
-          `just the one when the hyperedge at its other end isn't being drawn.`,
+          `per end of the edge it stands for, or the same hyperedge twice for a self-loop. A ` +
+          `boundary left out of \`hyperedges\` counts as an end if it is named in ` +
+          `\`boundaries\`, which is how a leg keeps both of its ends when its blob isn't drawn.`,
       )
     }
   })
 
   return ends
+}
+
+/**
+ * The ids of the boundaries that aren't drawn, checked against the hyperedges'.
+ *
+ * Said outright rather than taken from a position, unlike a hyperedge's: a
+ * position in `boundaries` is not a position in `hyperedges`, and the two lists
+ * share one pool of ids, so a default would collide as often as not. Checked
+ * against the drawn ids for the reason two hyperedges can't share one — an id
+ * is what a selection names a mark by, and a boundary answering to a blob's id
+ * would put that blob at the end of a wire it has nothing to do with.
+ */
+function boundaryIds(input: HypergraphInput, blobIds: number[]): number[] {
+  const seen = new Map<number, string>(blobIds.map((id, j) => [id, `hyperedge ${j}`]))
+  return (input.boundaries ?? []).map((boundary, k) => {
+    if (!Number.isFinite(boundary.id)) {
+      throw new Error(
+        `Hypergraph input: boundary ${k} has id ${boundary.id}, which has to be a number — ` +
+          `an id is what a selection names a mark by, and a boundary says its own rather than ` +
+          `taking it from its position.`,
+      )
+    }
+    const clash = seen.get(boundary.id)
+    if (clash !== undefined) {
+      throw new Error(
+        `Hypergraph input: boundary ${k} and ${clash} both have id ${boundary.id}, and an id ` +
+          `is what a selection names a mark by, so they have to be distinct.`,
+      )
+    }
+    seen.set(boundary.id, `boundary ${k}`)
+    return boundary.id
+  })
 }
