@@ -40,11 +40,11 @@ export default meta
 
 type Story = StoryObj
 
-/** The six ways the public elements refuse to draw, in one story.
+/** The seven ways the public elements refuse to draw, in one story.
  *
  * They are together rather than one apiece because the error UI is the same
- * `<pre>` and Retry button in all six and the *message* is the whole of what
- * is being tested — six stories would be six views of the same grey box.
+ * `<pre>` and Retry button in all seven and the *message* is the whole of what
+ * is being tested — seven stories would be seven views of the same grey box.
  *
  * Which element reports one follows which element worked it out. `<zx-diagram>`
  * derives the dual, so a diagram the dual can't be built from is its error; the
@@ -58,7 +58,7 @@ export const ErrorStates: Story = {
     docs: {
       story: {
         description:
-          'Six failures, one under the other: a malformed diagram, a diagram carrying a node the dual has no shape for, a `view-mode` that is not one of the four, a hypergraph naming a blob shape that does not exist, one whose wire is held by three hyperedges, and one whose wire is only half placed. Each is reported rather than drawn around — an unknown `view-mode` in particular has no mode to fall back *to* that would not be a guess at which was meant, so it says so instead of quietly drawing the graph.',
+          'Seven failures, one under the other: a malformed diagram, a diagram carrying a node the dual has no shape for, a `view-mode` that is not one of the four, a hypergraph naming a blob shape that does not exist, one whose wire is held by three hyperedges, one whose wire is only half placed, and one whose wire is placed both on the grid and in pixels. Each is reported rather than drawn around — an unknown `view-mode` in particular has no mode to fall back *to* that would not be a guess at which was meant, so it says so instead of quietly drawing the graph.',
       },
     },
   },
@@ -115,6 +115,18 @@ export const ErrorStates: Story = {
         .hypergraph=${
           {
             wires: [{ col: 0 }],
+            hyperedges: [
+              { kind: 'z-spider', wires: [0] },
+              { kind: 'boundary', wires: [0] },
+            ],
+          } as unknown as HypergraphInput
+        }
+      ></zx-hypergraph>
+      <zx-hypergraph
+        id="double-placed"
+        .hypergraph=${
+          {
+            wires: [{ col: 3, qubit: 1, x: 10, y: 20 }],
             hyperedges: [
               { kind: 'z-spider', wires: [0] },
               { kind: 'boundary', wires: [0] },
@@ -186,6 +198,14 @@ export const ErrorStates: Story = {
       'Hypergraph input: wire 0 sits at column 0, qubit undefined, and a wire is positioned ' +
         'either on the grid (`col` and `qubit`) or in pixels (`x` and `y`) — both numbers, ' +
         'and one pair or the other.',
+    )
+
+    // 7. Both positions at once — what is left behind when a grid input is
+    // converted to pixels and the old fields are kept. Drawn, it would sit at
+    // the pixels with the grid square quietly ignored.
+    expect(await messageOf('double-placed')).toBe(
+      'Hypergraph input: wire 0 sits at column 3, qubit 1 and at x 10, y 20, and a wire is ' +
+        'positioned either on the grid (`col` and `qubit`) or in pixels (`x` and `y`), not both.',
     )
   },
 }
