@@ -735,12 +735,12 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
 - `Other/Tests` is the group whose stories exist for their play function rather
   than their picture, and the whole group carries
   `chromatic: { disableSnapshot: true }` on its `meta`. It holds `Error states`:
-  all six failure cases — malformed diagram, a node the dual has no shape for,
+  all seven failure cases — malformed diagram, a node the dual has no shape for,
   an unknown `view-mode`, a hypergraph naming a blob shape that doesn't exist,
-  one whose wire is held by three hyperedges, and one whose wire is only half
-  placed — in one story, since the UI is the same grey `<pre>` and Retry button
+  one whose wire is held by three hyperedges, one whose wire is only half
+  placed, and one whose wire is placed both ways — in one story, since the UI is the same grey `<pre>` and Retry button
   whatever caused it and the *message* is the whole of what is being tested, so
-  six stories would be six snapshots of one box. All three elements report
+  seven stories would be seven snapshots of one box. All three elements report
   through it, which is the point of them sharing a host — and the malformed
   diagram is the case where the report comes from a `<zx-graph>` mounted inside
   the `<zx-diagram>` the story wrote, since the diagram's own layout is the

@@ -214,6 +214,17 @@ function placement(wires: HypergraphInputWire[]): boolean {
   let pixel: boolean | null = null
   wires.forEach((wire, i) => {
     const here = isPixelWire(wire)
+    // Checked rather than left to the type, whose `never`s don't reach an input
+    // written in JavaScript: a wire carrying both pairs would be drawn at its
+    // pixels with its grid square silently dropped.
+    const { col, qubit, x, y } = wire as Partial<Record<'col' | 'qubit' | 'x' | 'y', number>>
+    if (here && (col !== undefined || qubit !== undefined)) {
+      throw new Error(
+        `Hypergraph input: wire ${i} sits at column ${col}, qubit ${qubit} and at ` +
+          `x ${x}, y ${y}, and a wire is positioned either on the grid (\`col\` and ` +
+          `\`qubit\`) or in pixels (\`x\` and \`y\`), not both.`,
+      )
+    }
     const [a, b] = here ? [wire.x, wire.y] : [wire.col, wire.qubit]
     if (!Number.isFinite(a) || !Number.isFinite(b)) {
       throw new Error(
