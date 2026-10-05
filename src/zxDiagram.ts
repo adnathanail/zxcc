@@ -44,7 +44,8 @@ export class ZxDiagramElement extends ZxViewerHost {
    *  {@link refresh} is the escape hatch if you must mutate in place. */
   @property({ attribute: false }) diagram: DiagramData | null = null
 
-  /** Pixels per row/qubit. Null derives it from the diagram's extent. */
+  /** Pixels per row/qubit. Null, or anything but a positive number, derives
+   *  it from the diagram's extent. */
   @property({ type: Number }) scale: number | null = null
 
   /** Which view to draw: ZX diagram (`graph`), hypergraph dual (`hypergraph`),
