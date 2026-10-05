@@ -37,7 +37,10 @@ export class ZxHypergraphElement extends ZxViewerHost {
    *  (two `scale`s to a column, so the blobs have room), so the whole drawing
    *  grows and shrinks with it. For one written in pixels the positions are
    *  already fixed and this changes the weights alone — raising it there grows
-   *  the dots without moving them. */
+   *  the dots without moving them.
+   *
+   *  Anything but a positive finite number — the attribute removed, or one that
+   *  doesn't parse — draws at the default. */
   @property({ type: Number }) scale: number = DEFAULT_SCALE
 
   @state() private scene: HypergraphScene | null = null
@@ -55,7 +58,7 @@ export class ZxHypergraphElement extends ZxViewerHost {
   }
 
   protected build() {
-    this.scene = this.hypergraph ? hypergraphScene(this.hypergraph, this.scale) : null
+    this.scene = this.hypergraph ? hypergraphScene(this.hypergraph, drawnScale(this.scale)) : null
   }
 
   render() {
@@ -77,6 +80,13 @@ export class ZxHypergraphElement extends ZxViewerHost {
       </div>
     `
   }
+}
+
+/** `scale` as the drawing uses it. The attribute converter hands over `null`
+ *  for a removed attribute and `NaN` for one that doesn't parse, and either
+ *  would put every coordinate on one spot or nowhere at all. */
+function drawnScale(scale: number | null): number {
+  return typeof scale === 'number' && Number.isFinite(scale) && scale > 0 ? scale : DEFAULT_SCALE
 }
 
 declare global {
