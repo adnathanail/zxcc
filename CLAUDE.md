@@ -4,6 +4,14 @@ Framework-agnostic `<zx-diagram>` web component for rendering ZX-calculus
 diagrams. Built with Lit, no runtime dependencies. See README.md for
 user-facing usage.
 
+## Committing
+
+Sometimes this repository is managed with GitButler.
+Check whether you are on the `gitbutler/workspace` branch; if so, use the `but` CLI to interact with it.
+Make changes in new commits, as opposed to modifying existing commits, unless explicitly told to.
+
+**Do not add attributions to yourself in commit messages**
+
 ## Writing style
 
 When writing comments, or user facing text, write from the context of someone coming into the context cold.
@@ -488,6 +496,15 @@ drawing they meant, and a typo that quietly drew something else is only found by
 noticing the picture is wrong. `VIEW_MODES` is the array both the check and the
 `ViewMode` type derive from, so the two cannot drift.
 
+A `scale` that isn't a positive number is an error on all three elements for
+the same reason. The attribute converter turns a value that doesn't parse into
+`NaN`, and drawing at the derived or default scale instead would make a typo
+look like a choice. A *missing* scale is not an error: that is what asks for the
+derived one (or, on `<zx-hypergraph>`, the default). The check is
+`ZxViewerHost.givenScale`, called first thing in each element's `build()`, so
+`<zx-diagram>` refuses before mounting either view and `layout()` and
+`hypergraphScene()` can take the number they are handed verbatim.
+
 `<zx-diagram>` owns the presentation properties that mirror pyzx's `draw_d3`
 keyword arguments (`show-labels`, `color-scheme`, `scale`, `colors`) plus
 `edgeColors` and `disable-io-blobs-in-hypergraph`, which have no pyzx
@@ -738,8 +755,9 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
   all seven failure cases — malformed diagram, a node the dual has no shape for,
   an unknown `view-mode`, a hypergraph naming a blob shape that doesn't exist,
   one whose wire is held by three hyperedges, one whose wire is only half
-  placed, and one whose wire is placed both ways — in one story, since the UI is the same grey `<pre>` and Retry button
-  whatever caused it and the *message* is the whole of what is being tested, so
+  placed, and one whose wire is placed both ways — in one story, since the UI
+  is the same grey `<pre>` and Retry button whatever caused it and the
+  *message* is the whole of what is being tested, so
   seven stories would be seven snapshots of one box. All three elements report
   through it, which is the point of them sharing a host — and the malformed
   diagram is the case where the report comes from a `<zx-graph>` mounted inside
