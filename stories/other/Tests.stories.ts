@@ -324,3 +324,60 @@ export const InPlaceRefresh: Story = {
     expect(nodeCount()).toBe(4)
   },
 }
+
+/** A `scale` that isn't a positive number is treated as no scale at all. The
+ *  attribute converter turns a value that doesn't parse into `NaN`, and taken
+ *  verbatim that or a zero or negative scale would put every node nowhere or
+ *  on one spot — a blank canvas rather than an error. */
+export const InvalidScale: Story = {
+  name: 'A scale that is not a positive number is derived instead',
+  parameters: {
+    docs: {
+      story: {
+        description:
+          '`<zx-graph>` with `scale` set to `abc`, `0` and `-5`, and `<zx-diagram>` drawing both views with `scale="abc"`. Each is drawn exactly as it is with no `scale` at all.',
+      },
+    },
+  },
+  render: () => html`
+    <div style="display: flex; flex-direction: column; gap: 0.5rem">
+      <zx-graph id="graph-derived" .diagram=${fourSpiderSquare}></zx-graph>
+      <zx-graph id="graph-nan" scale="abc" .diagram=${fourSpiderSquare}></zx-graph>
+      <zx-graph id="graph-zero" scale="0" .diagram=${fourSpiderSquare}></zx-graph>
+      <zx-graph id="graph-negative" scale="-5" .diagram=${fourSpiderSquare}></zx-graph>
+      <zx-diagram
+        id="both-derived"
+        view-mode="both-vertical"
+        .diagram=${fourSpiderSquare}
+      ></zx-diagram>
+      <zx-diagram
+        id="both-nan"
+        view-mode="both-vertical"
+        scale="abc"
+        .diagram=${fourSpiderSquare}
+      ></zx-diagram>
+    </div>
+  `,
+  play: async ({ canvasElement }) => {
+    const positionsIn = async (id: string, marks: string) => {
+      const root = await shadowRootOf(canvasElement, `#${id}`)
+      const positions = [...root.querySelectorAll<SVGGElement>(marks)].map(translateOf)
+      expect(positions.length).toBeGreaterThan(0)
+      return positions
+    }
+    const nodes = 'zx-viewer g.node > g[data-node]'
+    const dots = 'zx-hypergraph-viewer g.dot > g[data-wire]'
+
+    const derived = await positionsIn('graph-derived', nodes)
+    // Spread out, not all on one spot — which is what a zero scale gives.
+    expect(new Set(derived.map(p => p.join())).size).toBe(derived.length)
+    for (const id of ['graph-nan', 'graph-zero', 'graph-negative']) {
+      expect(await positionsIn(id, nodes)).toEqual(derived)
+    }
+
+    // In a `both` mode the scale also reaches the dual, whose dots are taken
+    // from the diagram's layout.
+    expect(await positionsIn('both-nan', nodes)).toEqual(await positionsIn('both-derived', nodes))
+    expect(await positionsIn('both-nan', dots)).toEqual(await positionsIn('both-derived', dots))
+  },
+}
