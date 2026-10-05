@@ -21,8 +21,8 @@ export class ZxGraphElement extends ZxViewerHost {
    *  {@link refresh} is the escape hatch if you must mutate in place. */
   @property({ attribute: false }) diagram: DiagramData | null = null
 
-  /** Pixels per row/qubit. Null, or anything but a positive number, derives
-   *  it from the diagram's extent. */
+  /** Pixels per row/qubit. Null derives it from the diagram's extent; anything
+   *  else that isn't a positive number is an error. */
   @property({ type: Number }) scale: number | null = null
 
   @state() private scene: Scene | null = null
@@ -40,7 +40,8 @@ export class ZxGraphElement extends ZxViewerHost {
   }
 
   protected build() {
-    this.scene = this.diagram ? layout(this.diagram, { scale: this.scale ?? undefined }) : null
+    const scale = this.givenScale(this.scale)
+    this.scene = this.diagram ? layout(this.diagram, { scale }) : null
   }
 
   render() {

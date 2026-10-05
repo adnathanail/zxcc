@@ -233,10 +233,6 @@ function buildLinks(edges: DiagramEdge[]): SceneLink[] {
   return links
 }
 
-function isUsableScale(scale: number | undefined): scale is number {
-  return typeof scale === 'number' && Number.isFinite(scale) && scale > 0
-}
-
 export function layout(diagram: DiagramData, options: LayoutOptions = {}): Scene {
   const placed = placeNodes(diagram)
   const prePositioned = diagram.nodes.some(n => n.col !== undefined)
@@ -245,15 +241,10 @@ export function layout(diagram: DiagramData, options: LayoutOptions = {}): Scene
   const { minRow, maxRow, minQubit, maxQubit } = gridBounds(placed.values())
 
   // An explicit scale is taken verbatim — the 20–50 clamp exists to keep the
-  // derived scale sane, and would silently override a caller's choice. One
-  // that isn't a positive number is no choice at all: the `scale` attribute
-  // hands over `NaN` for a value that doesn't parse, and that or a zero or
-  // negative scale would put every node nowhere or on one spot, so it is
-  // derived as though none were given.
+  // derived scale sane, and would silently override a caller's choice. The
+  // elements have already refused one that isn't a positive number.
   const derived = TARGET_WIDTH / (maxRow - minRow + 2)
-  const scale = isUsableScale(options.scale)
-    ? options.scale
-    : Math.min(MAX_SCALE, Math.max(MIN_SCALE, derived))
+  const scale = options.scale ?? Math.min(MAX_SCALE, Math.max(MIN_SCALE, derived))
   const nodeSize = Math.max(0.2 * scale, 2)
 
   // One scale of padding on every side, so the diagram sits centred in its

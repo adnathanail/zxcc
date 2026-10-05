@@ -94,7 +94,7 @@ _Some can be set as attributes in HTML, some must be set with JS on the element,
 | --- | --- | --- | --- |
 | `show-labels` | `showLabels` | `false` | Draw node/wire IDs |
 | `color-scheme` | `colorScheme` | `original` | `original` / `rgb` / `grayscale` |
-| `scale` | `scale` | derived | Pixels per row/qubit; derived when missing or not a positive number |
+| `scale` | `scale` | derived | Pixels per row/qubit; must be a positive number |
 | `view-mode` | `viewMode` | `graph` | `graph` / `hypergraph` / `both-vertical` / `both-horizontal` - see [Hypergraph view](#hypergraph-view). `<zx-diagram>` only. |
 | `disable-io-blobs-in-hypergraph` | `disableIOBlobsInHypergraph` | `false` | Leave out the single-dot blob around each input/output in the hypergraph view. |
 | — | `colors` | `null` | Full palette override (`Record<string, string>`), overrides `color-scheme`. |
@@ -272,7 +272,7 @@ drag. There is no `view-mode`: a hypergraph has only the one picture.
 the grid it also sets how far apart the dots are, so the whole drawing grows and shrinks with it.
 **In pixels the positions are already fixed, so `scale` changes the weight of the marks alone** —
 raising it grows the dots without moving them. It defaults to `35`, the middle of the 20–50 band a
-derived scale is clamped to.
+derived scale is clamped to, and anything that isn't a positive number is an error.
 
 ## Exported constants
 

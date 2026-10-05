@@ -22,6 +22,10 @@ import { EMPTY_SELECTION, type Selection, selectionEvent } from './selection'
  *  fields, which is all this layer needs of either. */
 export type PaintedView = [tag: string, view: { width: number; height: number }]
 
+function isUsableScale(scale: number): boolean {
+  return Number.isFinite(scale) && scale > 0
+}
+
 export abstract class ZxViewerHost extends LitElement {
   /** Draw each node's id above it (pyzx's `draw_d3(labels=...)`). Off by
    *  default, as in pyzx: an id is a fact about the data structure rather than
@@ -110,6 +114,23 @@ export abstract class ZxViewerHost extends LitElement {
   /** Build this host's views from its current input. Throws on an input that
    *  can't be drawn; {@link relayout} turns that into the error state. */
   protected abstract build(): void
+
+  /**
+   * The `scale` this element was given, checked: `undefined` when there isn't
+   * one, so the element picks its own, and the number when it is a positive
+   * one.
+   *
+   * Anything else throws rather than falling back. The attribute converter
+   * hands over `NaN` for a value that doesn't parse, and that or a zero or
+   * negative scale would put every mark nowhere or on one spot; drawing at a
+   * scale nobody asked for instead would hide the typo the same way.
+   */
+  protected givenScale(scale: number | null | undefined): number | undefined {
+    if (scale === null || scale === undefined) return undefined
+    if (isUsableScale(scale)) return scale
+    const written = this.getAttribute('scale') ?? String(scale)
+    throw new Error(`Invalid scale '${written}'. Expected a positive number.`)
+  }
 
   /**
    * Build the views again from the current input.

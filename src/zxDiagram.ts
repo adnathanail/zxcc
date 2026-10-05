@@ -44,8 +44,8 @@ export class ZxDiagramElement extends ZxViewerHost {
    *  {@link refresh} is the escape hatch if you must mutate in place. */
   @property({ attribute: false }) diagram: DiagramData | null = null
 
-  /** Pixels per row/qubit. Null, or anything but a positive number, derives
-   *  it from the diagram's extent. */
+  /** Pixels per row/qubit. Null derives it from the diagram's extent; anything
+   *  else that isn't a positive number is an error. */
   @property({ type: Number }) scale: number | null = null
 
   /** Which view to draw: ZX diagram (`graph`), hypergraph dual (`hypergraph`),
@@ -132,6 +132,7 @@ export class ZxDiagramElement extends ZxViewerHost {
         `Unknown view-mode '${this.viewMode}'. Expected one of: ${VIEW_MODES.join(', ')}.`,
       )
     }
+    const scale = this.givenScale(this.scale)
     if (!this.diagram) return
 
     // The dual is derived from a `layout()` run here rather than from the one
@@ -141,7 +142,7 @@ export class ZxDiagramElement extends ZxViewerHost {
     // the unzoomed scale, zoomed.
     let dual: Dual | null = null
     if (this.viewMode !== 'graph') {
-      const scene = layout(this.diagram, { scale: this.scale ?? undefined })
+      const scene = layout(this.diagram, { scale })
       dual = {
         scale: scene.scale,
         hypergraph: layoutHypergraph(this.diagram, scene, {
