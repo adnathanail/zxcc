@@ -629,10 +629,16 @@ The toolchain is [Vite+](https://viteplus.dev) (`vp`), configured entirely in
   what makes those commands cached (a built-in run directly is not), and
   `build` is what `test-node-entry` depends on. `analyze` and `watch` are
   never cached.
-- The development Node version is pinned in `package.json`'s
-  `devEngines.runtime` (set with `vp env pin`), which `vp` and `setup-vp` both
-  read. `engines.node` is separate and wider: it is what consumers of the
-  package need, not what the repository is developed on.
+- The development Node *major* is pinned in `package.json`'s
+  `devEngines.runtime` (`"24"`, set with `vp env pin node@24`), which `vp` and
+  `setup-vp` both read, so patch releases are picked up without an edit.
+  `engines.node` is separate and wider: it is what consumers of the package
+  need, not what the repository is developed on.
+  The publish and release workflows use `actions/setup-node`, which does not
+  read `devEngines`, so they name the same major as `node-version: 24`.
+  Without that, setup-node resolves `engines.node` to the newest release, and
+  npm's `devEngines` check fails `npm ci` against it. Moving to a new major
+  means changing all three places.
 - CI (`.github/workflows/ci.yml`) sets up with `voidzero-dev/setup-vp`, pinned
   to an exact release since its `v1` tag no longer moves, and restores the
   task cache (`node_modules/.vite/task-cache`) from earlier runs, so a lint or
