@@ -18,32 +18,12 @@ jobs:
       - uses: voidzero-dev/setup-vp@v1.21.1
         with:
           cache: true
-      # Vite Task's cache, so a task whose inputs haven't changed since an
-      # earlier run is replayed rather than rerun. Restored after the install,
-      # which can recreate node_modules. The key is unique per run because cache
-      # entries are immutable; the restore prefix picks up the newest one. Which
-      # tasks still hit is Vite Task's decision, from its own fingerprints, so
-      # nothing about the sources goes in the key.
-      - name: Restore Vite Task cache
-        id: vite-task-cache
-        uses: actions/cache/restore@v6
-        with:
-          path: node_modules/.vite/task-cache
-          key: vite-task-${{ runner.os }}-${{ runner.arch }}-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: |
-            vite-task-${{ runner.os }}-${{ runner.arch }}-
       - name: Lint
         run: vp run lint
       - name: Build
         run: vp run build
       - name: Node entry point
         run: vp run test-node-entry
-      - name: Save Vite Task cache
-        if: success()
-        uses: actions/cache/save@v6
-        with:
-          path: node_modules/.vite/task-cache
-          key: ${{ steps.vite-task-cache.outputs.cache-primary-key }}
       - name: Chromatic
         uses: chromaui/action@latest
         with:
