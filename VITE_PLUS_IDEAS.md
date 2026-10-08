@@ -3,21 +3,7 @@
 Features of [Vite+](https://viteplus.dev) (`vp`) that this repository could adopt, roughly in order of
 value for effort.
 
-## 1. Package checks in `vp pack`
-
-tsdown can run [publint](https://publint.dev) and [arethetypeswrong](https://arethetypeswrong.github.io)
-after every build, catching a broken `exports` map or declarations that don't resolve for consumers.
-`npm run test-node-entry` covers only the `./constants` entry in Node.
-
-- Add `publint` and `@arethetypeswrong/core` as dev dependencies.
-- In each `pack` build in `vite.config.ts`, set `publint: true` and `attw: { profile: 'esm-only' }`.
-
-Against the current build, arethetypeswrong reports no problems. publint's only note is that
-`package.json` has no `sideEffects` field, and suggests `"sideEffects": false`. **Don't take that
-suggestion**: importing the bundle registers the custom elements, so a bundler told it has no side
-effects may drop it. Setting `"sideEffects": true` states the intent and quiets the note.
-
-## 2. Cached tasks
+## 1. Cached tasks
 
 Scripts defined as tasks in a `run` block in `vite.config.ts` are cached: `vp run build` replays its
 output when none of its inputs have changed. `dependsOn` expresses ordering, such as
@@ -33,13 +19,13 @@ run: {
 ```
 
 A task name can come from `vite.config.ts` or `package.json`, not both, so each script moved into
-`run.tasks` comes out of `package.json`. Most of the benefit arrives with item 3. See
+`run.tasks` comes out of `package.json`. Most of the benefit arrives with item 2. See
 `node_modules/vite-plus/docs/guide/run.md` and `guide/cache.md`.
 
-## 3. CI on `voidzero-dev/setup-vp`
+## 2. CI on `voidzero-dev/setup-vp`
 
 `setup-vp` replaces `actions/setup-node` and `npm ci`. It installs `vp`, Node and the package
-manager, and with `cache: true` caches dependencies. Combined with the task cache from item 2, CI
+manager, and with `cache: true` caches dependencies. Combined with the task cache from item 1, CI
 can skip a build whose inputs haven't changed (see `guide/github-actions-cache.md`).
 
 ```yaml
@@ -56,13 +42,13 @@ version that Vitest 5 supports (`^22.18.0 || ^24.11.0 || >=26.0.0`), which matte
 run in CI. The Chromatic step and the publish workflow's npm OIDC setup need checking after the
 switch.
 
-## 4. Pin Node with `vp env pin`
+## 3. Pin Node with `vp env pin`
 
 `vp env pin` records the project's Node version in the repository. Locally, `vp` switches to it
 automatically, and `setup-vp` reads the same version, so development and CI run on the same Node.
 `engines.node` in `package.json` stays as it is, since it describes what consumers need.
 
-## 5. Type-check stories in `vp check`
+## 4. Type-check stories in `vp check`
 
 `vp check` type-checks only what `tsconfig.json` covers, which is `src/`. `stories/` is checked
 separately by `tsc -p tsconfig.stories.json` in `npm run lint`. If `vp check` can be pointed at the

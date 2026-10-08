@@ -31,6 +31,10 @@ export default defineConfig({
       minify: production,
       sourcemap: !production,
       dts: true,
+      // Both check the package as a whole (package.json and everything in
+      // dist), so they run once, here.
+      publint: true,
+      attw: { profile: 'esm-only', level: 'error' },
       plugins: analyze
         ? [
             visualizer({
