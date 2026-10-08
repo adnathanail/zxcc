@@ -628,6 +628,15 @@ The toolchain is [Vite+](https://viteplus.dev) (`vp`), configured entirely in
   what makes those commands cached (a built-in run directly is not), and
   `build` is what `test-node-entry` depends on. `analyze` and `watch` are
   never cached.
+- CI (`.github/workflows/ci.yml`) sets up with `voidzero-dev/setup-vp`, pinned
+  to an exact release since its `v1` tag no longer moves, and restores the
+  task cache (`node_modules/.vite/task-cache`) from earlier runs, so a lint or
+  build whose inputs haven't changed is replayed. The Actions cache key is
+  unique per run and carries nothing about the sources: which tasks still hit
+  is Vite Task's call, from its own fingerprints. Vite+ marks reusing the
+  cache across runs as experimental. The publish and release workflows stay
+  on `actions/setup-node`, since publishing relies on npm's trusted-publishing
+  setup there and runs too rarely to gain from a cache.
 - The test tasks exclude `node_modules/.cache` from their inputs and outputs:
   Storybook rewrites its cache there during a run, and a task that modifies
   its own input is never cached. `coverage` likewise leaves `coverage/` out of
