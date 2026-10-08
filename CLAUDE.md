@@ -115,14 +115,12 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   colours are internal and stay unexported. It is also
   published as a *second entry point*, `@adnathanail/zxcc/constants`, for
   build-time tooling that validates an option value in Node. The main entry
-  can't serve that — the bundle opens with a bare `window` reference and calls
-  `customElements.define` at module scope. **It imports nothing, and that is
-  load-bearing**: the shipped `dist/constants.js` is the tsc intermediate
-  rather than a bundle, and tsc leaves relative specifiers extensionless
-  (`from './colors'`), which Node refuses to resolve. A file with no specifiers
-  has nothing to refuse. So only data lives here — `isViewMode` and the colour
-  *lookups* stay in `zxDiagram.ts` and `colors.ts`, since they are code the
-  browser half calls and moving them would drag imports in.
+  can't serve that — the bundle calls `customElements.define` at module scope.
+  `dist/constants.js` is a bundle of its own (the second `pack` build in
+  `vite.config.ts`), so an import here would be inlined rather than break Node
+  resolution; what has to hold is that nothing reachable from this file touches
+  the DOM. So only data lives here — `isViewMode` and the colour *lookups* stay
+  in `zxDiagram.ts` and `colors.ts`, since they are code the browser half calls.
 - `selection.ts` — `Selection`, what is picked out, and the `zx-selection`
   event a painter announces one with, and every host re-announces. A selection is held in the *diagram's*
   terms — ZX node ids and indices into `diagram.edges` — never in either
@@ -587,24 +585,32 @@ host's selection in `render()`.
 
 ## Build
 
-- `tsc` compiles `src/**/*.ts` to `dist/*.js` + `.d.ts`.
-- Rollup then bundles `dist/index.js` → `dist/index.bundle.js`, inlining lit
-  so the shipped bundle has zero runtime deps.
-- Package entry is `dist/index.bundle.js`; `dist/index.js` is the tsc
-  intermediate (also shipped, but nothing imports it in practice).
-- There is a second entry, `./constants` → `dist/constants.js`, which *is* a
-  tsc intermediate and is meant to be imported as one. `npm run test-node-entry`
-  (`scripts/check-node-entry.mjs`, run in CI after the build) imports it through
-  the exports map in a separate Node process with no DOM shim and asserts the
-  values, so an import added to `src/constants.ts` — which the bundler would
-  resolve without complaint — fails the build instead of quietly breaking every
-  Node consumer.
-- `context: 'globalThis'` in rollup config is required so tsc's emitted
-  `__decorate` helper (used by Lit's `@customElement` etc.) doesn't get
-  rewritten to `undefined && ...`.
-- `__ZXCC_VERSION__` (used by the attribution link) is injected by
-  `@rollup/plugin-replace` and, for Storybook, by vite `define` in
-  `.storybook/main.ts`. Declared in `src/globals.d.ts`.
+The toolchain is [Vite+](https://viteplus.dev) (`vp`), configured entirely in
+`vite.config.ts`: `vp pack` (tsdown) builds, `vp check` formats (Oxfmt), lints
+(Oxlint) and type-checks `src/`, and `vp test` runs Vitest.
+
+- `vp pack` runs two builds. The first bundles `src/index.ts` →
+  `dist/index.bundle.js` + `dist/index.bundle.d.ts`, minified, with lit
+  inlined so the shipped bundle has zero runtime deps (lit stays an import in
+  the declarations). The second builds `src/constants.ts` →
+  `dist/constants.js` + `.d.ts` on its own, so the two share no chunk.
+- `vp pack` sets `NODE_ENV` itself, so a development build (unminified, with
+  sourcemaps) is asked for with `ZXCC_DEV=true` — that is what `build-dev` and
+  `watch` set. `ANALYZE=true` adds the bundle visualiser.
+- `npm run test-node-entry` (`scripts/check-node-entry.mjs`, run in CI after
+  the build) imports `./constants` through the exports map in a separate Node
+  process with no DOM shim and asserts the values, so anything that stops that
+  entry loading in plain Node fails the build.
+- `__ZXCC_VERSION__` (used by the attribution link) is injected by the `pack`
+  `define` and, for Storybook, by vite `define` in `.storybook/main.ts`.
+  Declared in `src/globals.d.ts`.
+- Oxfmt's `embeddedLanguageFormatting` is off: it would otherwise reformat the
+  insides of lit templates, and a newline between the children of an SVG
+  `<text>` renders as a space (see *Conventions*).
+- `typescript/no-floating-promises` is off for `stories/`: Storybook's
+  instrumented `expect` is typed as returning a promise.
+- `vp check` type-checks `tsconfig.json`, which covers `src/` only;
+  `tsconfig.stories.json` is still checked by `tsc` in `npm run lint`.
 
 ## Committing
 
@@ -711,8 +717,7 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
   press a dot has to dispatch on the dot's `<g data-wire>` rather than on the
   SVG: a press whose target is the canvas asks which blobs contain the point,
   which is a different question with a different answer.
-- Stories live outside `src/` so they don't get emitted by the library `tsc`
-  build; `tsconfig.stories.json` type-checks them (wired into `npm run lint`).
+- Stories live outside `src/` so they stay out of the library build; `tsconfig.stories.json` type-checks them (wired into `npm run lint`).
   `.storybook/preview.ts` imports `src/index` so the element registers before
   any story renders.
 - `stories/` mirrors the `src/` split: `stories/graphs/` and

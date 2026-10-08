@@ -13,6 +13,7 @@ import { customElement, property, state } from 'lit/decorators.js'
 import { VIEW_MODES, type ViewMode } from './constants'
 import {
   ZOOM as HYPERGRAPH_ZOOM,
+  // oxlint-disable-next-line no-unused-vars -- named by a {@link} in a doc comment
   type HypergraphLayoutOptions,
   layoutHypergraph,
 } from './hypergraph/layout'
@@ -129,7 +130,7 @@ export class ZxDiagramElement extends ZxViewerHost {
   protected build() {
     if (!isViewMode(this.viewMode)) {
       throw new Error(
-        `Unknown view-mode '${this.viewMode}'. Expected one of: ${VIEW_MODES.join(', ')}.`,
+        `Unknown view-mode '${String(this.viewMode)}'. Expected one of: ${VIEW_MODES.join(', ')}.`,
       )
     }
     const scale = this.givenScale(this.scale)
