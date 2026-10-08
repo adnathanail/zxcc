@@ -3,8 +3,8 @@
 [![CI](https://github.com/adnathanail/zxcc/actions/workflows/ci.yml/badge.svg)](https://github.com/adnathanail/zxcc/actions/workflows/ci.yml)
 [![Lit](https://img.shields.io/badge/lit-%23324FFF.svg?style=flat&logo=lit&logoColor=white)](https://lit.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=fff)](https://www.typescriptlang.org)
-[![prek](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/j178/prek/master/docs/assets/badge-v0.json)](https://github.com/j178/prek)
 [![Storybook](https://img.shields.io/badge/Storybook-%23FF4785.svg?style=flat&logo=storybook&logoColor=white)](https://storybook.js.org)
+[![Vite+](https://img.shields.io/github/package-json/dependency-version/adnathanail/zxcc/dev/vite-plus?style=flat&logo=vite&logoColor=white&label=vite-plus&color=646CFF)](https://viteplus.dev)
 
 Framework-agnostic web component for rendering [ZX-calculus](https://zxcalculus.com) diagrams.
 
@@ -287,17 +287,15 @@ if (!VIEW_MODES.includes(mode)) throw new Error(`unknown view-mode: ${mode}`)
 
 ## Development
 
+Install [vite+](https://viteplus.dev/guide/)
+
 Install npm dependencies:
 
 ```sh
 npm install
 ```
 
-Set up pre-commit hooks ([install prek](https://github.com/j178/prek) first):
-
-```
-prek --install
-```
+This also installs a pre-commit hook that runs `vp check --fix` on the staged files.
 
 ### Demo
 
@@ -328,8 +326,8 @@ Then open `coverage/index.html` in a browser.
 ### Building from source
 
 ```sh
-npm run build       # tsc → dist/, then rollup bundles to dist/index.bundle.js
-npm run watch       # rollup --watch (rerun tsc manually on .ts changes)
+npm run build       # vp pack → dist/index.bundle.js and dist/constants.js
+npm run watch       # unminified rebuild on every change
 ```
 
 The bundle is self-contained with no runtime dependencies.

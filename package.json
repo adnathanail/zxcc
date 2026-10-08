@@ -27,10 +27,10 @@
   "type": "module",
   "main": "./dist/index.bundle.js",
   "module": "./dist/index.bundle.js",
-  "types": "./dist/index.d.ts",
+  "types": "./dist/index.bundle.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./dist/index.bundle.d.ts",
       "import": "./dist/index.bundle.js"
     },
     "./constants": {
@@ -42,41 +42,44 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc && rollup -c --environment NODE_ENV:production",
-    "analyze": "tsc && rollup -c --environment NODE_ENV:production,ANALYZE:true",
-    "build-dev": "tsc && rollup -c --environment NODE_ENV:development",
-    "watch": "rollup -c --environment NODE_ENV:development --watch",
+    "build": "vp pack",
+    "analyze": "ANALYZE=true vp pack",
+    "build-dev": "ZXCC_DEV=true vp pack",
+    "watch": "ZXCC_DEV=true vp pack --watch",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build --stats-json",
-    "test": "vitest run",
+    "test": "vp test run",
     "test-node-entry": "node scripts/check-node-entry.mjs",
-    "coverage": "vitest run --coverage",
+    "coverage": "vp test run --coverage",
     "typecheck-stories": "tsc -p tsconfig.stories.json",
-    "lint": "biome check && npm run typecheck-stories",
-    "format": "biome format --write",
-    "fix": "biome check --write"
+    "lint": "vp check && npm run typecheck-stories",
+    "format": "vp fmt",
+    "fix": "vp check --fix",
+    "prepare": "vp config"
   },
   "dependencies": {
     "lit": "^3.2.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.14",
-    "@rollup/plugin-commonjs": "^28.0.1",
-    "@rollup/plugin-node-resolve": "^15.3.0",
-    "@rollup/plugin-replace": "^6.0.1",
-    "@rollup/plugin-terser": "^0.4.4",
-    "@storybook/addon-vitest": "^10.5.8",
-    "@storybook/web-components-vite": "^10.5.8",
+    "@storybook/addon-vitest": "^10.6.1",
+    "@storybook/web-components-vite": "^10.6.1",
     "@types/node": "^26.2.0",
+    "@vitest/browser-playwright": "5.0.3",
+    "@vitest/coverage-v8": "5.0.3",
     "chromatic": "^18.2.0",
-    "rollup": "^4.17.2",
-    "rollup-plugin-visualizer": "^7.0.1",
-    "storybook": "^10.5.8",
-    "typescript": "^5.0.3",
-    "vite": "^7.3.6",
-    "vitest": "latest",
     "playwright": "latest",
-    "@vitest/browser-playwright": "latest",
-    "@vitest/coverage-v8": "latest"
+    "rollup-plugin-visualizer": "^7.0.1",
+    "storybook": "^10.6.1",
+    "typescript": "^5.0.3",
+    "vite": "npm:@voidzero-dev/vite-plus-core@1.1.0",
+    "vite-plus": "1.1.0",
+    "vitest": "5.0.3"
+  },
+  "overrides": {
+    "vite": "npm:@voidzero-dev/vite-plus-core@1.1.0",
+    "vitest": "5.0.3",
+    "storybook": {
+      "vite-plus": "$vite-plus"
+    }
   }
 }

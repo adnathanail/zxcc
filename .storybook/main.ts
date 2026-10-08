@@ -18,13 +18,13 @@ const config: StorybookConfig = {
 
   async viteFinal(viteConfig) {
     viteConfig.define = {
-      ...(viteConfig.define ?? {}),
+      ...viteConfig.define,
       __ZXCC_VERSION__: JSON.stringify(pkg.version),
     }
     return viteConfig
   },
 
-  addons: ['@storybook/addon-vitest']
+  addons: ['@storybook/addon-vitest'],
 }
 
 export default config

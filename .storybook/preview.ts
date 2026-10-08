@@ -11,7 +11,7 @@ export default {
           'Hypergraphs',
           ['Basic', 'From graph', 'Interactions'],
           'Other',
-          ['Both viewers', 'Tests']
+          ['Both viewers', 'Tests'],
         ],
       },
     },
