@@ -13,7 +13,44 @@ const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 
   version: string
 }
 
+// Storybook reads and rewrites a cache of its own while the stories run, which
+// would otherwise count as the task modifying its own input.
+const storybookCache = {
+  input: [{ auto: true }, '!node_modules/.cache/**'],
+  output: [{ auto: true }, '!node_modules/.cache/**'],
+}
+
 export default defineConfig({
+  // Run with `vp run <name>`. Tasks are cached: a rerun whose inputs haven't
+  // changed replays its output and restores the files it wrote. The scripts
+  // left in package.json are the ones something else runs by name (Chromatic
+  // runs `build-storybook`, npm runs `prepare`) or that rewrite the sources.
+  run: {
+    tasks: {
+      build: 'vp pack',
+      'build-dev': 'ZXCC_DEV=true vp pack',
+      // Opens the visualiser in a browser, which a replay wouldn't.
+      analyze: { command: 'ANALYZE=true vp pack', cache: false },
+      watch: { command: 'ZXCC_DEV=true vp pack --watch', cache: false },
+      lint: ['vp check', 'tsc -p tsconfig.stories.json'],
+      test: { command: 'vp test run', cache: storybookCache },
+      coverage: {
+        command: 'vp test run --coverage',
+        // The report is an output; its scratch files are neither.
+        cache: {
+          input: [...storybookCache.input, '!coverage/**'],
+          output: [...storybookCache.output, '!coverage/.tmp/**'],
+        },
+      },
+      // Imports the built `./constants` entry from plain Node; writes nothing
+      // worth restoring.
+      'test-node-entry': {
+        command: 'node scripts/check-node-entry.mjs',
+        dependsOn: ['build'],
+        cache: { output: [] },
+      },
+    },
+  },
   pack: [
     // The browser bundle: every element, with lit inlined so the package has
     // no runtime dependencies, and the type declarations for the whole API.
@@ -29,7 +66,9 @@ export default defineConfig({
         __ZXCC_VERSION__: JSON.stringify(pkg.version),
       },
       minify: production,
-      sourcemap: !production,
+      // Inline, so a development build writes the same files as a production one
+      // and a cached build restoring over it leaves nothing behind.
+      sourcemap: production ? false : 'inline',
       dts: true,
       // Both check the package as a whole (package.json and everything in
       // dist), so they run once, here.

@@ -312,22 +312,26 @@ You can run tests from inside the Storybook web interface.
 If you want to run them via the terminal:
 
 ```sh
-npm run test
+vp run test
 ```
 
 And to run with coverage:
 
 ```sh
-npm run coverage
+vp run coverage
 ```
 
 Then open `coverage/index.html` in a browser.
 
+Tasks run through `vp run` are cached: rerunning one whose inputs haven't changed replays its
+output instead. `vp run --no-cache <task>` forces a fresh run, and `vp cache clean` clears the cache.
+
 ### Building from source
 
 ```sh
-npm run build       # vp pack → dist/index.bundle.js and dist/constants.js
-npm run watch       # unminified rebuild on every change
+vp run build        # dist/index.bundle.js and dist/constants.js
+vp run build-dev    # the same, unminified with inline sourcemaps
+vp run watch        # unminified rebuild on every change
 ```
 
 The bundle is self-contained with no runtime dependencies.
@@ -335,5 +339,5 @@ The bundle is self-contained with no runtime dependencies.
 ### Analyzing bundle composition
 
 ```sh
-npm run analyze
+vp run analyze
 ```
