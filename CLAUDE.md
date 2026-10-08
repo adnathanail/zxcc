@@ -597,6 +597,12 @@ The toolchain is [Vite+](https://viteplus.dev) (`vp`), configured entirely in
 - `vp pack` sets `NODE_ENV` itself, so a development build (unminified, with
   sourcemaps) is asked for with `ZXCC_DEV=true` — that is what `build-dev` and
   `watch` set. `ANALYZE=true` adds the bundle visualiser.
+- The bundle build also runs publint and arethetypeswrong (`esm-only`) over
+  the package as a whole, and either one finding a problem fails the build —
+  a broken `exports` map or a declaration file that doesn't resolve.
+  `package.json` says `"sideEffects": true` outright, which publint would
+  otherwise suggest setting to `false`: importing the bundle registers the
+  custom elements, and a bundler told otherwise may drop it.
 - `npm run test-node-entry` (`scripts/check-node-entry.mjs`, run in CI after
   the build) imports `./constants` through the exports map in a separate Node
   process with no DOM shim and asserts the values, so anything that stops that
