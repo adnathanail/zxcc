@@ -19,18 +19,16 @@ jobs:
         with:
           fetch-depth: 0
           ref: main
-      - uses: actions/setup-node@v4
+      # Installs vp, the Node pinned in package.json's devEngines, and the npm
+      # bundled with it, then the dependencies (`vp install`). Trusted
+      # publishing needs npm 11.5.1 or later; Vite+ resolves the pin to the
+      # newest Node 24, whose bundled npm is well past that (11.19 in 24.21).
+      - uses: voidzero-dev/setup-vp@v1.21.1
         with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: package-lock.json
+          cache: true
           registry-url: https://registry.npmjs.org
-      - name: Upgrade npm
-        run: npm install -g npm@latest
-      - name: Install dependencies
-        run: npm ci
       - name: Build
-        run: npx vp run build
+        run: vp run build
       - name: Read version
         id: pkg
         run: |
