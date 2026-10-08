@@ -622,8 +622,12 @@ The toolchain is [Vite+](https://viteplus.dev) (`vp`), configured entirely in
   output and restores the files it wrote. Inputs and outputs are found by
   watching what the command reads and writes. `package.json` keeps only the
   scripts something else runs by name — Chromatic runs `build-storybook`, npm
-  runs `prepare` — plus `storybook`, `format` and `fix`, which have nothing to
-  cache. `analyze` and `watch` are never cached.
+  runs `prepare` — plus `storybook`, which has nothing to cache. Formatting
+  and fixing are the built-ins `vp fmt` and `vp check --fix`, with no script.
+  `build`, `test` and `coverage` look like aliases for built-ins, but they are
+  what makes those commands cached (a built-in run directly is not), and
+  `build` is what `test-node-entry` depends on. `analyze` and `watch` are
+  never cached.
 - The test tasks exclude `node_modules/.cache` from their inputs and outputs:
   Storybook rewrites its cache there during a run, and a task that modifies
   its own input is never cached. `coverage` likewise leaves `coverage/` out of
