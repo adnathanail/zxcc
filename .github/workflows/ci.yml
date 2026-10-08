@@ -12,11 +12,11 @@ jobs:
         with:
           # Chromatic needs full git history to compare against the baseline.
           fetch-depth: 0
-      # Installs vp, Node and npm, then the dependencies (`vp install`),
-      # caching the package manager's downloads between runs.
+      # Installs vp, the Node pinned in package.json's devEngines, and npm,
+      # then the dependencies (`vp install`), caching the package manager's
+      # downloads between runs.
       - uses: voidzero-dev/setup-vp@v1.21.1
         with:
-          node-version: '24'
           cache: true
       # Vite Task's cache, so a task whose inputs haven't changed since an
       # earlier run is replayed rather than rerun. Restored after the install,
