@@ -24,7 +24,9 @@ export default defineConfig({
   // Run with `vp run <name>`. Tasks are cached: a rerun whose inputs haven't
   // changed replays its output and restores the files it wrote. The scripts
   // left in package.json are the ones something else runs by name (Chromatic
-  // runs `build-storybook`, npm runs `prepare`) or that rewrite the sources.
+  // runs `build-storybook`, npm runs `prepare`) or that never exit (`storybook`).
+  // The tasks that only wrap a built-in exist for the caching, since a built-in
+  // run directly isn't cached.
   run: {
     tasks: {
       build: 'vp pack',
