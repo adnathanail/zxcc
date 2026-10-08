@@ -615,8 +615,9 @@ The toolchain is [Vite+](https://viteplus.dev) (`vp`), configured entirely in
   `<text>` renders as a space (see *Conventions*).
 - `typescript/no-floating-promises` is off for `stories/`: Storybook's
   instrumented `expect` is typed as returning a promise.
-- `vp check` type-checks `tsconfig.json`, which covers `src/` only;
-  `tsconfig.stories.json` is still checked by `tsc` in the `lint` task.
+- `vp check` type-checks everything it lints, `stories/` and `.storybook/`
+  included, with `tsconfig.json`'s compiler options, even though that file's
+  `include` names `src/` alone. There is no separate stories tsconfig.
 - Every command is a task in `run.tasks` in `vite.config.ts`, run with
   `vp run <name>` and cached: a rerun whose inputs haven't changed replays its
   output and restores the files it wrote. Inputs and outputs are found by
@@ -754,7 +755,8 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
   press a dot has to dispatch on the dot's `<g data-wire>` rather than on the
   SVG: a press whose target is the canvas asks which blobs contain the point,
   which is a different question with a different answer.
-- Stories live outside `src/` so they stay out of the library build; `tsconfig.stories.json` type-checks them (wired into the `lint` task).
+- Stories live outside `src/` so they stay out of the library build;
+  `vp check` type-checks them along with everything else.
   `.storybook/preview.ts` imports `src/index` so the element registers before
   any story renders.
 - `stories/` mirrors the `src/` split: `stories/graphs/` and
