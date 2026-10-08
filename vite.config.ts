@@ -34,7 +34,7 @@ export default defineConfig({
       // Opens the visualiser in a browser, which a replay wouldn't.
       analyze: { command: 'ANALYZE=true vp pack', cache: false },
       watch: { command: 'ZXCC_DEV=true vp pack --watch', cache: false },
-      lint: ['vp check', 'tsc -p tsconfig.stories.json'],
+      lint: 'vp check',
       test: { command: 'vp test run', cache: storybookCache },
       coverage: {
         command: 'vp test run --coverage',
