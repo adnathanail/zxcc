@@ -43,17 +43,8 @@
     "dist"
   ],
   "scripts": {
-    "build": "vp pack",
-    "analyze": "ANALYZE=true vp pack",
-    "build-dev": "ZXCC_DEV=true vp pack",
-    "watch": "ZXCC_DEV=true vp pack --watch",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build --stats-json",
-    "test": "vp test run",
-    "test-node-entry": "node scripts/check-node-entry.mjs",
-    "coverage": "vp test run --coverage",
-    "typecheck-stories": "tsc -p tsconfig.stories.json",
-    "lint": "vp check && npm run typecheck-stories",
     "format": "vp fmt",
     "fix": "vp check --fix",
     "prepare": "vp config"

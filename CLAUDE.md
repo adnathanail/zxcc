@@ -603,8 +603,8 @@ The toolchain is [Vite+](https://viteplus.dev) (`vp`), configured entirely in
   `package.json` says `"sideEffects": true` outright, which publint would
   otherwise suggest setting to `false`: importing the bundle registers the
   custom elements, and a bundler told otherwise may drop it.
-- `npm run test-node-entry` (`scripts/check-node-entry.mjs`, run in CI after
-  the build) imports `./constants` through the exports map in a separate Node
+- `vp run test-node-entry` (`scripts/check-node-entry.mjs`, run in CI; it
+  depends on `build`) imports `./constants` through the exports map in a separate Node
   process with no DOM shim and asserts the values, so anything that stops that
   entry loading in plain Node fails the build.
 - `__ZXCC_VERSION__` (used by the attribution link) is injected by the `pack`
@@ -616,7 +616,21 @@ The toolchain is [Vite+](https://viteplus.dev) (`vp`), configured entirely in
 - `typescript/no-floating-promises` is off for `stories/`: Storybook's
   instrumented `expect` is typed as returning a promise.
 - `vp check` type-checks `tsconfig.json`, which covers `src/` only;
-  `tsconfig.stories.json` is still checked by `tsc` in `npm run lint`.
+  `tsconfig.stories.json` is still checked by `tsc` in the `lint` task.
+- Every command is a task in `run.tasks` in `vite.config.ts`, run with
+  `vp run <name>` and cached: a rerun whose inputs haven't changed replays its
+  output and restores the files it wrote. Inputs and outputs are found by
+  watching what the command reads and writes. `package.json` keeps only the
+  scripts something else runs by name — Chromatic runs `build-storybook`, npm
+  runs `prepare` — plus `storybook`, `format` and `fix`, which have nothing to
+  cache. `analyze` and `watch` are never cached.
+- The test tasks exclude `node_modules/.cache` from their inputs and outputs:
+  Storybook rewrites its cache there during a run, and a task that modifies
+  its own input is never cached. `coverage` likewise leaves `coverage/` out of
+  its inputs and its scratch `coverage/.tmp` out of its outputs.
+- A development build inlines its sourcemap rather than writing a `.map`, so it
+  writes exactly the files a production build does. A cached production build
+  restoring over a development one would otherwise leave the `.map` behind.
 
 ## Committing
 
@@ -680,7 +694,7 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
 
 - Storybook interaction tests, run through `vitest` in **browser mode**
   (Playwright/chromium) via `@storybook/addon-vitest`. There are no unit
-  tests and no jsdom — `npm run test` runs the stories' `play` functions.
+  tests and no jsdom — `vp run test` runs the stories' `play` functions.
   Chromatic snapshots the same stories on push.
 - The play functions assert on rendered SVG attributes, so the DOM is a
   contract: `g.node` wrapping per-node `<g data-node>`, `g.brush >
@@ -723,7 +737,7 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
   press a dot has to dispatch on the dot's `<g data-wire>` rather than on the
   SVG: a press whose target is the canvas asks which blobs contain the point,
   which is a different question with a different answer.
-- Stories live outside `src/` so they stay out of the library build; `tsconfig.stories.json` type-checks them (wired into `npm run lint`).
+- Stories live outside `src/` so they stay out of the library build; `tsconfig.stories.json` type-checks them (wired into the `lint` task).
   `.storybook/preview.ts` imports `src/index` so the element registers before
   any story renders.
 - `stories/` mirrors the `src/` split: `stories/graphs/` and

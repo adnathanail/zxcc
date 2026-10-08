@@ -18,7 +18,7 @@
 // reached through a throwaway `node_modules` symlink rather than an install, so
 // the exports map is exercised without a registry round-trip.
 //
-// Run after `npm run build`.
+// Run with `vp run test-node-entry`, which builds first.
 
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
@@ -30,7 +30,7 @@ const repo = dirname(dirname(fileURLToPath(import.meta.url)))
 
 for (const built of ['dist/constants.js', 'dist/constants.d.ts']) {
   if (!existsSync(join(repo, built))) {
-    console.error(`✗ ${built} is missing — run \`npm run build\` first.`)
+    console.error(`✗ ${built} is missing — run \`vp run build\` first.`)
     process.exit(1)
   }
 }
