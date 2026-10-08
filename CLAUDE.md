@@ -638,14 +638,12 @@ The toolchain is [Vite+](https://viteplus.dev) (`vp`), configured entirely in
   does not read `devEngines`: it resolves `engines.node` to the newest
   release, and npm's `devEngines` check then fails `npm ci` against it.
 - CI (`.github/workflows/ci.yml`) sets up with `voidzero-dev/setup-vp`, pinned
-  to an exact release since its `v1` tag no longer moves, and restores the
-  task cache (`node_modules/.vite/task-cache`) from earlier runs, so a lint or
-  build whose inputs haven't changed is replayed. The Actions cache key is
-  unique per run and carries nothing about the sources: which tasks still hit
-  is Vite Task's call, from its own fingerprints. Vite+ marks reusing the
-  cache across runs as experimental. The publish and release workflows use
-  `setup-vp` too but skip the task cache, since they run too rarely to gain
-  from it. Publishing uses npm trusted publishing (OIDC, `id-token: write`),
+  to an exact release since its `v1` tag no longer moves, and caches npm's
+  downloads between runs (`cache: true`). The Vite Task cache is not carried
+  between runs: lint and build together take under ten seconds, so a replay
+  saves only a few once the cache's own restore and save are paid for, and
+  only on a commit touching none of their inputs. The publish and release
+  workflows use `setup-vp` too. Publishing uses npm trusted publishing (OIDC, `id-token: write`),
   which needs npm 11.5.1 or later; there is no step upgrading npm, because the
   npm bundled with Node 24 is already past that. `registry-url` is passed to
   `setup-vp` for the `.npmrc` it writes. `release.yml` skips the install
