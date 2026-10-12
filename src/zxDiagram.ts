@@ -9,8 +9,9 @@
 // the selection the pair shares.
 
 import { css, html, nothing, type PropertyValues } from 'lit'
-import { customElement, property, state } from 'lit/decorators.js'
+import { property, state } from 'lit/decorators.js'
 import { VIEW_MODES, type ViewMode } from './constants'
+import { defineOnce } from './defineOnce'
 import {
   ZOOM as HYPERGRAPH_ZOOM,
   // oxlint-disable-next-line no-unused-vars -- named by a {@link} in a doc comment
@@ -38,7 +39,6 @@ interface Dual {
   scale: number
 }
 
-@customElement('zx-diagram')
 export class ZxDiagramElement extends ZxViewerHost {
   /** The diagram to draw. Replace the object to change it — layout runs on a
    *  new identity, so mutating the one already assigned paints nothing new.
@@ -207,6 +207,8 @@ export class ZxDiagramElement extends ZxViewerHost {
     `
   }
 }
+
+defineOnce('zx-diagram', ZxDiagramElement)
 
 declare global {
   interface HTMLElementTagNameMap {

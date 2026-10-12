@@ -9,8 +9,9 @@
 // worked out every position and handed them over in pixels.
 
 import { html, nothing, type PropertyValues } from 'lit'
-import { customElement, property, state } from 'lit/decorators.js'
+import { property, state } from 'lit/decorators.js'
 import { attributionTemplate } from './attribution'
+import { defineOnce } from './defineOnce'
 import { hypergraphScene } from './hypergraph/scene'
 import type { HypergraphInput, HypergraphScene } from './hypergraph/types'
 import { type PaintedView, ZxViewerHost } from './viewerHost'
@@ -21,7 +22,6 @@ import './hypergraph/viewer'
  *  here to derive one from. */
 const DEFAULT_SCALE = 35
 
-@customElement('zx-hypergraph')
 export class ZxHypergraphElement extends ZxViewerHost {
   /** The hypergraph to draw, and where to draw it — see {@link HypergraphInput}.
    *  Replace the object to change it: the scene is measured on a new identity,
@@ -82,6 +82,8 @@ export class ZxHypergraphElement extends ZxViewerHost {
     `
   }
 }
+
+defineOnce('zx-hypergraph', ZxHypergraphElement)
 
 declare global {
   interface HTMLElementTagNameMap {

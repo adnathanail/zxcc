@@ -129,6 +129,11 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   other, and neither painter has to know the other exists. Both painters are
   controlled: they own no selection, they announce the one a gesture makes and
   draw whatever `<zx-diagram>` hands back.
+- `defineOnce.ts` — `defineOnce(name, cls)`, how every element is registered
+  in place of Lit's `@customElement`. It skips a name that is already taken
+  rather than throwing, so zxcc bundled into two scripts on one page loads
+  twice without failing; the first copy's elements win. `Other/Tests` →
+  `Loading zxcc twice…` re-evaluates every element module to check it.
 - `attribution.ts` — the "❤️ zxcc" badge drawn into the diagram's SVG.
 - `gestures.ts` — `trackPointer`, the window-level `pointermove`/`pointerup`/
   `pointercancel` plumbing a drag runs on, plus the non-passive `touchmove`

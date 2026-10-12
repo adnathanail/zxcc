@@ -7,14 +7,14 @@
 // and the one scene it paints.
 
 import { html, nothing, type PropertyValues } from 'lit'
-import { customElement, property, state } from 'lit/decorators.js'
+import { property, state } from 'lit/decorators.js'
 import { attributionTemplate } from './attribution'
+import { defineOnce } from './defineOnce'
 import { layout } from './layout'
 import type { DiagramData, Scene } from './types'
 import { type PaintedView, ZxViewerHost } from './viewerHost'
 import './graph/viewer'
 
-@customElement('zx-graph')
 export class ZxGraphElement extends ZxViewerHost {
   /** The diagram to draw. Replace the object to change it — layout runs on a
    *  new identity, so mutating the one already assigned paints nothing new.
@@ -64,6 +64,8 @@ export class ZxGraphElement extends ZxViewerHost {
     `
   }
 }
+
+defineOnce('zx-graph', ZxGraphElement)
 
 declare global {
   interface HTMLElementTagNameMap {
