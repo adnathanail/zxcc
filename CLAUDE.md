@@ -651,12 +651,22 @@ The toolchain is [Vite+](https://viteplus.dev) (`vp`), configured entirely in
   downloads between runs (`cache: true`). The Vite Task cache is not carried
   between runs: lint and build together take under ten seconds, so a replay
   saves only a few once the cache's own restore and save are paid for, and
-  only on a commit touching none of their inputs. The publish and release
-  workflows use `setup-vp` too. Publishing uses npm trusted publishing (OIDC, `id-token: write`),
+  only on a commit touching none of their inputs. The release workflow uses
+  `setup-vp` too. Publishing uses npm trusted publishing (OIDC, `id-token: write`),
   which needs npm 11.5.1 or later; there is no step upgrading npm, because the
   npm bundled with Node 24 is already past that. `registry-url` is passed to
-  `setup-vp` for the `.npmrc` it writes. `release.yml` skips the install
-  (`run-install: false`), as `npm version` needs no dependencies.
+  `setup-vp` for the `.npmrc` it writes.
+- Releasing is one run of `release.yml` (Actions → Release → Run workflow,
+  choosing patch, minor or major). The new version is the latest `vX.Y.Z` tag
+  bumped by that. The workflow makes a release commit on top of main setting
+  `package.json`'s version, tags it, lints and builds it, publishes it to npm
+  and pushes *only the tag*, then creates the GitHub release. Main itself stays
+  at version `0.0.0`, so the tags, not `package.json`, are where the current
+  version lives. A consequence is that Storybook and development builds carry
+  `0.0.0` as `__ZXCC_VERSION__`, and their attribution link points at a
+  release that doesn't exist. The npm trusted publisher is registered against
+  this workflow's filename, so renaming `release.yml` breaks publishing until
+  the setting on npmjs.com is changed to match.
 - The test tasks exclude `node_modules/.cache` from their inputs and outputs:
   Storybook rewrites its cache there during a run, and a task that modifies
   its own input is never cached. `coverage` likewise leaves `coverage/` out of
