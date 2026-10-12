@@ -46,7 +46,7 @@ Assign a new object to change the diagram; layout runs when the property's ident
 
 The drawing responds to mouse, pen and touch alike: press a node or a dot to select it and drag to move it. A drawing wider than its box scrolls, and on a touch screen dragging the empty canvas is what scrolls it — so the rubber-band selection over blank canvas is a mouse and pen gesture only.
 
-zxcc can be bundled into more than one script on the same page. Each copy registers the elements only if nothing has registered them yet, so loading a second copy does not throw. If the copies are different versions, the first one loaded defines the elements and every copy uses those.
+zxcc can be bundled into more than one script on the same page, as long as every copy is the same version: the first copy to load registers the elements and the rest use them. Loading two different versions on one page throws an error naming both, since a custom element name can only be registered once and one of the two would otherwise be silently drawing with the other's elements.
 
 ## Diagram shape
 
