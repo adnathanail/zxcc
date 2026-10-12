@@ -393,8 +393,10 @@ export const InvalidScale: Story = {
 }
 
 /** A second copy of zxcc on the page — two separately bundled scripts that each
- * carry one — registers every element a second time. That must neither throw
- * nor take over the names: the copy that loaded first keeps them.
+ * carry one — registers every element a second time. A copy of the same
+ * version must neither throw nor take over the names: the copy that loaded
+ * first keeps them. A copy of a different version is refused with an error
+ * naming both versions.
  *
  * Every element module is evaluated again here (the query string makes each a
  * module of its own), and the helper is also called directly with a class of
@@ -402,12 +404,12 @@ export const InvalidScale: Story = {
  * still be the original and still draw.
  */
 export const RegisteredTwice: Story = {
-  name: 'Loading zxcc twice keeps the first registration',
+  name: 'Loading zxcc twice',
   parameters: {
     docs: {
       story: {
         description:
-          'Every element registration is run a second time, once by re-evaluating the modules and once by registering a stand-in class under `zx-graph`. Neither throws, and the `<zx-graph>` below is still the original element and still draws.',
+          'Every element registration is run a second time, once by re-evaluating the modules and once by registering a stand-in class under `zx-graph`. Neither throws, and the `<zx-graph>` below is still the original element and still draws. Registering under a different version throws.',
       },
     },
   },
@@ -429,6 +431,27 @@ export const RegisteredTwice: Story = {
       await import(/* @vite-ignore */ new URL(`../../src/${path}?again`, here).href)
     }
     expect(() => defineOnce('zx-graph', class extends HTMLElement {})).not.toThrow()
+    expect(customElements.get('zx-graph')).toBe(ZxGraphElement)
+
+    // A different version is refused, naming both. The names here are the
+    // story's own so that rerunning it finds them already registered by the
+    // first run, as a second script on the page would.
+    defineOnce('zx-version-test', class extends HTMLElement {}, '1.0.0')
+    expect(() => defineOnce('zx-version-test', class extends HTMLElement {}, '1.0.0')).not.toThrow()
+    expect(() => defineOnce('zx-version-test', class extends HTMLElement {}, '2.0.0')).toThrow(
+      'zxcc 2.0.0 cannot register <zx-version-test>: it is already registered by zxcc 1.0.0. ' +
+        'Only one version of zxcc can be loaded on a page.',
+    )
+    expect(() => defineOnce('zx-graph', class extends HTMLElement {}, '0.0.1')).toThrow(
+      /^zxcc 0\.0\.1 cannot register <zx-graph>: it is already registered by zxcc /,
+    )
+    // A name held by something that isn't zxcc at all is refused too.
+    if (!customElements.get('zx-foreign-test')) {
+      customElements.define('zx-foreign-test', class extends HTMLElement {})
+    }
+    expect(() => defineOnce('zx-foreign-test', class extends HTMLElement {})).toThrow(
+      /already registered by something other than this version of zxcc/,
+    )
     expect(customElements.get('zx-graph')).toBe(ZxGraphElement)
 
     const el = canvasElement.querySelector('zx-graph')!
