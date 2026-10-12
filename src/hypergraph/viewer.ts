@@ -12,10 +12,11 @@
 // reshape.
 
 import { html, LitElement, nothing, type PropertyValues, type SVGTemplateResult, svg } from 'lit'
-import { customElement, property } from 'lit/decorators.js'
+import { property } from 'lit/decorators.js'
 import { type EdgeColors, edgeColor, nodeColor } from '../colors'
 import { LABEL_FILL, ORIGINAL_COLORS, PHASE_FILL, SELECTED_STROKE } from '../constants'
 import type { Point } from '../curves'
+import { defineOnce } from '../defineOnce'
 import { trackPointer } from '../gestures'
 import {
   EMPTY_SELECTION,
@@ -76,7 +77,6 @@ type Pick = 'named' | 'implied'
  *  in one light-DOM tree would otherwise share ids. */
 let instances = 0
 
-@customElement('zx-hypergraph-viewer')
 export class ZxHypergraphViewerElement extends LitElement {
   @property({ attribute: false }) scene: HypergraphScene | null = null
   /** Palette to paint with, as `<zx-viewer>` takes. */
@@ -473,6 +473,8 @@ export class ZxHypergraphViewerElement extends LitElement {
     `
   }
 }
+
+defineOnce('zx-hypergraph-viewer', ZxHypergraphViewerElement)
 
 declare global {
   interface HTMLElementTagNameMap {

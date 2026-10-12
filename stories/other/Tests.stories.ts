@@ -5,12 +5,14 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { html } from 'lit'
 import { expect, waitFor } from 'storybook/test'
+import { defineOnce } from '../../src/defineOnce'
 import {
   type DiagramData,
   type HypergraphInput,
   VIEW_MODES,
   type ZxDiagramElement,
 } from '../../src/index'
+import { ZxGraphElement } from '../../src/zxGraph'
 import { fourSpiderSquare } from '../diagrams'
 import {
   blobIdsIn,
@@ -387,5 +389,55 @@ export const InvalidScale: Story = {
       // have been, since `<zx-diagram>` refuses before mounting either view.
       expect(root.querySelectorAll('zx-viewer, zx-hypergraph-viewer').length).toBe(0)
     }
+  },
+}
+
+/** A second copy of zxcc on the page — two separately bundled scripts that each
+ * carry one — registers every element a second time. That must neither throw
+ * nor take over the names: the copy that loaded first keeps them.
+ *
+ * Every element module is evaluated again here (the query string makes each a
+ * module of its own), and the helper is also called directly with a class of
+ * a different identity, before the `<zx-graph>` on the page is checked to
+ * still be the original and still draw.
+ */
+export const RegisteredTwice: Story = {
+  name: 'Loading zxcc twice keeps the first registration',
+  parameters: {
+    docs: {
+      story: {
+        description:
+          'Every element registration is run a second time, once by re-evaluating the modules and once by registering a stand-in class under `zx-graph`. Neither throws, and the `<zx-graph>` below is still the original element and still draws.',
+      },
+    },
+  },
+  render: () => html`<zx-graph id="twice"></zx-graph>`,
+  play: async ({ canvasElement }) => {
+    // The specifiers are built at runtime because a query string is not
+    // something TypeScript resolves; the dev server serves them all the same.
+    // `here` is its own variable because Vite rewrites a literal
+    // `new URL(…, import.meta.url)` as an asset reference.
+    const here = import.meta.url
+    const modules = [
+      'zxDiagram.ts',
+      'zxGraph.ts',
+      'zxHypergraph.ts',
+      'graph/viewer.ts',
+      'hypergraph/viewer.ts',
+    ]
+    for (const path of modules) {
+      await import(/* @vite-ignore */ new URL(`../../src/${path}?again`, here).href)
+    }
+    expect(() => defineOnce('zx-graph', class extends HTMLElement {})).not.toThrow()
+    expect(customElements.get('zx-graph')).toBe(ZxGraphElement)
+
+    const el = canvasElement.querySelector('zx-graph')!
+    el.diagram = fourSpiderSquare
+    const root = await shadowRootOf(canvasElement, '#twice')
+    await waitFor(() =>
+      expect(root.querySelectorAll('g.node > g[data-node]').length).toBe(
+        fourSpiderSquare.nodes.length,
+      ),
+    )
   },
 }

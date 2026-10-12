@@ -12,7 +12,7 @@
 // host's stylesheet and leaves the SVG reachable from the host's shadow root.
 
 import { html, LitElement, nothing, type PropertyValues, type SVGTemplateResult, svg } from 'lit'
-import { customElement, property } from 'lit/decorators.js'
+import { property } from 'lit/decorators.js'
 import { type EdgeColors, edgeColor, nodeColor, webColor } from '../colors'
 import {
   CANVAS_FILL,
@@ -23,6 +23,7 @@ import {
   VDATA_FILL,
 } from '../constants'
 import type { Point } from '../curves'
+import { defineOnce } from '../defineOnce'
 import { trackPointer } from '../gestures'
 import { EMPTY_SELECTION, nodeSelection, type Selection, selectionEvent } from '../selection'
 import { Topology } from '../topology'
@@ -71,7 +72,6 @@ function isAdditive(e: MouseEvent): boolean {
   return e.shiftKey || e.metaKey
 }
 
-@customElement('zx-viewer')
 export class ZxViewerElement extends LitElement {
   @property({ attribute: false }) scene: Scene | null = null
   @property({ attribute: false }) colors: Record<string, string> = ORIGINAL_COLORS
@@ -453,6 +453,8 @@ export class ZxViewerElement extends LitElement {
     `
   }
 }
+
+defineOnce('zx-viewer', ZxViewerElement)
 
 declare global {
   interface HTMLElementTagNameMap {
