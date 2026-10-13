@@ -3,7 +3,8 @@
 //
 // The whole SVG is a Lit template derived from four pieces of interaction
 // state: dragged positions, H-box line parameters, the live brush rect, and the
-// selection. The first three are the viewer's own; the selection is the host's,
+// selection. Beside it sits the reset button, shown once anything has been
+// dragged. The first three are the viewer's own; the selection is the host's,
 // so that the two views can share one (see `src/selection.ts`). Nothing else is
 // stored — H-box positions, box bounds and edge paths are all recomputed in
 // `render()`, so there is no imperative "sync the DOM to the model" pass.
@@ -25,6 +26,7 @@ import {
 import type { Point } from '../curves'
 import { defineOnce } from '../defineOnce'
 import { trackPointer } from '../gestures'
+import { resetButtonTemplate } from '../resetButton'
 import { EMPTY_SELECTION, nodeSelection, type Selection, selectionEvent } from '../selection'
 import { Topology } from '../topology'
 import type { BoxKind, NodeKind, Scene, SceneNode } from '../types'
@@ -95,6 +97,9 @@ export class ZxViewerElement extends LitElement {
   #base = new Map<number, Point>()
   #lineParams = new Map<number, number>()
   #brush: Rect | null = null
+  /** Whether anything has been dragged off where the layout put it, which is
+   *  what shows the reset button. */
+  #moved = false
   #topology: Topology | null = null
   /** Tears down the in-flight drag or brush gesture, if any. The argument says
    *  whether the gesture was cancelled rather than completed; anything ending a
@@ -125,9 +130,21 @@ export class ZxViewerElement extends LitElement {
     this.#endGesture?.(false)
     const scene = this.scene
     this.#topology = scene ? new Topology(scene) : null
-    this.#base = new Map(scene?.nodes.map(n => [n.id, { x: n.x, y: n.y }]) ?? [])
-    this.#lineParams = this.#topology?.initialLineParams() ?? new Map()
     this.#brush = null
+    this.#resetPositions()
+  }
+
+  /** Put every node back where the layout put it. */
+  #resetPositions() {
+    this.#base = new Map(this.scene?.nodes.map(n => [n.id, { x: n.x, y: n.y }]) ?? [])
+    this.#lineParams = this.#topology?.initialLineParams() ?? new Map()
+    this.#moved = false
+  }
+
+  #onReset = () => {
+    this.#endGesture?.(false)
+    this.#resetPositions()
+    this.requestUpdate()
   }
 
   /** Announce a selection of nodes. What comes back through `selection` is
@@ -202,8 +219,9 @@ export class ZxViewerElement extends LitElement {
   #dragSelection(nodes: ReadonlySet<number>, dx: number, dy: number) {
     const scene = this.scene
     const topology = this.#topology
-    if (!scene || !topology) return
+    if (!scene || !topology || (dx === 0 && dy === 0)) return
     const pos = this.#positions()
+    this.#moved = true
 
     for (const id of nodes) {
       // An auto-placed H-box slides along its chain rather than moving
@@ -450,6 +468,7 @@ export class ZxViewerElement extends LitElement {
         ${this.#renderScalar(scene)}
         ${this.overlay ?? nothing}
       </svg>
+      ${resetButtonTemplate(this.#moved, this.#onReset)}
     `
   }
 }

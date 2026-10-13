@@ -22,6 +22,15 @@ import { EMPTY_SELECTION, type Selection, selectionEvent } from './selection'
  *  fields, which is all this layer needs of either. */
 export type PaintedView = [tag: string, view: { width: number; height: number }]
 
+/** The reset button's icon: a counter-clockwise arrow round a circle, on a
+ *  24-unit grid — an arc most of the way round from the left, ending in an
+ *  arrowhead at the top-left pointing back the way the arc came. */
+const RESET_ICON = `"data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" ' +
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M 4 12 A 8 8 0 1 0 6.34 6.34"/><path d="M 6.34 1.84 V 6.34 H 10.84"/></svg>',
+)}"`
+
 function isUsableScale(scale: number): boolean {
   return Number.isFinite(scale) && scale > 0
 }
@@ -74,7 +83,42 @@ export abstract class ZxViewerHost extends LitElement {
   static styles: CSSResultGroup = css`
     :host { display: block; }
     .container { overflow: auto; background-color: white; }
-    zx-viewer, zx-hypergraph-viewer { display: block; }
+    /* Relative so a painter's reset button can sit in its bottom-left corner. */
+    zx-viewer, zx-hypergraph-viewer { display: block; position: relative; }
+    /* Shown once something has been dragged, faded in and out. Visibility rides
+       the same transition so a hidden button can't be pressed or tabbed to, and
+       — being discrete — flips at the start of a fade in and the end of a fade
+       out, so the opacity is seen both ways. */
+    .reset-layout {
+      position: absolute;
+      left: 6px;
+      bottom: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border: 1px solid #ccc;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.85);
+      color: #555;
+      cursor: pointer;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 150ms ease, visibility 150ms;
+    }
+    .reset-layout.shown { opacity: 1; visibility: visible; }
+    .reset-layout:hover { color: #000; border-color: #999; }
+    /* The icon is a mask over the text colour rather than an inline <svg>, so
+       that a painter's own picture stays the only <svg> inside it. */
+    .reset-layout span {
+      width: 16px;
+      height: 16px;
+      background-color: currentColor;
+      mask: url(${unsafeCSS(RESET_ICON)}) center / contain no-repeat;
+      -webkit-mask: url(${unsafeCSS(RESET_ICON)}) center / contain no-repeat;
+    }
     .container svg {
       display: block;
       background-color: ${unsafeCSS(CANVAS_FILL)};

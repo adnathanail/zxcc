@@ -534,3 +534,41 @@ export const PauliWebFollowsDrag: Story = {
     })
   },
 }
+
+// —————————————————————————————————————————————————————————————————————————
+// 10. The reset button: shown once something is dragged, and pressing it puts
+// every node back where the layout put it and hides it again. A press that
+// moves nothing doesn't count as a drag.
+// —————————————————————————————————————————————————————————————————————————
+
+export const ResetLayout: Story = {
+  name: '10. Reset layout',
+  args: { diagram: zxSpiders },
+  play: async ({ canvasElement, step }) => {
+    const root = await shadowRootOf(canvasElement, 'zx-graph')
+    const spider = await waitForNode(root, 'circle', Z_FILL)
+    const reset = root.querySelector<HTMLButtonElement>('zx-viewer button.reset-layout')
+    if (!reset) throw new Error('reset button not mounted')
+    const shown = () => reset.classList.contains('shown')
+    const [x0, y0] = translateOf(spider)
+
+    await step('a press that moves nothing leaves the button hidden', async () => {
+      performDrag(spider, 0, 0)
+      await waitFor(() => expect(translateOf(spider)).toEqual([x0, y0]))
+      expect(shown()).toBe(false)
+    })
+
+    await step('dragging a spider shows the button', async () => {
+      performDrag(spider, 40, 30)
+      await waitFor(() => expect(shown()).toBe(true))
+    })
+
+    await step('pressing it puts the spider back and hides the button', async () => {
+      reset.click()
+      await waitFor(() => {
+        expect(translateOf(spider)).toEqual([x0, y0])
+        expect(shown()).toBe(false)
+      })
+    })
+  },
+}

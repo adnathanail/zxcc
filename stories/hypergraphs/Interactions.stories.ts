@@ -457,3 +457,44 @@ export const BoundaryLegsAndSelfLoops: Story = {
     expect(await held('w1')).toEqual(['e1'])
   },
 }
+
+// The reset button: shown once a dot is dragged, and pressing it puts every dot
+// back where the layout put it — the blobs holding them reshape back with them
+// — and hides it again.
+export const ResetLayout: Story = {
+  name: '5. Reset layout',
+  args: { diagram: strongComplementarityOf(2, 2) },
+  play: async ({ canvasElement, step }) => {
+    const root = await shadowRootOf(canvasElement)
+    const dot = await waitFor(() => {
+      const g = root.querySelector<SVGGElement>('g[data-wire="w6"]')
+      if (!g) throw new Error('dot w6 not mounted')
+      return g
+    })
+    const reset = root.querySelector<HTMLButtonElement>('zx-hypergraph-viewer button.reset-layout')
+    if (!reset) throw new Error('reset button not mounted')
+    const shown = () => reset.classList.contains('shown')
+    const outline = () =>
+      root.querySelector<SVGPathElement>('g[data-hyperedge="e3"] path')?.getAttribute('d')
+    const [x0, y0] = translateOf(dot)
+    const before = outline()
+    expect(shown()).toBe(false)
+
+    await step('dragging a dot shows the button', async () => {
+      performDrag(dot, -45, -10)
+      await waitFor(() => expect(shown()).toBe(true))
+      expect(outline()).not.toEqual(before)
+    })
+
+    await step('pressing it puts the dot and its blobs back and hides the button', async () => {
+      reset.click()
+      await waitFor(() => {
+        const [x, y] = translateOf(dot)
+        expect(x).toBeCloseTo(x0, 6)
+        expect(y).toBeCloseTo(y0, 6)
+        expect(outline()).toEqual(before)
+        expect(shown()).toBe(false)
+      })
+    })
+  },
+}
