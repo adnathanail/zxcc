@@ -6,7 +6,8 @@
 // SVG reachable from the host's shadow root.
 //
 // It keeps one piece of interaction state of its own, the dragged dot
-// positions, plus the selection the host owns. Everything else on screen — blob
+// positions, plus the selection the host owns. A reset button in the corner,
+// shown once a dot has been dragged, puts them all back. Everything else on screen — blob
 // outlines, dot rings, trespass marks — is derived from those two in
 // `render()`, so a drag only has to move a dot for every blob holding it to
 // reshape.
@@ -18,6 +19,7 @@ import { LABEL_FILL, ORIGINAL_COLORS, PHASE_FILL, SELECTED_STROKE } from '../con
 import type { Point } from '../curves'
 import { defineOnce } from '../defineOnce'
 import { trackPointer } from '../gestures'
+import { resetButtonTemplate } from '../resetButton'
 import {
   EMPTY_SELECTION,
   edgeSelection,
@@ -101,6 +103,9 @@ export class ZxHypergraphViewerElement extends LitElement {
    *  gesture rather than reallocated on every pointermove just to trip Lit's
    *  identity check. */
   #positions = new Map<string, Point>()
+  /** Whether any dot has been dragged off where the layout put it, which is
+   *  what shows the reset button. */
+  #moved = false
   /** Tears down the in-flight drag, if any. */
   #endGesture: (() => void) | null = null
   /** Prefix for this viewer's clip-path ids — see {@link instances}. */
@@ -123,7 +128,19 @@ export class ZxHypergraphViewerElement extends LitElement {
 
   #adoptScene() {
     this.#endGesture?.()
+    this.#resetPositions()
+  }
+
+  /** Put every dot back where the layout put it. */
+  #resetPositions() {
     this.#positions = new Map(this.scene?.dots.map(d => [d.id, { x: d.x, y: d.y }]) ?? [])
+    this.#moved = false
+  }
+
+  #onReset = () => {
+    this.#endGesture?.()
+    this.#resetPositions()
+    this.requestUpdate()
   }
 
   /**
@@ -234,6 +251,7 @@ export class ZxHypergraphViewerElement extends LitElement {
     const origin = this.#positions.get(id)
     if (!origin) return
     this.#track(start, move => {
+      if (move.clientX !== start.clientX || move.clientY !== start.clientY) this.#moved = true
       this.#positions.set(id, {
         x: origin.x + move.clientX - start.clientX,
         y: origin.y + move.clientY - start.clientY,
@@ -470,6 +488,7 @@ export class ZxHypergraphViewerElement extends LitElement {
         ${this.#renderTally(scene, trespasses.length)}
         ${this.overlay ?? nothing}
       </svg>
+      ${resetButtonTemplate(this.#moved, this.#onReset)}
     `
   }
 }

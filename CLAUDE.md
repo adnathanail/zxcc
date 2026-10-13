@@ -139,6 +139,15 @@ out a second time — that is what stops `hypergraph/` needing `graph/`.
   drawing with the other's elements, decided by load order. `Other/Tests` →
   `Loading zxcc twice` re-evaluates every element module to check it.
 - `attribution.ts` — the "❤️ zxcc" badge drawn into the diagram's SVG.
+- `resetButton.ts` — the reset-layout button both painters draw in their
+  bottom-left corner, shown (faded in) once something in that view has been
+  dragged and putting every mark back where the layout put it. Each painter
+  owns its own, since a drag is each view's own. It is HTML laid over the SVG
+  rather than drawn into it like the badge, because a control has no place in
+  a copied picture; its styles, fade and icon are `.reset-layout` in
+  `viewerHost.ts`. The icon is a CSS mask rather than an inline `<svg>` so a
+  painter's picture stays the only `<svg>` inside it — the play functions
+  query `zx-viewer svg` and the like on that assumption.
 - `gestures.ts` — `trackPointer`, the window-level `pointermove`/`pointerup`/
   `pointercancel` plumbing a drag runs on, plus the non-passive `touchmove`
   block that keeps a drag from turning into a pan. Both painters run every
@@ -742,7 +751,8 @@ Make changes in new commits, as opposed to modifying existing commits, unless ex
 - The play functions assert on rendered SVG attributes, so the DOM is a
   contract: `g.node` wrapping per-node `<g data-node>`, `g.brush >
   rect.overlay`, `path.selectable` for the ground symbol, `text[fill="#999"]`
-  for id labels, the scalar as the only direct `<text>` child of the `<svg>`,
+  for id labels, `button.reset-layout` (carrying `.shown` when visible) beside
+  each painter's SVG, the scalar as the only direct `<text>` child of the `<svg>`,
   a selected node marked by `#00f` in its shape's `style` and a selected edge
   by its casing — `g.casing > path[data-link]`, carrying the edge's index, with
   the wire in `g.link` left untouched — and `g.attribution` carrying a `rect`
