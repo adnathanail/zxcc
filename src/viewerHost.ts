@@ -23,12 +23,14 @@ import { EMPTY_SELECTION, type Selection, selectionEvent } from './selection'
 export type PaintedView = [tag: string, view: { width: number; height: number }]
 
 /** The reset button's icon: a counter-clockwise arrow round a circle, on a
- *  24-unit grid — an arc most of the way round from the left, ending in an
- *  arrowhead at the top-left pointing back the way the arc came. */
+ *  24-unit grid — a ring most of the way round, ending at the top in a filled
+ *  arrowhead pointing left into the gap. Filled rather than a stroked chevron,
+ *  which blurs into the ring at the 16px it is drawn at. The circle sits a
+ *  little low so that it and the arrowhead together are centred. */
 const RESET_ICON = `"data:image/svg+xml,${encodeURIComponent(
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" ' +
-    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-    '<path d="M 4 12 A 8 8 0 1 0 6.34 6.34"/><path d="M 6.34 1.84 V 6.34 H 10.84"/></svg>',
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">' +
+    '<path d="M 5.94 9.5 A 7 7 0 1 0 12 6" fill="none" stroke="black" stroke-width="2.2"/>' +
+    '<path d="M 8.3 6 L 12.5 2.6 L 12.5 9.4 Z" fill="black"/></svg>',
 )}"`
 
 function isUsableScale(scale: number): boolean {
