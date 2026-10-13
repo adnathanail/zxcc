@@ -98,25 +98,24 @@ export abstract class ZxViewerHost extends LitElement {
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 28px;
-      height: 28px;
+      width: 22px;
+      height: 22px;
       padding: 0;
-      border: 1px solid #ccc;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.85);
-      color: #555;
+      border: none;
+      background: none;
+      color: #ccc;
       cursor: pointer;
       opacity: 0;
       visibility: hidden;
-      transition: opacity 150ms ease, visibility 150ms;
+      transition: opacity 150ms ease, visibility 150ms, color 150ms;
     }
     .reset-layout.shown { opacity: 1; visibility: visible; }
-    .reset-layout:hover { color: #000; border-color: #999; }
+    .reset-layout:hover { color: #777; }
     /* The icon is a mask over the text colour rather than an inline <svg>, so
        that a painter's own picture stays the only <svg> inside it. */
     .reset-layout span {
-      width: 16px;
-      height: 16px;
+      width: 14px;
+      height: 14px;
       background-color: currentColor;
       mask: url(${unsafeCSS(RESET_ICON)}) center / contain no-repeat;
       -webkit-mask: url(${unsafeCSS(RESET_ICON)}) center / contain no-repeat;
